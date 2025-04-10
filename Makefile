@@ -4,15 +4,6 @@ CGREEN:=$(shell tput setaf 2 2>/dev/null)
 CYELLOW:=$(shell tput setaf 3 2>/dev/null)
 CEND:=$(shell tput sgr0 2>/dev/null)
 
-# Code format
-.PHONY: fmt
-fmt:
-	@echo "$(CGREEN)Run gofmt on all source files ...$(CEND)"
-	@echo "gofmt -l -s -w ..."
-	@ret=0 && for d in $$(go list -f '{{.Dir}}' ./... | grep -v /vendor/); do \
-		gofmt -l -s -w $$d/*.go || ret=$$? ; \
-	done ; exit $$ret
-
 # Build binary files
 .PHONY: build
 build: fmt
@@ -23,6 +14,15 @@ build: fmt
 		go build -trimpath -o bin/$${b} $$d || ret=$$? ; \
 	done ; exit $$ret
 	@echo "build Success!"
+
+# Code format
+.PHONY: fmt
+fmt:
+	@echo "$(CGREEN)Run gofmt on all source files ...$(CEND)"
+	@echo "gofmt -l -s -w ..."
+	@ret=0 && for d in $$(go list -f '{{.Dir}}' ./... | grep -v /vendor/); do \
+		gofmt -l -s -w $$d/*.go || ret=$$? ; \
+	done ; exit $$ret	
 
 # Clean up build artifacts
 .PHONY: clean
@@ -35,7 +35,7 @@ clean:
 .PHONY: test
 test: fmt
 	@echo "$(CGREEN)Run all test cases ...$(CEND)"
-	@#go test -timeout 10m -race ./...
+	@go test -timeout 10m -race ./...
 	@echo "test Success!"
 
 # Code Coverage
@@ -53,3 +53,14 @@ cover: test
 			{print "$(CGREEN)"$$0"%$(CEND)"} \
 		else \
 			{print "$(CYELLOW)"$$0"%$(CEND)"}}'
+
+.PHONY: test-cli
+test-cli:
+	@echo "$(CGREEN)Run Case 1: convert mysql to markdown$(CEND)"
+	@./bin/tableconvert --from mysql -t markdown --file test/mysql.txt --key value -v
+	@echo "$(CGREEN)Run Case 2: convert markdown to mysql$(CEND)"
+	@./bin/tableconvert --from markdown -t mysql --file test/mysql.md --key value -v
+	@echo "$(CGREEN)Run Case 3: convert mysql to csv$(CEND)"
+	@./bin/tableconvert --from mysql -t csv --file test/mysql.txt --key value -v
+	@echo "$(CGREEN)Run Case 4: convert csv to mysql$(CEND)"
+	@./bin/tableconvert --from csv -t mysql --file test/mysql.csv --key value -v	

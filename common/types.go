@@ -1,6 +1,11 @@
 package common
 
-import "fmt"
+import (
+	"fmt"
+	"io"
+	"regexp"
+	"strings"
+)
 
 // Table represents the parsed data from the MySQL output.
 type Table struct {
@@ -27,13 +32,20 @@ const (
 	TableFormatHTML      = "html"
 	TableFormatMediaWiki = "mediawiki"
 	TableFormatLatex     = "latex"
+	TableFormatJSON      = "json"
+	TableFormatXML       = "xml"
 )
 
 // DetectTableFormatByExtension detects the table format by the file extension.
 func DetectTableFormatByExtension(filename string) string {
+	// Check if the input filename is empty
+	if filename == "" {
+		return ""
+	}
+	// Convert the filename to lowercase
 	filename = strings.ToLower(filename)
 
-	// 定义文件后缀到格式的映射
+	// Define a mapping from file extensions to table formats
 	extensions := map[string]string{
 		".xlsx":      TableFormatExcel,
 		".xls":       TableFormatExcel,
@@ -49,7 +61,7 @@ func DetectTableFormatByExtension(filename string) string {
 		".wiki":      TableFormatMediaWiki,
 	}
 
-	// 遍历映射检查后缀
+	// Iterate through the mapping to check the file extension
 	for ext, format := range extensions {
 		if strings.HasSuffix(filename, ext) {
 			return format
@@ -72,10 +84,17 @@ func DetectTableFormatByData(reader io.Reader) (string, error) {
 	case isMarkdown(strContent):
 		return TableFormatMarkdown, nil
 	case isLaTeX(strContent):
-		return TableFormatLaTeX, nil
+		return TableFormatLatex, nil
 	case isMediaWiki(strContent):
 		return TableFormatMediaWiki, nil
-		// TODO: csv, sql, json, xml, mysql
+	case isCSV(strContent):
+		return TableFormatCSV, nil
+	case isSQL(strContent):
+		return TableFormatMySQL, nil
+	case isJSON(strContent):
+		return TableFormatJSON, nil
+	case isXML(strContent):
+		return TableFormatXML, nil
 	default:
 		return "", fmt.Errorf("unsupported file format")
 	}
@@ -83,11 +102,16 @@ func DetectTableFormatByData(reader io.Reader) (string, error) {
 
 func isHTML(content string) bool {
 	return strings.Contains(content, "<html") ||
-		strings.Contains(content, "<!DOCTYPE html")
+		strings.Contains(content, "<!DOCTYPE html") ||
+		strings.Contains(content, "<table")
 }
 
 func isMarkdown(content string) bool {
-	return regexp.MustCompile(`^#+\s|^-\s|^\*\s`).MatchString(content)
+	re, err := regexp.Compile(`^#+\s|^-\s|^\*\s`)
+	if err != nil {
+		return false
+	}
+	return re.MatchString(content)
 }
 
 func isLaTeX(content string) bool {
@@ -98,4 +122,32 @@ func isLaTeX(content string) bool {
 func isMediaWiki(content string) bool {
 	return strings.Contains(content, "{|") ||
 		strings.Contains(content, "|}")
+}
+
+func isCSV(content string) bool {
+	lines := strings.Split(content, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, ",") {
+			return true
+		}
+	}
+	return false
+}
+
+func isSQL(content string) bool {
+	return strings.Contains(strings.ToLower(content), "select") ||
+		strings.Contains(strings.ToLower(content), "insert") ||
+		strings.Contains(strings.ToLower(content), "update") ||
+		strings.Contains(strings.ToLower(content), "delete")
+}
+
+func isJSON(content string) bool {
+	content = strings.TrimSpace(content)
+	return (strings.HasPrefix(content, "{") && strings.HasSuffix(content, "}")) ||
+		(strings.HasPrefix(content, "[") && strings.HasSuffix(content, "]"))
+}
+
+func isXML(content string) bool {
+	return strings.Contains(content, "<") && strings.Contains(content, ">") &&
+		strings.Contains(content, "</")
 }

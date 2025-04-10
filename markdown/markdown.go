@@ -19,7 +19,7 @@ func parseLine(line string, lineNumber int) ([]string, *common.ParseError) {
 		}
 	}
 	// Trim leading/trailing '|' and then split by '|'
-	trimmedLine := strings.Trim(line, "|")
+	trimmedLine := strings.TrimPrefix(strings.TrimSuffix(line, "|"), "|")
 	rawCells := strings.Split(trimmedLine, "|")
 	cells := make([]string, 0, len(rawCells))
 	for _, cell := range rawCells {

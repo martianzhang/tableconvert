@@ -1,11 +1,12 @@
-package mysql
+package ascii
 
 import (
 	"bytes"
 	"errors"
-	"github.com/martianzhang/tableconvert/common"
 	"strings"
 	"testing"
+
+	"github.com/martianzhang/tableconvert/common"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -15,9 +16,9 @@ func TestUnmarshal(t *testing.T) {
 +----------+--------------+------+-----+---------+----------------+
 |  FIELD   |     TYPE     | NULL | KEY | DEFAULT |     EXTRA      |
 +----------+--------------+------+-----+---------+----------------+
-| user_id  | smallint(5)  | NO   | PRI | NULL    | auto_increment |
-| username | varchar(10)  | NO   |     | NULL    |                |
-| password | varchar(100) | NO   |     | NULL    |                |
+| user_id  | smallint(5)  | NO  | PRI | NULL    | auto_increment |
+| username | varchar(10)  | NO  |     | NULL    |                |
+| password | varchar(100) | NO  |     | NULL    |                |
 +----------+--------------+------+-----+---------+----------------+
 ` + "\n" // Add trailing newline like real output often has
 
@@ -38,8 +39,8 @@ func TestParseASCIIArtTable(t *testing.T) {
 +------+-----------------------+--------+
 |  A   |       The Good        |    500 |
 |  B   | The Very very Bad Man |    288 |
-|  C   |       The Ugly        |    120 |
-|  D   |      The Gopher       |    800 |
+|  C   |     The Ugly        |    120 |
+|  D   |    The Gopher       |    800 |
 +------+-----------------------+--------+
 
 anything else after the table is ignored

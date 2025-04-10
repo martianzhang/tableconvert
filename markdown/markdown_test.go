@@ -33,6 +33,22 @@ func TestUnmarshal(t *testing.T) {
 	assert.Equal(t, []string{"1/4/2014", "February Hosting", "2233", "$51.00"}, table.Rows[2])
 }
 
+func TestUmarshalEmptyCells(t *testing.T) {
+	input := `
+|FIELD|TYPE|NULL|KEY|DEFAULT|EXTRA|
+|---|---|---|---|---|---|
+|user_id|smallint(5)|NO|PRI|NULL|auto_increment|
+|username|varchar(10)|NO||NULL||
+|password|varchar(100)|NO||NULL||
+`
+
+	reader := strings.NewReader(input)
+	var table common.Table
+
+	err := Unmarshal(reader, &table)
+	assert.Nil(t, err)
+}
+
 type mockWriter struct {
 	buf        bytes.Buffer
 	failAt     int

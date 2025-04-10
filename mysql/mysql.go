@@ -269,6 +269,11 @@ func Marshal(table *common.Table, writer io.Writer) error {
 			}
 		}
 	}
+	// --- Separator Row ---
+	for _, width := range columnWidths {
+		fmt.Fprintf(writer, "+-%s-", strings.Repeat("-", width))
+	}
+	fmt.Fprintln(writer, "+")
 	// Write header row
 	for i, header := range table.Headers {
 		fmt.Fprintf(writer, "| %-*s ", columnWidths[i], header)
@@ -286,5 +291,10 @@ func Marshal(table *common.Table, writer io.Writer) error {
 		}
 		fmt.Fprintln(writer, "|")
 	}
+	// --- Separator Row ---
+	for _, width := range columnWidths {
+		fmt.Fprintf(writer, "+-%s-", strings.Repeat("-", width))
+	}
+	fmt.Fprintln(writer, "+")
 	return nil // Success
 }
