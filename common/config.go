@@ -8,14 +8,14 @@ import (
 )
 
 type Config struct {
-	From    string
-	To      string
-	File    string
-	Reader  io.Reader
-	Result  string
-	Writer  io.Writer
-	Verbose bool
-	Others  map[string]string
+	From      string
+	To        string
+	File      string
+	Reader    io.Reader
+	Result    string
+	Writer    io.Writer
+	Verbose   bool
+	Extension map[string]string
 }
 
 // ParseConfig parses arguments in format "--key=value" or "--key value" and returns a key-value map
@@ -45,7 +45,7 @@ func ParseConfig(args []string) (Config, error) {
 	}
 
 	// Process known parameters
-	var cfg = Config{Others: make(map[string]string)}
+	var cfg = Config{Extension: make(map[string]string)}
 	for k, v := range configs {
 		switch k {
 		case "from", "f":
@@ -63,7 +63,7 @@ func ParseConfig(args []string) (Config, error) {
 				cfg.Verbose = false
 			}
 		default:
-			cfg.Others[k] = v
+			cfg.Extension[k] = v
 		}
 	}
 

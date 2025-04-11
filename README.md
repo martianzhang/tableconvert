@@ -5,13 +5,13 @@ Offline table convert tool.
 ## Support source
 
 - [ ] Excel
-- [ ] CSV
+- [-] CSV
 - [ ] XML
 - [ ] HTML
-- [ ] Markdown
+- [-] Markdown
 - [ ] JSON
 - [ ] SQL
-- [ ] MySQL
+- [-] MySQL
 - [ ] LaTeX
 - [ ] MediaWiki
 
@@ -59,11 +59,13 @@ Offline table convert tool.
 
 ```bash
 # read from stdin pipeline
-cat {filename} | tableconvert --from {from_type} --to {to_type}
+cat {filename} | tableconvert --from {from_type} --to {to_type} {other arguments}
 
 # read from file
-tableconvert --from {from_type} --to {to_type} --file {filename}
+tableconvert --from {from_type} --to {to_type} --file {filename} {other arguments}
 ```
+
+Each format or file type has its own arguments, please refer to the [arguments.md](https://github.com/martianzhang/tableconvert/blob/master/arguments.md) for more details.
 
 ## Reference
 

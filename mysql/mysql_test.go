@@ -3,9 +3,10 @@ package mysql
 import (
 	"bytes"
 	"errors"
-	"github.com/martianzhang/tableconvert/common"
 	"strings"
 	"testing"
+
+	"github.com/martianzhang/tableconvert/common"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -21,9 +22,13 @@ func TestUnmarshal(t *testing.T) {
 +----------+--------------+------+-----+---------+----------------+
 ` + "\n" // Add trailing newline like real output often has
 
-	reader := strings.NewReader(mysqlOutput)
+	args := []string{"--from", "mysql", "--to", "mysql"}
+	cfg, err := common.ParseConfig(args)
+	cfg.Reader = strings.NewReader(mysqlOutput)
+	assert.Nil(t, err)
+
 	var table common.Table
-	err := Unmarshal(reader, &table)
+	err = Unmarshal(&cfg, &table)
 
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"FIELD", "TYPE", "NULL", "KEY", "DEFAULT", "EXTRA"}, table.Headers)
@@ -45,9 +50,12 @@ func TestParseASCIIArtTable(t *testing.T) {
 anything else after the table is ignored
 
 `
-	reader := strings.NewReader(asciiArtTable)
+	args := []string{"--from", "mysql", "--to", "mysql"}
+	cfg, err := common.ParseConfig(args)
+	cfg.Reader = strings.NewReader(asciiArtTable)
+
 	var table common.Table
-	err := Unmarshal(reader, &table)
+	err = Unmarshal(&cfg, &table)
 
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"NAME", "SIGN", "RATING"}, table.Headers)
@@ -118,10 +126,15 @@ func TestMarshal(t *testing.T) {
 		},
 	}
 
+	args := []string{"--from", "mysql", "--to", "mysql"}
+	cfg, err := common.ParseConfig(args)
+	assert.Nil(t, err)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			err := Marshal(tt.table, &buf)
+			cfg.Writer = &buf
+			err := Marshal(&cfg, tt.table)
 
 			if tt.err != nil {
 				assert.EqualError(t, err, tt.err.Error())

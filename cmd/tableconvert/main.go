@@ -24,20 +24,20 @@ func main() {
 		// Here we can process the read data according to business needs, this is just a print example
 		fmt.Printf("# From: %s\n", cfg.From)
 		fmt.Printf("# To: %s\n", cfg.To)
-		fmt.Printf("# Extra Configs: %v\n", cfg.Others)
+		fmt.Printf("# Extra Configs: %v\n", cfg.Extension)
 	}
 
 	// Reader
 	var table common.Table
 	switch cfg.From {
 	case "markdown":
-		err = markdown.Unmarshal(cfg.Reader, &table)
+		err = markdown.Unmarshal(&cfg, &table)
 	case "ascii":
-		err = ascii.Unmarshal(cfg.Reader, &table)
+		err = ascii.Unmarshal(&cfg, &table)
 	case "mysql":
-		err = mysql.Unmarshal(cfg.Reader, &table)
+		err = mysql.Unmarshal(&cfg, &table)
 	case "csv":
-		err = csv.Unmarshal(cfg.Reader, &table)
+		err = csv.Unmarshal(&cfg, &table)
 	default:
 		panic("Unsupported format")
 	}
@@ -48,13 +48,13 @@ func main() {
 	// Writer
 	switch cfg.To {
 	case "markdown":
-		err = markdown.Marshal(&table, cfg.Writer)
+		err = markdown.Marshal(&cfg, &table)
 	case "ascii":
-		err = ascii.Marshal(&table, cfg.Writer)
+		err = ascii.Marshal(&cfg, &table)
 	case "mysql":
-		err = mysql.Marshal(&table, cfg.Writer)
+		err = mysql.Marshal(&cfg, &table)
 	case "csv":
-		err = csv.Marshal(&table, cfg.Writer)
+		err = csv.Marshal(&cfg, &table)
 	default:
 		panic("Unsupported format")
 	}

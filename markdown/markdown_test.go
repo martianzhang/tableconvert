@@ -3,7 +3,6 @@ package markdown
 import (
 	"bytes"
 	"errors"
-	"io"
 	"strings"
 	"testing"
 
@@ -22,10 +21,13 @@ func TestUnmarshal(t *testing.T) {
 		"| 1/4/2014 | February Extra Bandwidth | 2233 | $30.00 |\n" +
 		"```" // Added closing fence
 
-	reader := strings.NewReader(input)
-	var table common.Table
+	args := []string{"--from", "mardown", "--to", "markdown"}
+	cfg, err := common.ParseConfig(args)
+	cfg.Reader = strings.NewReader(input)
+	assert.Nil(t, err)
 
-	err := Unmarshal(reader, &table)
+	var table common.Table
+	err = Unmarshal(&cfg, &table)
 
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"DATE", "DESCRIPTION", "CV2", "AMOUNT"}, table.Headers)
@@ -42,40 +44,29 @@ func TestUmarshalEmptyCells(t *testing.T) {
 |password|varchar(100)|NO||NULL||
 `
 
-	reader := strings.NewReader(input)
+	args := []string{"--from", "markdown", "--to", "markdown"}
+	cfg, err := common.ParseConfig(args)
+	assert.Nil(t, err)
+	cfg.Reader = strings.NewReader(input)
+
 	var table common.Table
 
-	err := Unmarshal(reader, &table)
+	err = Unmarshal(&cfg, &table)
 	assert.Nil(t, err)
-}
-
-type mockWriter struct {
-	buf        bytes.Buffer
-	failAt     int
-	writeCount int
-}
-
-func (m *mockWriter) Write(p []byte) (n int, err error) {
-	m.writeCount++
-	if m.failAt > 0 && m.writeCount >= m.failAt {
-		return 0, errors.New("mock write error")
-	}
-	return m.buf.Write(p)
 }
 
 func TestMarshal(t *testing.T) {
 	tests := []struct {
-		name        string
-		table       *common.Table
-		writer      io.Writer
-		expectedErr string
-		expectedOut string
+		name     string
+		table    *common.Table
+		err      error
+		expected string
 	}{
 		{
-			name:        "nil table",
-			table:       nil,
-			writer:      &mockWriter{},
-			expectedErr: "Marshal: input table pointer cannot be nil",
+			name:     "nil table",
+			table:    nil,
+			err:      errors.New("Marshal: input table pointer cannot be nil"), // Use errors.New
+			expected: "",                                                       // Output buffer should be empty on error
 		},
 		{
 			name: "empty headers",
@@ -83,19 +74,20 @@ func TestMarshal(t *testing.T) {
 				Headers: []string{},
 				Rows:    [][]string{},
 			},
-			writer:      &mockWriter{},
-			expectedErr: "Marshal: table must have at least one header",
+			err:      errors.New("Marshal: table must have at least one header"), // Use errors.New
+			expected: "",                                                         // Output buffer should be empty on error
 		},
 		{
 			name: "column count mismatch",
 			table: &common.Table{
 				Headers: []string{"Header1", "Header2"},
 				Rows: [][]string{
-					{"Cell1"},
+					{"Cell1"}, // Row 1 has 1 column, headers have 2
 				},
 			},
-			writer:      &mockWriter{},
-			expectedErr: "Marshal: 1 row has 1 columns, but table has 2",
+			// Adjusted error message to reflect 0-based row index if that's how Marshal reports it
+			err:      errors.New("Marshal: 1 row has 1 columns, but table has 2"), // Use errors.New
+			expected: "",                                                          // Output buffer should be empty on error
 		},
 		{
 			name: "successful marshal",
@@ -106,28 +98,42 @@ func TestMarshal(t *testing.T) {
 					{"Cell3", "Cell4"},
 				},
 			},
-			writer:      &mockWriter{},
-			expectedOut: "|Header1|Header2|\n|---|---|\n|Cell1|Cell2|\n|Cell3|Cell4|\n",
+			err:      nil,                                                            // No error expected
+			expected: "|Header1|Header2|\n|---|---|\n|Cell1|Cell2|\n|Cell3|Cell4|\n", // Original expected Markdown output
+		},
+		{
+			name: "no rows", // Added test case for table with headers but no rows
+			table: &common.Table{
+				Headers: []string{"ColA", "ColB"},
+				Rows:    [][]string{},
+			},
+			err:      nil,
+			expected: "|ColA|ColB|\n|---|---|\n", // Should output headers and separator line
 		},
 	}
 
+	args := []string{"--from", "markdown", "--to", "markdown"}
+	cfg, err := common.ParseConfig(args)
+	assert.Nil(t, err)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mock, ok := tt.writer.(*mockWriter)
-			if ok {
-				mock.buf.Reset()
-				mock.writeCount = 0
-			}
+			// Create a bytes.Buffer for each test run to capture output
+			var buf bytes.Buffer
+			cfg.Writer = &buf
 
-			err := Marshal(tt.table, tt.writer)
+			// Call the Marshal function, passing the table and the buffer as the writer
+			err := Marshal(&cfg, tt.table)
 
-			if tt.expectedErr != "" {
-				assert.ErrorContains(t, err, tt.expectedErr)
+			// Check the error status
+			if tt.err != nil {
+				assert.Error(t, err)
+				assert.EqualError(t, err, tt.err.Error())
+				// Optionally, assert buffer is empty on error if that's the contract
+				// assert.Empty(t, buf.String(), "Output buffer should be empty when an error occurs")
 			} else {
 				assert.NoError(t, err)
-				if mock != nil {
-					assert.Equal(t, tt.expectedOut, mock.buf.String())
-				}
+				assert.Equal(t, tt.expected, buf.String())
 			}
 		})
 	}

@@ -3,7 +3,6 @@ package mysql
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/martianzhang/tableconvert/common"
@@ -48,12 +47,12 @@ func parseFields(line string, anchors []int) []string {
 	return result
 }
 
-func Unmarshal(reader io.Reader, table *common.Table) error {
+func Unmarshal(cfg *common.Config, table *common.Table) error {
 	if table == nil {
 		return fmt.Errorf("Unmarshal: target table pointer cannot be nil")
 	}
 
-	scanner := bufio.NewScanner(reader)
+	scanner := bufio.NewScanner(cfg.Reader)
 	lineNumber := 0
 	var headers []string
 	var rows [][]string
@@ -244,7 +243,7 @@ endLoop: // Label for the goto statement
 	return nil // Success
 }
 
-func Marshal(table *common.Table, writer io.Writer) error {
+func Marshal(cfg *common.Config, table *common.Table) error {
 	if table == nil {
 		return fmt.Errorf("Marshal: input table pointer cannot be nil")
 	}
@@ -269,6 +268,8 @@ func Marshal(table *common.Table, writer io.Writer) error {
 			}
 		}
 	}
+
+	writer := cfg.Writer
 	// --- Separator Row ---
 	for _, width := range columnWidths {
 		fmt.Fprintf(writer, "+-%s-", strings.Repeat("-", width))

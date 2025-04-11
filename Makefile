@@ -55,12 +55,12 @@ cover: test
 			{print "$(CYELLOW)"$$0"%$(CEND)"}}'
 
 .PHONY: test-cli
-test-cli:
+test-cli: build
 	@echo "$(CGREEN)Run Case 1: convert mysql to markdown$(CEND)"
 	@./bin/tableconvert --from mysql -t markdown --file test/mysql.txt --key value -v
 	@echo "$(CGREEN)Run Case 2: convert markdown to mysql$(CEND)"
 	@./bin/tableconvert --from markdown -t mysql --file test/mysql.md --key value -v
 	@echo "$(CGREEN)Run Case 3: convert mysql to csv$(CEND)"
-	@./bin/tableconvert --from mysql -t csv --file test/mysql.txt --key value -v
+	@./bin/tableconvert --from mysql -t csv --file test/mysql.txt --delimiter=SEMICOLON -v
 	@echo "$(CGREEN)Run Case 4: convert csv to mysql$(CEND)"
 	@./bin/tableconvert --from csv -t mysql --file test/mysql.csv --key value -v	

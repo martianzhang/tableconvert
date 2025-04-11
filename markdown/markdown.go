@@ -3,7 +3,6 @@ package markdown
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/martianzhang/tableconvert/common"
@@ -48,7 +47,7 @@ func isSeparatorLine(line string) bool {
 
 // Unmarshal parses Markdown table content from an io.Reader and populates the given Table struct.
 // It expects the standard GitHub Flavored Markdown table format.
-func Unmarshal(reader io.Reader, table *common.Table) error {
+func Unmarshal(cfg *common.Config, table *common.Table) error {
 	if table == nil {
 		return fmt.Errorf("output table cannot be nil")
 	}
@@ -57,7 +56,7 @@ func Unmarshal(reader io.Reader, table *common.Table) error {
 	table.Headers = nil
 	table.Rows = nil
 
-	scanner := bufio.NewScanner(reader)
+	scanner := bufio.NewScanner(cfg.Reader)
 	lineNumber := 0
 	foundHeader := false
 	foundSeparator := false
@@ -189,7 +188,7 @@ func Unmarshal(reader io.Reader, table *common.Table) error {
 	return nil // Success
 }
 
-func Marshal(table *common.Table, writer io.Writer) error {
+func Marshal(cfg *common.Config, table *common.Table) error {
 	if table == nil {
 		return fmt.Errorf("Marshal: input table pointer cannot be nil")
 	}
@@ -198,6 +197,8 @@ func Marshal(table *common.Table, writer io.Writer) error {
 	if columnCounts == 0 {
 		return fmt.Errorf("Marshal: table must have at least one header")
 	}
+
+	writer := cfg.Writer
 	// Write header row with pipes and alignment markers
 	headerRow := "|"
 	for _, header := range table.Headers {

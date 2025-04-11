@@ -12,7 +12,7 @@ import (
 )
 
 func TestUnmarshal(t *testing.T) {
-	mysqlOutput := `
+	input := `
 +----------+--------------+------+-----+---------+----------------+
 |  FIELD   |     TYPE     | NULL | KEY | DEFAULT |     EXTRA      |
 +----------+--------------+------+-----+---------+----------------+
@@ -22,17 +22,20 @@ func TestUnmarshal(t *testing.T) {
 +----------+--------------+------+-----+---------+----------------+
 ` + "\n" // Add trailing newline like real output often has
 
-	reader := strings.NewReader(mysqlOutput)
-	var table common.Table
-	err := Unmarshal(reader, &table)
+	args := []string{"--from", "ascii", "--to", "ascii"}
+	cfg, err := common.ParseConfig(args)
+	assert.Nil(t, err)
+	cfg.Reader = strings.NewReader(input)
 
+	var table common.Table
+	err = Unmarshal(&cfg, &table)
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"FIELD", "TYPE", "NULL", "KEY", "DEFAULT", "EXTRA"}, table.Headers)
 	assert.Equal(t, 3, len(table.Rows))
 }
 
 func TestParseASCIIArtTable(t *testing.T) {
-	asciiArtTable := `
+	input := `
 
 +------+-----------------------+--------+
 | NAME |         SIGN          | RATING |
@@ -46,9 +49,13 @@ func TestParseASCIIArtTable(t *testing.T) {
 anything else after the table is ignored
 
 `
-	reader := strings.NewReader(asciiArtTable)
+	args := []string{"--from", "ascii", "--to", "ascii"}
+	cfg, err := common.ParseConfig(args)
+	assert.Nil(t, err)
+	cfg.Reader = strings.NewReader(input)
+
 	var table common.Table
-	err := Unmarshal(reader, &table)
+	err = Unmarshal(&cfg, &table)
 
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"NAME", "SIGN", "RATING"}, table.Headers)
@@ -119,10 +126,15 @@ func TestMarshal(t *testing.T) {
 		},
 	}
 
+	args := []string{"--from", "mysql", "--to", "mysql"}
+	cfg, err := common.ParseConfig(args)
+	assert.Nil(t, err)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			err := Marshal(tt.table, &buf)
+			cfg.Writer = &buf
+			err := Marshal(&cfg, tt.table)
 
 			if tt.err != nil {
 				assert.EqualError(t, err, tt.err.Error())

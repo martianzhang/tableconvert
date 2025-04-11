@@ -3,7 +3,6 @@ package ascii
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/martianzhang/tableconvert/common"
@@ -24,7 +23,6 @@ func isDataLine(line string) bool {
 // splitAndTrim splits a data/header line by '|' and trims whitespace from each part.
 // It skips the empty strings resulting from the leading and trailing '|'.
 func splitAndTrim(line string) []string {
-	fmt.Println("#+ ", line)
 	parts := strings.Split(line, "|")
 	if len(parts) < 2 { // Should have at least '|' at start and end
 		return []string{}
@@ -35,12 +33,11 @@ func splitAndTrim(line string) []string {
 	for i, part := range relevantParts {
 		result[i] = strings.TrimSpace(part)
 	}
-	fmt.Println("#- ", result)
 	return result
 }
 
-func Unmarshal(input io.Reader, table *common.Table) error {
-	scanner := bufio.NewScanner(input)
+func Unmarshal(cfg *common.Config, table *common.Table) error {
+	scanner := bufio.NewScanner(cfg.Reader)
 	lineNumber := 0
 	var headers []string
 	var rows [][]string
@@ -121,7 +118,7 @@ func Unmarshal(input io.Reader, table *common.Table) error {
 	return nil
 }
 
-func Marshal(table *common.Table, writer io.Writer) error {
+func Marshal(cfg *common.Config, table *common.Table) error {
 	if table == nil {
 		return fmt.Errorf("Marshal: input table pointer cannot be nil")
 	}
@@ -146,6 +143,7 @@ func Marshal(table *common.Table, writer io.Writer) error {
 			}
 		}
 	}
+	writer := cfg.Writer
 	// --- Separator Row ---
 	for _, width := range columnWidths {
 		fmt.Fprintf(writer, "+-%s-", strings.Repeat("-", width))

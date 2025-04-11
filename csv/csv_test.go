@@ -11,24 +11,24 @@ import (
 )
 
 func TestUnmarshal(t *testing.T) {
-	csvData := `name,age,city
+	input := `name,age,city
 Alice,30,New York
 Bob,25,Los Angeles`
 
-	reader := strings.NewReader(csvData)
-	var table common.Table
+	args := []string{"--from", "csv", "--to", "csv"}
+	cfg, err := common.ParseConfig(args)
+	assert.Nil(t, err)
+	cfg.Reader = strings.NewReader(input)
 
-	err := Unmarshal(reader, &table)
+	var table common.Table
+	err = Unmarshal(&cfg, &table)
 	assert.NoError(t, err)
 
-	expectedHeaders := []string{"name", "age", "city"}
-	expectedRows := [][]string{
+	assert.Equal(t, []string{"name", "age", "city"}, table.Headers)
+	assert.Equal(t, [][]string{
 		{"Alice", "30", "New York"},
 		{"Bob", "25", "Los Angeles"},
-	}
-
-	assert.Equal(t, expectedHeaders, table.Headers)
-	assert.Equal(t, expectedRows, table.Rows)
+	}, table.Rows)
 }
 
 func TestMarshal(t *testing.T) {
@@ -40,8 +40,13 @@ func TestMarshal(t *testing.T) {
 		},
 	}
 
+	args := []string{"--from", "csv", "--to", "csv"}
+	cfg, err := common.ParseConfig(args)
+	assert.Nil(t, err)
+
 	var buf bytes.Buffer
-	err := Marshal(table, &buf)
+	cfg.Writer = &buf
+	err = Marshal(&cfg, table)
 	assert.NoError(t, err)
 
 	expectedCSV := "name,age,city\nAlice,30,New York\nBob,25,Los Angeles\n"

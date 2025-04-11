@@ -38,7 +38,7 @@ func TestParseConfigWithEqualSign(t *testing.T) {
 	assert.Empty(t, cfg.Result)
 	assert.NotNil(t, cfg.Reader)
 	assert.NotNil(t, cfg.Writer)
-	assert.Empty(t, cfg.Others)
+	assert.Empty(t, cfg.Extension)
 }
 
 func TestParseConfigWithSpaceFormat(t *testing.T) {
@@ -57,7 +57,7 @@ func TestParseConfigWithSpaceFormat(t *testing.T) {
 	assert.Empty(t, cfg.Result)
 	assert.NotNil(t, cfg.Reader)
 	assert.NotNil(t, cfg.Writer)
-	assert.Empty(t, cfg.Others)
+	assert.Empty(t, cfg.Extension)
 }
 
 func TestParseConfigShortFormParameters(t *testing.T) {
@@ -76,7 +76,7 @@ func TestParseConfigShortFormParameters(t *testing.T) {
 	assert.False(t, config.Verbose, "Verbose should be false by default")
 	assert.NotNil(t, config.Reader, "Reader should not be nil")
 	assert.NotNil(t, config.Writer, "Writer should not be nil")
-	assert.Empty(t, config.Others, "Others map should be empty")
+	assert.Empty(t, config.Extension, "Extension map should be empty")
 }
 
 func TestParseConfigDuplicateParameters(t *testing.T) {
@@ -103,9 +103,9 @@ func TestParseConfigMultipleUnknownParameters(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "en", config.From)
 	assert.Equal(t, "zh", config.To)
-	assert.Equal(t, 2, len(config.Others))
-	assert.Equal(t, "val1", config.Others["param1"])
-	assert.Equal(t, "val2", config.Others["param2"])
+	assert.Equal(t, 2, len(config.Extension))
+	assert.Equal(t, "val1", config.Extension["param1"])
+	assert.Equal(t, "val2", config.Extension["param2"])
 }
 
 func TestParseConfigWithEmptyInput(t *testing.T) {
@@ -125,8 +125,8 @@ func TestParseConfigWithEmptyInput(t *testing.T) {
 	assert.Empty(t, cfg.File, "File should be empty")
 	assert.Empty(t, cfg.Result, "Result should be empty")
 	assert.False(t, cfg.Verbose, "Verbose should be false by default")
-	assert.NotNil(t, cfg.Others, "Others map should be initialized")
-	assert.Empty(t, cfg.Others, "Others map should be empty")
+	assert.NotNil(t, cfg.Extension, "Extension map should be initialized")
+	assert.Empty(t, cfg.Extension, "Extension map should be empty")
 }
 
 func TestParseConfigUnknownParameters(t *testing.T) {
@@ -140,8 +140,8 @@ func TestParseConfigUnknownParameters(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "en", config.From)
 	assert.Equal(t, "zh", config.To)
-	assert.Contains(t, config.Others, "unknown")
-	assert.Equal(t, "value", config.Others["unknown"])
+	assert.Contains(t, config.Extension, "unknown")
+	assert.Equal(t, "value", config.Extension["unknown"])
 }
 
 func TestParseConfigMixedParameterFormats(t *testing.T) {
@@ -160,8 +160,8 @@ func TestParseConfigMixedParameterFormats(t *testing.T) {
 	// Verify default values
 	assert.Empty(t, cfg.File, "File should be empty")
 	assert.Empty(t, cfg.Result, "Result should be empty")
-	assert.NotNil(t, cfg.Others, "Others map should be initialized")
-	assert.Empty(t, cfg.Others, "Others map should be empty")
+	assert.NotNil(t, cfg.Extension, "Extension map should be initialized")
+	assert.Empty(t, cfg.Extension, "Extension map should be empty")
 }
 
 func TestParseConfigEmptyVerboseFlag(t *testing.T) {
