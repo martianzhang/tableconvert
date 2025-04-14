@@ -59,8 +59,16 @@ test-cli: build
 	@echo "$(CGREEN)Run Case 1: convert mysql to markdown$(CEND)"
 	@./bin/tableconvert --from mysql -t markdown --file test/mysql.txt --key value -v
 	@echo "$(CGREEN)Run Case 2: convert markdown to mysql$(CEND)"
-	@./bin/tableconvert --from markdown -t mysql --file test/mysql.md --key value -v
+	@./bin/tableconvert --from markdown -t mysql --file test/mysql.md -v
 	@echo "$(CGREEN)Run Case 3: convert mysql to csv$(CEND)"
 	@./bin/tableconvert --from mysql -t csv --file test/mysql.txt --delimiter=SEMICOLON -v
 	@echo "$(CGREEN)Run Case 4: convert csv to mysql$(CEND)"
-	@./bin/tableconvert --from csv -t mysql --file test/mysql.csv --key value -v	
+	@./bin/tableconvert --from csv -t mysql --file test/mysql.csv -v
+	@echo "$(CGREEN)Run Case 5: convert mysql to json$(CEND)"
+	@./bin/tableconvert --from mysql -t json --file test/mysql.txt --parsing-json -v
+	@echo "\n$(CGREEN)Run Case 6: convert mysql to json format:2d$(CEND)"
+	@./bin/tableconvert --from mysql -t json --file test/mysql.txt --parsing-json --format=2d --minify -v
+	@echo "\n$(CGREEN)Run Case 7: convert mysql to json format:column$(CEND)"
+	@./bin/tableconvert --from mysql -t json --file test/mysql.txt --parsing-json --format=column --minify -v
+	@echo "\n$(CGREEN)Run Case 8: convert json to mysql$(CEND)"
+	@./bin/tableconvert --from json -t mysql --file test/mysql.json -v

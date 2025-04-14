@@ -7,6 +7,7 @@ import (
 	"github.com/martianzhang/tableconvert/ascii"
 	"github.com/martianzhang/tableconvert/common"
 	"github.com/martianzhang/tableconvert/csv"
+	"github.com/martianzhang/tableconvert/json"
 	"github.com/martianzhang/tableconvert/markdown"
 	"github.com/martianzhang/tableconvert/mysql"
 )
@@ -38,6 +39,8 @@ func main() {
 		err = mysql.Unmarshal(&cfg, &table)
 	case "csv":
 		err = csv.Unmarshal(&cfg, &table)
+	case "json":
+		err = json.Unmarshal(&cfg, &table)
 	default:
 		panic("Unsupported format")
 	}
@@ -55,6 +58,8 @@ func main() {
 		err = mysql.Marshal(&cfg, &table)
 	case "csv":
 		err = csv.Marshal(&cfg, &table)
+	case "json":
+		err = json.Marshal(&cfg, &table)
 	default:
 		panic("Unsupported format")
 	}

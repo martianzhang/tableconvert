@@ -1,0 +1,26 @@
+[
+  {
+    "FIELD": "user_id",
+    "TYPE": "smallint(5)",
+    "NULL": "NO",
+    "KEY": "PRI",
+    "DEFAULT": null,
+    "EXTRA": "auto_increment"
+  },
+  {
+    "FIELD": "username",
+    "TYPE": "varchar(10)",
+    "NULL": "NO",
+    "KEY": "",
+    "DEFAULT": null,
+    "EXTRA": ""
+  },
+  {
+    "FIELD": "password",
+    "TYPE": "varchar(100)",
+    "NULL": "NO",
+    "KEY": "",
+    "DEFAULT": "",
+    "EXTRA": ""
+  }
+]
