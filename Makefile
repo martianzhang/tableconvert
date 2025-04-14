@@ -72,3 +72,9 @@ test-cli: build
 	@./bin/tableconvert --from mysql -t json --file test/mysql.txt --parsing-json --format=column --minify -v
 	@echo "\n$(CGREEN)Run Case 8: convert json to mysql$(CEND)"
 	@./bin/tableconvert --from json -t mysql --file test/mysql.json -v
+	@echo "\n$(CGREEN)Run Case 17: convert mysql to html$(CEND)"
+	@./bin/tableconvert --from mysql -t html --file test/mysql.txt -v
+	@echo "\n$(CGREEN)Run Case 18: convert html to mysql$(CEND)"
+	@./bin/tableconvert --from html -t mysql --file test/mysql.html -v
+	@echo "\n$(CGREEN)Run Case 19: convert mysql to html$(CEND)"
+	@./bin/tableconvert --from mysql -t html --file test/mysql.txt --div -v
