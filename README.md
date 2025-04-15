@@ -1,19 +1,20 @@
 # tableconvert
 
-Offline table convert tool.
+Offline table convert tool. **Not production ready.**
 
 ## Support source
 
-- [ ] Excel
+- [-] Excel
 - [-] CSV
-- [ ] XML
-- [ ] HTML
+- [-] XML
+- [-] HTML
 - [-] Markdown
-- [ ] JSON
-- [ ] SQL
+- [-] JSON
+- [-] SQL
 - [-] MySQL
-- [ ] LaTeX
-- [ ] MediaWiki
+- [-] LaTeX
+- [-] MediaWiki
+- [-] TWiki/TracWiki
 
 ## Support destination
 
@@ -76,6 +77,8 @@ Each format or file type has its own arguments, please refer to the [arguments.m
 
 ## Dependency
 
+* [excelize](https://github.com/xuri/excelize)
+* [sqlparser](https://vitess.io/vitess)
 
 ## License
 

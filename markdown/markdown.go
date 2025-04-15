@@ -188,43 +188,154 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	return nil // Success
 }
 
+func escapeMarkdown(text string) string {
+	// Escape special Markdown characters
+	chars := []string{"\\", "`", "*", "_", "{", "}", "[", "]", "(", ")", "#", "+", "-", ".", "!", "|"}
+	for _, c := range chars {
+		text = strings.ReplaceAll(text, c, "\\"+c)
+	}
+	return text
+}
+
 func Marshal(cfg *common.Config, table *common.Table) error {
 	if table == nil {
 		return fmt.Errorf("Marshal: input table pointer cannot be nil")
 	}
-	// --- Header Row ---
+
+	// Validate table structure
 	columnCounts := len(table.Headers)
 	if columnCounts == 0 {
 		return fmt.Errorf("Marshal: table must have at least one header")
 	}
-
-	writer := cfg.Writer
-	// Write header row with pipes and alignment markers
-	headerRow := "|"
-	for _, header := range table.Headers {
-		headerRow += header + "|" // Use the header text directly
-	}
-	writer.Write([]byte(headerRow + "\n")) // Write the header row with newline
-
-	// --- Separator Row ---
-	separatorRow := "|"
-	for i := 0; i < columnCounts; i++ {
-		separatorRow += "---|" // Use '---' for alignment markers
-	}
-	writer.Write([]byte(separatorRow + "\n")) // Write the separator row with newline
-
-	// --- Data Rows ---
 	for _, row := range table.Rows {
 		if len(row) != columnCounts {
 			return fmt.Errorf("Marshal: %d row has %d columns, but table has %d", len(table.Rows), len(row), columnCounts)
 		}
 	}
-	for _, row := range table.Rows {
-		dataRow := "|"
-		for _, cell := range row {
-			dataRow += cell + "|" // Use the cell text directly
+
+	// Get configuration with defaults
+	align := cfg.GetExtensiontring("align", "l")
+	boldHeader := cfg.GetExtensionBool("bold-header", false)
+	boldFirstColumn := cfg.GetExtensionBool("bold-first-column", false)
+	escape := cfg.GetExtensionBool("escape", false)
+	pretty := cfg.GetExtensionBool("pretty", false)
+
+	writer := cfg.Writer
+	headers := table.Headers
+
+	// Calculate column widths for pretty mode
+	columnWidths := make([]int, columnCounts)
+	if pretty {
+		for i, header := range headers {
+			effectiveHeader := header
+			if boldHeader {
+				effectiveHeader = "**" + effectiveHeader + "**"
+			}
+			if boldFirstColumn && !boldHeader && i == 0 {
+				effectiveHeader = "**" + effectiveHeader + "**"
+			}
+			if len(effectiveHeader) > columnWidths[i] {
+				columnWidths[i] = len(effectiveHeader)
+			}
 		}
-		writer.Write([]byte(dataRow + "\n")) // Write the data row with newline
+
+		for _, row := range table.Rows {
+			for i, cell := range row {
+				effectiveCell := cell
+				if boldFirstColumn && i == 0 {
+					effectiveCell = "**" + effectiveCell + "**"
+				}
+				if len(effectiveCell) > columnWidths[i] {
+					columnWidths[i] = len(effectiveCell)
+				}
+			}
+		}
 	}
+
+	// Escape content if needed
+	if escape {
+		for i := range headers {
+			headers[i] = escapeMarkdown(headers[i])
+		}
+	}
+
+	// Apply bold formatting if needed
+	if boldHeader {
+		for i := range headers {
+			headers[i] = fmt.Sprintf("**%s**", headers[i])
+		}
+	} else if boldFirstColumn {
+		headers[0] = fmt.Sprintf("**%s**", headers[0])
+	}
+
+	// --- Header Row ---
+	headerRow := "|"
+	for i, header := range headers {
+		if pretty {
+			headerRow += fmt.Sprintf(" %-*s |", columnWidths[i], header)
+		} else {
+			headerRow += header + "|"
+		}
+	}
+	writer.Write([]byte(headerRow + "\n"))
+
+	// --- Separator Row ---
+	separator := "|"
+	for i := 0; i < columnCounts; i++ {
+		var alignMarker string
+		switch align {
+		case "c":
+			if pretty {
+				alignMarker = fmt.Sprintf(":%s-:", strings.Repeat("-", columnWidths[i]))
+			} else {
+				alignMarker = ":---:"
+			}
+		case "r":
+			if pretty {
+				alignMarker = fmt.Sprintf("-%s:", strings.Repeat("-", columnWidths[i]))
+			} else {
+				alignMarker = "---:"
+			}
+		default: // "l"
+			if pretty {
+				alignMarker = fmt.Sprintf("-%s-", strings.Repeat("-", columnWidths[i]))
+			} else {
+				alignMarker = "---"
+			}
+		}
+
+		separator += alignMarker + "|"
+	}
+	writer.Write([]byte(separator + "\n"))
+
+	// --- Data Rows ---
+	for _, row := range table.Rows {
+		rowData := make([]string, len(row))
+		copy(rowData, row)
+
+		// Escape content if needed
+		if escape {
+			for i := range rowData {
+				rowData[i] = escapeMarkdown(rowData[i])
+			}
+		}
+
+		// Apply bold formatting to first column if needed
+		if boldFirstColumn && len(rowData) > 0 {
+			rowData[0] = fmt.Sprintf("**%s**", rowData[0])
+		}
+
+		// Write row
+		rowLine := "|"
+		for i, cell := range rowData {
+			if pretty {
+				rowLine += fmt.Sprintf(" %-*s |", columnWidths[i], cell)
+			} else {
+				rowLine += cell + "|"
+			}
+		}
+		writer.Write([]byte(rowLine + "\n"))
+	}
+
 	return nil
 }

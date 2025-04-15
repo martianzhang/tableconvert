@@ -7,9 +7,15 @@ import (
 	"github.com/martianzhang/tableconvert/ascii"
 	"github.com/martianzhang/tableconvert/common"
 	"github.com/martianzhang/tableconvert/csv"
+	"github.com/martianzhang/tableconvert/excel"
 	"github.com/martianzhang/tableconvert/json"
+	"github.com/martianzhang/tableconvert/latex"
 	"github.com/martianzhang/tableconvert/markdown"
+	"github.com/martianzhang/tableconvert/mediawiki"
 	"github.com/martianzhang/tableconvert/mysql"
+	"github.com/martianzhang/tableconvert/sql"
+	"github.com/martianzhang/tableconvert/twiki"
+	"github.com/martianzhang/tableconvert/xml"
 )
 
 func main() {
@@ -41,6 +47,18 @@ func main() {
 		err = csv.Unmarshal(&cfg, &table)
 	case "json":
 		err = json.Unmarshal(&cfg, &table)
+	case "sql":
+		err = sql.Unmarshal(&cfg, &table)
+	case "xml":
+		err = xml.Unmarshal(&cfg, &table)
+	case "excel", "xlsx":
+		err = excel.Unmarshal(&cfg, &table)
+	case "twiki", "tracwiki":
+		err = twiki.Unmarshal(&cfg, &table)
+	case "mediawiki":
+		err = mediawiki.Unmarshal(&cfg, &table)
+	case "latex":
+		err = latex.Unmarshal(&cfg, &table)
 	default:
 		panic("Unsupported format")
 	}
@@ -60,6 +78,18 @@ func main() {
 		err = csv.Marshal(&cfg, &table)
 	case "json":
 		err = json.Marshal(&cfg, &table)
+	case "sql":
+		err = sql.Marshal(&cfg, &table)
+	case "xml":
+		err = xml.Marshal(&cfg, &table)
+	case "excel", "xlsx":
+		err = excel.Marshal(&cfg, &table)
+	case "twiki", "tracwiki":
+		err = twiki.Marshal(&cfg, &table)
+	case "mediawiki":
+		err = mediawiki.Marshal(&cfg, &table)
+	case "latex":
+		err = latex.Marshal(&cfg, &table)
 	default:
 		panic("Unsupported format")
 	}

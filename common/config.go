@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -100,4 +101,40 @@ func ParseConfig(args []string) (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// GetExtensionBool gets a boolean value from Extension with default
+func (c *Config) GetExtensionBool(key string, defaultValue bool) bool {
+	if c.Extension == nil {
+		return defaultValue
+	}
+	val, ok := c.Extension[key]
+	if !ok {
+		return defaultValue
+	}
+	return strings.ToLower(val) == "true"
+}
+
+// GetExtensiontring gets a string value from Extension with default
+func (c *Config) GetExtensiontring(key string, defaultValue string) string {
+	if c.Extension == nil {
+		return defaultValue
+	}
+	if val, ok := c.Extension[key]; ok {
+		return val
+	}
+	return defaultValue
+}
+
+// GetExtensionInt gets an int value from Extension with default
+func (c *Config) GetExtensionInt(key string, defaultValue int) int {
+	if c.Extension == nil {
+		return defaultValue
+	}
+	if val, ok := c.Extension[key]; ok {
+		if i, err := strconv.Atoi(val); err == nil {
+			return i
+		}
+	}
+	return defaultValue
 }
