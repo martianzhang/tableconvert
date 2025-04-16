@@ -92,28 +92,17 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	writer := cfg.Writer
 
 	// table name
-	var tableName string
-	if v, ok := cfg.Extension["table"]; ok {
-		tableName = v
-	} else {
-		tableName = "{table_name}"
-	}
+	tableName := cfg.GetExtensionString("table", "{table_name}")
 
 	// dialect
-	var dialect string
-	if v, ok := cfg.Extension["dialect"]; ok {
-		dialect = strings.ToLower(v)
-	}
+	dialect := cfg.GetExtensionString("dialect", "mysql")
 
 	// all-in-one
-	var allInOne bool
-	if v, ok := cfg.Extension["one-insert"]; ok && strings.ToLower(v) != "false" {
-		allInOne = true
-	}
+	allInOne := cfg.GetExtensionBool("one-insert", false)
 
 	// INSERT or REPLACE
 	var insert = "INSERT"
-	if v, ok := cfg.Extension["replace"]; ok && strings.ToLower(v) != "false" {
+	if cfg.GetExtensionBool("replace", false) {
 		insert = "REPLACE"
 	}
 
@@ -131,7 +120,9 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			escapeIdentifier(tableName, dialect),
 			strings.Join(columns, ", "),
 		)
-		writer.Write([]byte(stmt))
+		if _, err := writer.Write([]byte(stmt)); err != nil {
+			return fmt.Errorf("failed to write SQL: %w", err)
+		}
 	}
 
 	// Build and write SQL INSERT statements
@@ -150,7 +141,9 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			} else {
 				stmt = fmt.Sprintf(",\n(%s)", strings.Join(values, ", "))
 			}
-			writer.Write([]byte(stmt))
+			if _, err := writer.Write([]byte(stmt)); err != nil {
+				return fmt.Errorf("failed to write SQL: %w", err)
+			}
 		} else {
 			stmt = fmt.Sprintf("%s INTO %s (%s) VALUES (%s);\n",
 				insert,
@@ -158,11 +151,15 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 				strings.Join(columns, ", "),
 				strings.Join(values, ", "),
 			)
-			writer.Write([]byte(stmt))
+			if _, err := writer.Write([]byte(stmt)); err != nil {
+				return fmt.Errorf("failed to write SQL: %w", err)
+			}
 		}
 	}
 	if allInOne {
-		writer.Write([]byte(";\n"))
+		if _, err := writer.Write([]byte(";\n")); err != nil {
+			return fmt.Errorf("failed to write SQL: %w", err)
+		}
 	}
 
 	return nil

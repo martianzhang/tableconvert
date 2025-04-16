@@ -19,6 +19,29 @@ type Config struct {
 	Extension map[string]string
 }
 
+func Usage() {
+	fmt.Println(`Usage: tableconvert [OPTIONS]
+
+Convert between different table formats (MySQL, Markdown, CSV, JSON, Excel, etc.)
+
+Options:
+  --from|-f={FORMAT}     Source format (e.g. mysql, csv, json, xlsx)
+  --to|-t={FORMAT}       Target format (e.g. mysql, csv, json, xlsx)
+  --file={PATH}          Input file path (or use stdin if not specified)
+  --result|-r={PATH}     Output file path (or use stdout if not specified)
+  --verbose|-v           Enable verbose output
+  -h|--help              Show this help message
+
+Examples:
+  tableconvert --from=csv --to=json --file=input.csv --result=output.json
+  cat input.csv | tableconvert --from=csv --to=json
+
+Extension Arguments:
+  For eash format there are many extension config, please refer to:
+  https://github.com/martianzhang/tableconvert/blob/main/docs/arguments.md
+`)
+}
+
 // ParseConfig parses arguments in format "--key=value" or "--key value" and returns a key-value map
 func ParseConfig(args []string) (Config, error) {
 	var err error
@@ -63,14 +86,12 @@ func ParseConfig(args []string) (Config, error) {
 			} else {
 				cfg.Verbose = false
 			}
+		case "h", "help":
+			Usage()
+			os.Exit(0)
 		default:
 			cfg.Extension[k] = v
 		}
-	}
-
-	// Check if required parameters are provided
-	if cfg.From == "" || cfg.To == "" {
-		return cfg, fmt.Errorf("must provide -f|--from and -t|--to parameters")
 	}
 
 	// Determine input target (Reader)
@@ -87,6 +108,28 @@ func ParseConfig(args []string) (Config, error) {
 		}
 	} else {
 		cfg.Reader = os.Stdin
+	}
+
+	// Auto detect `--from` and `--to` format
+	if cfg.From == "" && cfg.File != "" {
+		if ext := DetectTableFormatByExtension(cfg.File); ext != "" {
+			cfg.From = ext
+		} else {
+			format, err := DetectTableFormatByData(cfg.Reader)
+			if err != nil {
+				cfg.From = format
+			}
+		}
+	}
+	if cfg.To == "" && cfg.Result != "" {
+		if ext := DetectTableFormatByExtension(cfg.Result); ext != "" {
+			cfg.To = ext
+		}
+	}
+
+	// Check if required parameters are provided
+	if cfg.From == "" || cfg.To == "" {
+		return cfg, fmt.Errorf("must provide -f|--from and -t|--to parameters")
 	}
 
 	// Determine output destination (Writer)
@@ -112,11 +155,18 @@ func (c *Config) GetExtensionBool(key string, defaultValue bool) bool {
 	if !ok {
 		return defaultValue
 	}
-	return strings.ToLower(val) == "true"
+	switch strings.TrimSpace(strings.ToLower(val)) {
+	case "true", "yes", "y", "1", "":
+		return true
+	case "false", "no", "n", "0":
+		return false
+	default:
+		return defaultValue
+	}
 }
 
-// GetExtensiontring gets a string value from Extension with default
-func (c *Config) GetExtensiontring(key string, defaultValue string) string {
+// GetExtensionString gets a string value from Extension with default
+func (c *Config) GetExtensionString(key string, defaultValue string) string {
 	if c.Extension == nil {
 		return defaultValue
 	}

@@ -1,26 +1,26 @@
 [
   {
+    "DEFAULT": null,
+    "EXTRA": "auto_increment",
     "FIELD": "user_id",
-    "TYPE": "smallint(5)",
-    "NULL": "NO",
     "KEY": "PRI",
-    "DEFAULT": null,
-    "EXTRA": "auto_increment"
+    "NULL": "NO",
+    "TYPE": "smallint(5)"
   },
   {
+    "DEFAULT": null,
+    "EXTRA": "",
     "FIELD": "username",
-    "TYPE": "varchar(10)",
-    "NULL": "NO",
     "KEY": "",
-    "DEFAULT": null,
-    "EXTRA": ""
+    "NULL": "NO",
+    "TYPE": "varchar(10)"
   },
   {
-    "FIELD": "password",
-    "TYPE": "varchar(100)",
-    "NULL": "NO",
-    "KEY": "",
     "DEFAULT": "",
-    "EXTRA": ""
+    "EXTRA": "",
+    "FIELD": "password",
+    "KEY": "",
+    "NULL": "NO",
+    "TYPE": "varchar(100)"
   }
 ]

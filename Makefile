@@ -27,9 +27,9 @@ fmt:
 # Clean up build artifacts
 .PHONY: clean
 clean:
-	git clean -x -f
 	rm -rf bin/
 	rm -rf release/
+	rm -rf feature/
 
 # Run golang test cases
 .PHONY: test
@@ -54,49 +54,11 @@ cover: test
 		else \
 			{print "$(CYELLOW)"$$0"%$(CEND)"}}'
 
+# Run random output test cases, human check result
 .PHONY: test-cli
 test-cli: build
-	@echo "$(CGREEN)Run Case 1: convert mysql to markdown$(CEND)"
-	@./bin/tableconvert --from mysql -t markdown --file test/mysql.txt --key value -v
-	@echo "\n$(CGREEN)Run Case 2: convert markdown to mysql$(CEND)"
-	@./bin/tableconvert --from markdown -t mysql --file test/mysql.md -v
-	@echo "\n$(CGREEN)Run Case 3: convert mysql to csv$(CEND)"
-	@./bin/tableconvert --from mysql -t csv --file test/mysql.txt --delimiter=SEMICOLON -v
-	@echo "\n$(CGREEN)Run Case 4: convert csv to mysql$(CEND)"
-	@./bin/tableconvert --from csv -t mysql --file test/mysql.csv -v
-	@echo "\n$(CGREEN)Run Case 5: convert mysql to json$(CEND)"
-	@./bin/tableconvert --from mysql -t json --file test/mysql.txt --parsing-json -v
-	@echo "\n$(CGREEN)Run Case 6: convert mysql to json format:2d$(CEND)"
-	@./bin/tableconvert --from mysql -t json --file test/mysql.txt --parsing-json --format=2d --minify -v
-	@echo "\n$(CGREEN)Run Case 7: convert mysql to json format:column$(CEND)"
-	@./bin/tableconvert --from mysql -t json --file test/mysql.txt --parsing-json --format=column --minify -v
-	@echo "\n$(CGREEN)Run Case 8: convert json to mysql$(CEND)"
+	@echo "\n$(CGREEN)Run Case 1: convert json to mysql$(CEND)"
 	@./bin/tableconvert --from json -t mysql --file test/mysql.json -v
-	@echo "\n$(CGREEN)Run Case 9: convert mysql to sql$(CEND)"
-	@./bin/tableconvert --from mysql -t sql --file test/mysql.txt -v
-	@echo "\n$(CGREEN)Run Case 10: convert mysql to sql with arguments$(CEND)"
-	@./bin/tableconvert --from mysql -t sql --file test/mysql.txt --table tables --replace --dialect=none --one-insert -v
-	@echo "\n$(CGREEN)Run Case 11: convert sql to mysql$(CEND)"
-	@./bin/tableconvert --from sql -t mysql --file test/mysql.sql -v
-	@echo "\n$(CGREEN)Run Case 12: convert sqls to mysql$(CEND)"
-	@./bin/tableconvert --from sql -t mysql --file test/mysql.replace.sql -v
-	@echo "\n$(CGREEN)Run Case 13: convert mysql to xml$(CEND)"
-	@./bin/tableconvert --from mysql -t xml --file test/mysql.txt -v
-	@echo "\n$(CGREEN)Run Case 14: convert xml to mysql$(CEND)"
-	@./bin/tableconvert --from xml -t mysql --file test/mysql.xml -v
-	@echo "\n$(CGREEN)Run Case 15: convert mysql to excel$(CEND)"
-	@./bin/tableconvert --from mysql -t excel --file test/mysql.txt --result test/mysql.xlsx -v
-	@echo "\n$(CGREEN)Run Case 16: convert excel to mysql$(CEND)"
-	@./bin/tableconvert --from xlsx -t mysql --file test/mysql.xlsx -v
-	@echo "\n$(CGREEN)Run Case 19: convert mysql to twiki$(CEND)"
-	@./bin/tableconvert --from mysql -t twiki --file test/mysql.txt -v
-	@echo "\n$(CGREEN)Run Case 20: convert twiki to mysql$(CEND)"
-	@./bin/tableconvert --from twiki -t mysql --file test/mysql.twiki -v
-	@echo "\n$(CGREEN)Run Case 21: convert mysql to mediatwiki$(CEND)"
-	@./bin/tableconvert --from mysql -t mediawiki --file test/mysql.txt -v
-	@echo "\n$(CGREEN)Run Case 22: convert mediawiki to mysql$(CEND)"
-	@./bin/tableconvert --from mediawiki -t mysql --file test/mysql.mediawiki -v
-	@echo "\n$(CGREEN)Run Case 21: convert mysql to latex$(CEND)"
-	@./bin/tableconvert --from mysql -t latex --file test/mysql.txt -v
-	@echo "\n$(CGREEN)Run Case 22: convert latex to mysql$(CEND)"
-	@./bin/tableconvert --from latex -t mysql --file test/mysql.latex -v
+	@echo "\n$(CGREEN)Run Case 2: convert mysql to xlsx$(CEND)"
+	@./bin/tableconvert --from mysql -t xlsx --file test/mysql.txt --result test/mysql.xlsx -v
+	@./bin/tableconvert --from xlsx -t mysql --file test/mysql.xlsx

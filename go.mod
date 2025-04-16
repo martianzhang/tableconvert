@@ -3,6 +3,7 @@ module github.com/martianzhang/tableconvert
 go 1.24.1
 
 require (
+	github.com/hexops/gotextdiff v1.0.3
 	github.com/stretchr/testify v1.10.0
 	github.com/xuri/excelize/v2 v2.9.0
 	vitess.io/vitess v0.21.4

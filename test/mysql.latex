@@ -1,0 +1,11 @@
+\begin{tabular}{llllll}
+\hline
+FIELD & TYPE & NULL & KEY & DEFAULT & EXTRA \\
+\hline
+user\_id & smallint(5) & NO & PRI & NULL & auto\_increment \\
+\hline
+username & varchar(10) & NO &  & NULL &  \\
+\hline
+password & varchar(100) & NO &  &  &  \\
+\hline
+\end{tabular}

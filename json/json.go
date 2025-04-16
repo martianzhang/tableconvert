@@ -11,10 +11,7 @@ import (
 )
 
 func Unmarshal(cfg *common.Config, table *common.Table) error {
-	var format string
-	if v, ok := cfg.Extension["format"]; ok {
-		format = v
-	}
+	format := cfg.GetExtensionString("format", "")
 
 	data, err := io.ReadAll(cfg.Reader)
 	if err != nil {
@@ -147,18 +144,9 @@ func contains(slice []string, target string) bool {
 }
 
 func Marshal(cfg *common.Config, table *common.Table) error {
-	var format string
-	if v, ok := cfg.Extension["format"]; ok {
-		format = v
-	}
-	var parsing bool
-	if v, ok := cfg.Extension["parsing-json"]; ok && strings.ToLower(v) != "false" {
-		parsing = true
-	}
-	var minify bool
-	if v, ok := cfg.Extension["minify"]; ok && strings.ToLower(v) != "false" {
-		minify = true
-	}
+	format := cfg.GetExtensionString("format", "")
+	parsing := cfg.GetExtensionBool("parsing-json", false)
+	minify := cfg.GetExtensionBool("minify", false)
 
 	var data []byte
 	var err error

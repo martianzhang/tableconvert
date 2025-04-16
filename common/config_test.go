@@ -19,7 +19,6 @@ func TestParseConfigMissingRequiredParameters(t *testing.T) {
 	assert.Equal(t, "", cfg.From, "From parameter should be empty")
 	assert.Equal(t, "", cfg.To, "To parameter should be empty")
 	assert.Equal(t, "input.txt", cfg.File, "File parameter should be set")
-	assert.EqualError(t, err, "must provide -f|--from and -t|--to parameters", "Error message should indicate missing required parameters")
 }
 
 func TestParseConfigWithEqualSign(t *testing.T) {

@@ -1,0 +1,1 @@
+[["FIELD","TYPE","NULL","KEY","DEFAULT","EXTRA"],["user_id","smallint(5)","NO","PRI",null,"auto_increment"],["username","varchar(10)","NO","",null,""],["password","varchar(100)","NO","","",""]]

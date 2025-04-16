@@ -2,43 +2,65 @@
 
 Offline table convert tool. **Not production ready.**
 
+## Usage
+
+```txt
+Usage: tableconvert [OPTIONS]
+
+Convert between different table formats (MySQL, Markdown, CSV, JSON, Excel, etc.)
+
+Options:
+  --from|-f={FORMAT}     Source format (e.g. mysql, csv, json, xlsx)
+  --to|-t={FORMAT}       Target format (e.g. mysql, csv, json, xlsx)
+  --file={PATH}          Input file path (or use stdin if not specified)
+  --result|-r={PATH}     Output file path (or use stdout if not specified)
+  --verbose|-v           Enable verbose output
+  -h|--help              Show this help message
+
+Examples:
+  tableconvert --from=csv --to=json --file=input.csv --result=output.json
+  cat input.csv | tableconvert --from=csv --to=json
+```
+
+Each format or file type has its own arguments, please refer to the [arguments.md](https://github.com/martianzhang/tableconvert/blob/master/arguments.md) for more details.
+
 ## Support source
 
-- [-] Excel
-- [-] CSV
-- [-] XML
-- [-] HTML
-- [-] Markdown
-- [-] JSON
-- [-] SQL
-- [-] MySQL
-- [-] LaTeX
-- [-] MediaWiki
-- [-] TWiki/TracWiki
+- [x] Excel
+- [x] CSV
+- [x] XML
+- [x] HTML
+- [x] Markdown
+- [x] JSON
+- [x] SQL
+- [x] MySQL
+- [x] LaTeX
+- [x] MediaWiki
+- [x] TWiki/TracWiki
 
 ## Support destination
 
 - [ ] actionscript
-- [ ] ascii
+- [x] ascii
 - [ ] asciidoc
 - [ ] asp
 - [ ] avro
 - [ ] bbcode
-- [ ] csv
+- [x] csv
 - [ ] dax
-- [ ] excel
+- [x] excel
 - [ ] firebase
-- [ ] html
+- [x] html
 - [ ] ini
 - [ ] jira
 - [ ] jpeg
-- [ ] json
+- [x] json
 - [ ] jsonlines
-- [ ] latex
+- [x] latex
 - [ ] magic
-- [ ] markdown
+- [x] markdown
 - [ ] matlab
-- [ ] mediawiki
+- [x] mediawiki
 - [ ] pandasdataframe
 - [ ] pdf
 - [ ] php
@@ -49,24 +71,12 @@ Offline table convert tool. **Not production ready.**
 - [ ] rdf
 - [ ] restructuredtext
 - [ ] ruby
-- [ ] sql
+- [x] sql
 - [ ] textile
 - [ ] toml
-- [ ] tracwiki
-- [ ] xml
+- [x] tracwiki
+- [x] xml
 - [ ] yaml
-
-## Usage
-
-```bash
-# read from stdin pipeline
-cat {filename} | tableconvert --from {from_type} --to {to_type} {other arguments}
-
-# read from file
-tableconvert --from {from_type} --to {to_type} --file {filename} {other arguments}
-```
-
-Each format or file type has its own arguments, please refer to the [arguments.md](https://github.com/martianzhang/tableconvert/blob/master/arguments.md) for more details.
 
 ## Reference
 
@@ -82,4 +92,4 @@ Each format or file type has its own arguments, please refer to the [arguments.m
 
 ## License
 
-Apache License 2.0
+[Apache License 2.0](https://github.com/martianzhang/tableconvert/blob/main/LICENSE)

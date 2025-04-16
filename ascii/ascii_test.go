@@ -34,6 +34,29 @@ func TestUnmarshal(t *testing.T) {
 	assert.Equal(t, 3, len(table.Rows))
 }
 
+func TestUnmarshalPlus(t *testing.T) {
+	input := `
+	+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	+ FIELD    + TYPE         + NULL + KEY + DEFAULT + EXTRA          +
+	+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	+ user_id  + smallint(5)  + NO   + PRI + NULL    + auto_increment +
+	+ username + varchar(10)  + NO   +     + NULL    +                +
+	+ password + varchar(100) + NO   +     +         +                +
+	+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+` + "\n" // Add trailing newline like real output often has
+
+	args := []string{"--from", "ascii", "--to", "ascii", "--style", "plus"}
+	cfg, err := common.ParseConfig(args)
+	assert.Nil(t, err)
+	cfg.Reader = strings.NewReader(input)
+
+	var table common.Table
+	err = Unmarshal(&cfg, &table)
+	assert.Nil(t, err)
+	assert.Equal(t, []string{"FIELD", "TYPE", "NULL", "KEY", "DEFAULT", "EXTRA"}, table.Headers)
+	assert.Equal(t, 3, len(table.Rows))
+}
+
 func TestParseASCIIArtTable(t *testing.T) {
 	input := `
 

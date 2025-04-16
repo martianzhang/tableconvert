@@ -10,22 +10,12 @@ None
 
 | Argument          | Default | Allowed Values | Description               |
 |-------------------|---------|----------------|---------------------------|
-| align             | l       | l, c, r        | Text Alignment            |
-| comment           | ∅       | ∅, //, #       | Comment style             |
-| force-separate    | false   | true, false    | Force separate lines      |
-| style             | 1       | 1, 2, 3, 4     | Plain-Text Table Style    |
-
-### ascii table style 1
-
-```txt
-
-```
+| style             | box     | box, plus(+), dot(·), bubble(◌) | Table Style |
 
 ## asciidoc
 
 | Argument          | Default | Allowed Values | Description               |
 |-------------------|---------|----------------|---------------------------|
-| first-row-header  | true    | true, false    | Use first row as headers  |
 | last-row-footer   | true    | true, false    | Use last row as footers   |
 | minify            | false   | true, false    | Minify AsciiDoc table     |
 | title             |         |                | Table Title               |
@@ -46,10 +36,12 @@ None
 
 ## csv
 
-| Argument          | Default | Allowed Values              | Description                  |
-|-------------------|---------|-----------------------------|------------------------------|
-| bom               | false   |                             | Add Byte Order Mark          |
-| delimiter         | ,(COMMA)| COMMA, TAB, SEMICOLON, PIPE, SLASH, HASH | Value Delimiter |
+| Argument            | Default | Allowed Values              | Description                  |
+|---------------------|---------|-----------------------------|------------------------------|
+| first-column-header | false   | true, false                 | Use first column as headers  |
+| transpose           | false   | true, false            | Transpose table columns with rows |
+| bom                 | false   |                             | Add Byte Order Mark          |
+| delimiter           | ,(COMMA)| COMMA, TAB, SEMICOLON, PIPE, SLASH, HASH | Value Delimiter |
 
 ## dax
 
@@ -59,6 +51,8 @@ None
 
 | Argument          | Default | Allowed Values | Description               |
 |-------------------|---------|----------------|---------------------------|
+| first-column-header | false | true, false  | Use first column as headers |
+| transpose    | false   | true, false | Transpose table columns with rows |
 | sheet-name        | Sheet1  |                | Excel Sheet Name          |
 | auto-width        | false   | true, false    | Auto Width                |
 | text-format       | true    | true, false    | force text format         |
@@ -87,7 +81,6 @@ None
 
 | Argument            | Default | Allowed Values | Description                 |
 |---------------------|---------|----------------|-----------------------------|
-| first-column-header | false   | true, false    | Use first column as headers |
 | escape              | true    | true, false    | Escape Jira table           |
 | first-row-header    | false   | true, false    | Use first row as headers    |
 

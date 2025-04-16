@@ -214,7 +214,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	}
 
 	// Get configuration with defaults
-	align := cfg.GetExtensiontring("align", "l")
+	align := cfg.GetExtensionString("align", "l")
 	boldHeader := cfg.GetExtensionBool("bold-header", false)
 	boldFirstColumn := cfg.GetExtensionBool("bold-first-column", false)
 	escape := cfg.GetExtensionBool("escape", false)

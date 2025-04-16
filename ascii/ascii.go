@@ -8,35 +8,38 @@ import (
 	"github.com/martianzhang/tableconvert/common"
 )
 
-// isBorderLine checks if a line is a table border (e.g., "+---+---+").
-func isBorderLine(line string) bool {
-	trimmed := strings.TrimSpace(line)
-	return strings.HasPrefix(trimmed, "+") && strings.HasSuffix(trimmed, "+") && strings.Contains(trimmed, "-")
-}
-
-// isDataLine checks if a line contains table data (e.g., "| val1 | val2 |").
-func isDataLine(line string) bool {
-	trimmed := strings.TrimSpace(line)
-	return strings.HasPrefix(trimmed, "|") && strings.HasSuffix(trimmed, "|")
-}
-
-// splitAndTrim splits a data/header line by '|' and trims whitespace from each part.
-// It skips the empty strings resulting from the leading and trailing '|'.
-func splitAndTrim(line string) []string {
-	parts := strings.Split(line, "|")
-	if len(parts) < 2 { // Should have at least '|' at start and end
-		return []string{}
-	}
-	// Exclude the first and last empty strings caused by leading/trailing '|'
-	relevantParts := parts[1 : len(parts)-1]
-	result := make([]string, len(relevantParts))
-	for i, part := range relevantParts {
-		result[i] = strings.TrimSpace(part)
-	}
-	return result
+var tableStyleMap = map[string]string{
+	"dot":    "·",
+	"bubble": "◌",
+	"plus":   "+",
 }
 
 func Unmarshal(cfg *common.Config, table *common.Table) error {
+	style := cfg.GetExtensionString("style", "box")
+
+	switch style {
+	case "box":
+		return boxUnmarshal(cfg, table)
+	default:
+		return omniUnmarshal(cfg, table)
+	}
+}
+
+func omniUnmarshal(cfg *common.Config, table *common.Table) error {
+	style := cfg.GetExtensionString("style", "box")
+	if len(style) != 1 && style != "box" {
+		var tableStyleMap = map[string]string{
+			"dot":    "·",
+			"bubble": "◌",
+			"plus":   "+",
+		}
+		if v, ok := tableStyleMap[style]; ok {
+			style = v
+		} else {
+			return fmt.Errorf("unknown style: %s", style)
+		}
+	}
+
 	scanner := bufio.NewScanner(cfg.Reader)
 	lineNumber := 0
 	var headers []string
@@ -52,10 +55,131 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 			continue // Skip empty lines
 		}
 
+		// Inline separator line check
+		isSeparator := func(line string) bool {
+			if !strings.HasPrefix(trimmedLine, style) || !strings.HasSuffix(trimmedLine, style) {
+				return false
+			}
+			for _, c := range trimmedLine {
+				if c != rune(style[0]) && c != '+' {
+					return false
+				}
+			}
+			return true
+		}
+
+		// Inline data line check and parsing
+		parseDataLine := func(line string) []string {
+			trimmed := strings.TrimPrefix(strings.TrimSuffix(trimmedLine, style), style)
+			parts := strings.Split(trimmed, style)
+			var cells []string
+			for _, part := range parts {
+				cells = append(cells, strings.TrimSpace(part))
+			}
+			return cells
+		}
+
+		switch parsingState {
+		case "start":
+			if isSeparator(line) {
+				parsingState = "header"
+			}
+		case "header":
+			if strings.HasPrefix(trimmedLine, style) && strings.HasSuffix(trimmedLine, style) {
+				headers = parseDataLine(line)
+				if len(headers) == 0 {
+					return &common.ParseError{
+						LineNumber: lineNumber,
+						Message:    "failed to parse header line",
+						Line:       line,
+					}
+				}
+				parsingState = "header_separator"
+			}
+		case "header_separator":
+			if isSeparator(line) {
+				parsingState = "data"
+			}
+		case "data":
+			if isSeparator(line) {
+				parsingState = "end"
+			} else if strings.HasPrefix(trimmedLine, style) && strings.HasSuffix(trimmedLine, style) {
+				row := parseDataLine(line)
+				if len(row) != len(headers) {
+					return &common.ParseError{
+						LineNumber: lineNumber,
+						Message:    fmt.Sprintf("row has %d columns, expected %d", len(row), len(headers)),
+						Line:       line,
+					}
+				}
+				rows = append(rows, row)
+			}
+		case "end":
+			break
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	if parsingState != "end" {
+		return fmt.Errorf("incomplete table data")
+	}
+
+	table.Headers = headers
+	table.Rows = rows
+	return nil
+}
+
+func boxUnmarshal(cfg *common.Config, table *common.Table) error {
+	// isBorderLine checks if a line represents a table border (e.g., "+---+---+")
+	isBorderLine := func(line string) bool {
+		trimmed := strings.TrimSpace(line)
+		return strings.HasPrefix(trimmed, "+") && strings.HasSuffix(trimmed, "+") && strings.Contains(trimmed, "-")
+	}
+
+	// isDataLine checks if a line contains table data (e.g., "| val1 | val2 |")
+	isDataLine := func(line string) bool {
+		trimmed := strings.TrimSpace(line)
+		return strings.HasPrefix(trimmed, "|") && strings.HasSuffix(trimmed, "|")
+	}
+
+	// splitAndTrim splits a data/header line by '|' and trims whitespace from each part.
+	// It skips empty strings resulting from leading/trailing '|' characters.
+	splitAndTrim := func(line string) []string {
+		parts := strings.Split(line, "|")
+		if len(parts) < 2 { // Must have at least leading and trailing '|'
+			return []string{}
+		}
+		// Exclude first and last empty strings from leading/trailing '|'
+		relevantParts := parts[1 : len(parts)-1]
+		result := make([]string, len(relevantParts))
+		for i, part := range relevantParts {
+			result[i] = strings.TrimSpace(part)
+		}
+		return result
+	}
+
+	scanner := bufio.NewScanner(cfg.Reader)
+	lineNumber := 0
+	var headers []string
+	var rows [][]string
+	parsingState := "start" // Possible states: start, header, header_separator, data, end
+
+	for scanner.Scan() {
+		lineNumber++
+		line := scanner.Text()
+		trimmedLine := strings.TrimSpace(line)
+
+		if trimmedLine == "" {
+			continue // Skip empty lines
+		}
+
 		switch parsingState {
 		case "start":
 			if isBorderLine(line) {
-				parsingState = "header"
+				parsingState = "header" // Found top border, expect header next
 			} else {
 				continue
 			}
@@ -65,13 +189,13 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 				if len(headers) == 0 {
 					return &common.ParseError{LineNumber: lineNumber, Message: "failed to parse header line", Line: line}
 				}
-				parsingState = "header_separator"
+				parsingState = "header_separator" // Expect separator line after header
 			} else {
 				return &common.ParseError{LineNumber: lineNumber, Message: "expected header data line (| Header |)", Line: line}
 			}
 		case "header_separator":
 			if isBorderLine(line) {
-				parsingState = "data"
+				parsingState = "data" // Found separator, expect data rows next
 			} else {
 				return &common.ParseError{LineNumber: lineNumber, Message: "expected header separator line (+--+)", Line: line}
 			}
@@ -79,19 +203,18 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 			if isDataLine(line) {
 				rowData := splitAndTrim(line)
 				if len(rowData) != len(headers) {
-					// Allow parsing even if column count mismatches, but maybe log a warning?
-					// For stricter parsing, return an error:
-					// return nil, &ParseError{LineNumber: lineNumber, Message: fmt.Sprintf("data column count (%d) does not match header count (%d)", len(rowData), len(headers)), Line: line}
+					// Note: Currently lenient about column count mismatch
+					// Could add warning or make this an error
 				}
 				rows = append(rows, rowData)
-				// Stay in 'data' state to parse more rows
+				// Remain in 'data' state to process more rows
 			} else if isBorderLine(line) {
-				parsingState = "end" // Found the bottom border
+				parsingState = "end" // Found bottom border
 			} else {
 				return &common.ParseError{LineNumber: lineNumber, Message: "expected data line (| Data |) or bottom border line (+--+)", Line: line}
 			}
 		case "end":
-			break
+			break // Parsing complete
 		}
 	}
 
@@ -99,15 +222,13 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 		return fmt.Errorf("error reading input: %w", err)
 	}
 
-	// Final state check
+	// Validate final parsing state
 	if parsingState != "end" {
-		// This can happen if the input ends abruptly without a bottom border
+		// Handle cases where input ends without proper termination
 		if parsingState == "data" && len(rows) > 0 {
-			// Tolerate missing bottom border if we have data
-			// fmt.Println("Warning: Input ended without a bottom border.")
+			// Lenient: Accept missing bottom border if we have data
 		} else if parsingState == "header_separator" && len(headers) > 0 {
-			// Tolerate missing data rows and bottom border if we only have headers
-			// fmt.Println("Warning: Input contained only headers, no data rows or bottom border.")
+			// Lenient: Accept missing data if we have headers
 		} else {
 			return &common.ParseError{LineNumber: lineNumber, Message: fmt.Sprintf("input ended unexpectedly in state '%s', missing bottom border?", parsingState), Line: ""}
 		}
@@ -116,6 +237,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	table.Headers = headers
 	table.Rows = rows
 	return nil
+
 }
 
 func Marshal(cfg *common.Config, table *common.Table) error {
@@ -144,32 +266,76 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		}
 	}
 	writer := cfg.Writer
-	// --- Separator Row ---
-	for _, width := range columnWidths {
-		fmt.Fprintf(writer, "+-%s-", strings.Repeat("-", width))
+
+	// Table Style
+	style := cfg.GetExtensionString("style", "box")
+	if style != "box" {
+		if v, ok := tableStyleMap[style]; ok {
+			style = v
+		} else if len(style) != 1 {
+			style = "box"
+		}
 	}
-	fmt.Fprintln(writer, "+")
-	// Write header row
-	for i, header := range table.Headers {
-		fmt.Fprintf(writer, "| %-*s ", columnWidths[i], header)
-	}
-	fmt.Fprintln(writer, "|")
-	// --- Separator Row ---
-	for _, width := range columnWidths {
-		fmt.Fprintf(writer, "+-%s-", strings.Repeat("-", width))
-	}
-	fmt.Fprintln(writer, "+")
-	// --- Data Rows ---
-	for _, row := range table.Rows {
-		for i, cell := range row {
-			fmt.Fprintf(writer, "| %-*s ", columnWidths[i], cell)
+
+	// Draw table
+	switch style {
+	case "box":
+		separator := func() {
+			for _, width := range columnWidths {
+				fmt.Fprintf(writer, "+-%s-", strings.Repeat("-", width))
+			}
+			fmt.Fprintln(writer, "+")
+		}
+
+		separator() // Top separator
+
+		// Write header row
+		for i, header := range table.Headers {
+			fmt.Fprintf(writer, "| %-*s ", columnWidths[i], header)
 		}
 		fmt.Fprintln(writer, "|")
+
+		separator() // Middle separator
+
+		// --- Data Rows ---
+		for _, row := range table.Rows {
+			for i, cell := range row {
+				fmt.Fprintf(writer, "| %-*s ", columnWidths[i], cell)
+			}
+			fmt.Fprintln(writer, "|")
+		}
+
+		separator() // Bottom separator
+
+	default:
+		// --- Separator Row ---
+		separator := func() {
+			for _, width := range columnWidths {
+				fmt.Fprintf(writer, "%s", strings.Repeat(style, width+3))
+			}
+			fmt.Fprintln(writer, style)
+		}
+
+		separator() // Top separator
+
+		// Write header row
+		for i, header := range table.Headers {
+			fmt.Fprintf(writer, "%s %-*s ", style, columnWidths[i], header)
+		}
+		fmt.Fprintln(writer, style)
+
+		separator() // Middle separator
+
+		// --- Data Rows ---
+		for _, row := range table.Rows {
+			for i, cell := range row {
+				fmt.Fprintf(writer, "%s %-*s ", style, columnWidths[i], cell)
+			}
+			fmt.Fprintln(writer, style)
+		}
+
+		separator() // Bottom separator
+
 	}
-	// --- Separator Row ---
-	for _, width := range columnWidths {
-		fmt.Fprintf(writer, "+-%s-", strings.Repeat("-", width))
-	}
-	fmt.Fprintln(writer, "+")
 	return nil // Success
 }

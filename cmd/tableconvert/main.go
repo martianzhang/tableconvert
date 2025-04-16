@@ -60,10 +60,12 @@ func main() {
 	case "latex":
 		err = latex.Unmarshal(&cfg, &table)
 	default:
-		panic("Unsupported format")
+		fmt.Fprintf(os.Stderr, "Unsupported `--from` format: %s\n", cfg.From)
+		os.Exit(1)
 	}
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
+		os.Exit(1)
 	}
 
 	// Writer
@@ -91,9 +93,11 @@ func main() {
 	case "latex":
 		err = latex.Marshal(&cfg, &table)
 	default:
-		panic("Unsupported format")
+		fmt.Fprintf(os.Stderr, "Unsupported `--to` format: %s\n", cfg.To)
+		os.Exit(1)
 	}
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "Error writing result: %v\n", err)
+		os.Exit(1)
 	}
 }

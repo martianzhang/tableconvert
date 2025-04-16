@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -28,12 +29,15 @@ const (
 	TableFormatExcel     = "excel"
 	TableFormatCSV       = "csv"
 	TableFormatMarkdown  = "markdown"
-	TableFormatMySQL     = "mysql"
 	TableFormatHTML      = "html"
 	TableFormatMediaWiki = "mediawiki"
 	TableFormatLatex     = "latex"
 	TableFormatJSON      = "json"
 	TableFormatXML       = "xml"
+	TableFormatASCII     = "ascii"
+	TableFormatSQL       = "sql"
+	TableFormatTracWiki  = "tracwiki"
+	TableFormatTWiki     = "twiki"
 )
 
 // DetectTableFormatByExtension detects the table format by the file extension.
@@ -42,15 +46,16 @@ func DetectTableFormatByExtension(filename string) string {
 	if filename == "" {
 		return ""
 	}
-	// Convert the filename to lowercase
-	filename = strings.ToLower(filename)
+
+	// Get the file extension in lowercase
+	ext := strings.ToLower(filepath.Ext(filename))
 
 	// Define a mapping from file extensions to table formats
 	extensions := map[string]string{
 		".xlsx":      TableFormatExcel,
 		".xls":       TableFormatExcel,
 		".csv":       TableFormatCSV,
-		".sql":       TableFormatMySQL,
+		".sql":       TableFormatSQL,
 		".json":      TableFormatJSON,
 		".tex":       TableFormatLatex,
 		".xml":       TableFormatXML,
@@ -61,11 +66,9 @@ func DetectTableFormatByExtension(filename string) string {
 		".wiki":      TableFormatMediaWiki,
 	}
 
-	// Iterate through the mapping to check the file extension
-	for ext, format := range extensions {
-		if strings.HasSuffix(filename, ext) {
-			return format
-		}
+	// Look up the extension in the map
+	if format, ok := extensions[ext]; ok {
+		return format
 	}
 
 	return ""
@@ -90,7 +93,7 @@ func DetectTableFormatByData(reader io.Reader) (string, error) {
 	case isCSV(strContent):
 		return TableFormatCSV, nil
 	case isSQL(strContent):
-		return TableFormatMySQL, nil
+		return TableFormatSQL, nil
 	case isJSON(strContent):
 		return TableFormatJSON, nil
 	case isXML(strContent):
@@ -101,8 +104,7 @@ func DetectTableFormatByData(reader io.Reader) (string, error) {
 }
 
 func isHTML(content string) bool {
-	return strings.Contains(content, "<html") ||
-		strings.Contains(content, "<!DOCTYPE html") ||
+	return strings.Contains(content, "<thead") ||
 		strings.Contains(content, "<table")
 }
 
@@ -115,8 +117,8 @@ func isMarkdown(content string) bool {
 }
 
 func isLaTeX(content string) bool {
-	return strings.Contains(content, "\\documentclass") ||
-		strings.Contains(content, "\\begin{document}")
+	return strings.Contains(content, "\\hline") ||
+		strings.Contains(content, "\\begin{tabular}")
 }
 
 func isMediaWiki(content string) bool {
@@ -135,10 +137,8 @@ func isCSV(content string) bool {
 }
 
 func isSQL(content string) bool {
-	return strings.Contains(strings.ToLower(content), "select") ||
-		strings.Contains(strings.ToLower(content), "insert") ||
-		strings.Contains(strings.ToLower(content), "update") ||
-		strings.Contains(strings.ToLower(content), "delete")
+	return strings.Contains(strings.ToLower(content), "replace") ||
+		strings.Contains(strings.ToLower(content), "insert")
 }
 
 func isJSON(content string) bool {

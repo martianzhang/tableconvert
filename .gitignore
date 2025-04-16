@@ -24,6 +24,10 @@ go.work.sum
 # env file
 .env
 
-test/
+# ignore directory
+feature/
 bin/
 release/
+
+# ignore coverage files
+coverage.*

@@ -4,7 +4,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/martianzhang/tableconvert/common"
 )
@@ -24,16 +23,6 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	type GenericRow struct {
 		XMLName xml.Name
 		Fields  []GenericField `xml:",any"`
-	}
-
-	// Get the root element and row element names from configuration
-	rootElement := cfg.Extension["root-element"]
-	if rootElement == "" {
-		rootElement = "dataset"
-	}
-	rowElement := cfg.Extension["row-element"]
-	if rowElement == "" {
-		rowElement = "record"
 	}
 
 	// Dynamic XML parsing
@@ -68,28 +57,15 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 }
 
 func Marshal(cfg *common.Config, table *common.Table) error {
-	var minify bool
-	if v, ok := cfg.Extension["minify"]; ok && strings.ToLower(v) != "false" {
-		minify = true
-	}
+	// Get the configuration for minify
+	minify := cfg.GetExtensionBool("minify", false)
 
 	// Get the configuration for root-element and row-element
-	rootElement := cfg.Extension["root-element"]
-	if rootElement == "" {
-		rootElement = "dataset"
-	}
-	rowElement := cfg.Extension["row-element"]
-	if rowElement == "" {
-		rowElement = "record"
-	}
-
-	writer, ok := cfg.Writer.(io.Writer)
-	if !ok {
-		return fmt.Errorf("writer is not an io.Writer")
-	}
+	rootElement := cfg.GetExtensionString("root-element", "dataset")
+	rowElement := cfg.GetExtensionString("row-element", "record")
 
 	// Use the Encoder from encoding/xml
-	xmlEncoder := xml.NewEncoder(writer)
+	xmlEncoder := xml.NewEncoder(cfg.Writer)
 	if minify {
 		xmlEncoder.Indent("", "")
 	} else {
@@ -97,8 +73,8 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	}
 
 	// Write the XML declaration
-	if v, ok := cfg.Extension["declaration"]; ok && strings.ToLower(v) != "false" {
-		if _, err := writer.Write([]byte(`<?xml version="1.0" encoding="UTF-8" ?>` + "\n")); err != nil {
+	if cfg.GetExtensionBool("declaration", false) {
+		if _, err := fmt.Fprintln(cfg.Writer, `<?xml version="1.0" encoding="UTF-8" ?>`); err != nil {
 			return err
 		}
 	}
