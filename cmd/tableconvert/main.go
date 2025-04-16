@@ -8,6 +8,7 @@ import (
 	"github.com/martianzhang/tableconvert/common"
 	"github.com/martianzhang/tableconvert/csv"
 	"github.com/martianzhang/tableconvert/excel"
+	"github.com/martianzhang/tableconvert/html"
 	"github.com/martianzhang/tableconvert/json"
 	"github.com/martianzhang/tableconvert/latex"
 	"github.com/martianzhang/tableconvert/markdown"
@@ -47,6 +48,8 @@ func main() {
 		err = csv.Unmarshal(&cfg, &table)
 	case "json":
 		err = json.Unmarshal(&cfg, &table)
+	case "html":
+		err = html.Unmarshal(&cfg, &table)
 	case "sql":
 		err = sql.Unmarshal(&cfg, &table)
 	case "xml":
@@ -80,6 +83,8 @@ func main() {
 		err = csv.Marshal(&cfg, &table)
 	case "json":
 		err = json.Marshal(&cfg, &table)
+	case "html":
+		err = html.Marshal(&cfg, &table)
 	case "sql":
 		err = sql.Marshal(&cfg, &table)
 	case "xml":
