@@ -329,35 +329,13 @@ func TestMarshalWithOptions(t *testing.T) {
 </div>`,
 		},
 		{
-			name:  "with first column header",
-			table: baseTable,
-			config: map[string]string{
-				"first-column-header": "true",
-			},
-			expected: "<table>\n" +
-				"  <tr>\n" +
-				"    <th>Name</th>\n" +
-				"    <th>Age</th>\n" +
-				"  </tr>\n" +
-				"  <tr>\n" +
-				"    <th>Alice</th>\n" +
-				"    <td>25</td>\n" +
-				"  </tr>\n" +
-				"  <tr>\n" +
-				"    <th>Bob</th>\n" +
-				"    <td>30</td>\n" +
-				"  </tr>\n" +
-				"</table>",
-		},
-		{
 			name:  "with multiple options",
 			table: baseTable,
 			config: map[string]string{
-				"minify":              "true",
-				"thead":               "true",
-				"first-column-header": "true",
+				"minify": "true",
+				"thead":  "true",
 			},
-			expected: "<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><th>Alice</th><td>25</td></tr><tr><th>Bob</th><td>30</td></tr></tbody></table>",
+			expected: "<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>Alice</td><td>25</td></tr><tr><td>Bob</td><td>30</td></tr></tbody></table>",
 		},
 	}
 

@@ -150,6 +150,18 @@ func TestMain(t *testing.T) {
 			result: "mysql.txt",
 		},
 		{
+			name:   "mysql to html",
+			args:   []string{"tableconvert", "--from", "mysql", "--to", "html"},
+			file:   "mysql.txt",
+			result: "mysql.html",
+		},
+		{
+			name:   "html to mysql",
+			args:   []string{"tableconvert", "--from", "html", "--to", "mysql"},
+			file:   "mysql.html",
+			result: "mysql.txt",
+		},
+		{
 			name:   "mysql to mediawiki",
 			args:   []string{"tableconvert", "--from", "mysql", "--to", "mediawiki"},
 			file:   "mysql.txt",

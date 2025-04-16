@@ -38,8 +38,7 @@ Examples:
 
 Extension Arguments:
   For eash format there are many extension config, please refer to:
-  https://github.com/martianzhang/tableconvert/blob/main/docs/arguments.md
-`)
+  https://github.com/martianzhang/tableconvert/blob/main/docs/arguments.md`)
 }
 
 // ParseConfig parses arguments in format "--key=value" or "--key value" and returns a key-value map
