@@ -1,0 +1,26 @@
+<dataset>
+  <record>
+    <FIELD>user_id</FIELD>
+    <TYPE>smallint(5)</TYPE>
+    <NULL>NO</NULL>
+    <KEY>PRI</KEY>
+    <DEFAULT>NULL</DEFAULT>
+    <EXTRA>auto_increment</EXTRA>
+  </record>
+  <record>
+    <FIELD>username</FIELD>
+    <TYPE>varchar(10)</TYPE>
+    <NULL>NO</NULL>
+    <KEY></KEY>
+    <DEFAULT>NULL</DEFAULT>
+    <EXTRA></EXTRA>
+  </record>
+  <record>
+    <FIELD>password</FIELD>
+    <TYPE>varchar(100)</TYPE>
+    <NULL>NO</NULL>
+    <KEY></KEY>
+    <DEFAULT></DEFAULT>
+    <EXTRA></EXTRA>
+  </record>
+</dataset>

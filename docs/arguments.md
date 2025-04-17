@@ -59,8 +59,8 @@ None
 
 | Argument          | Default | Allowed Values | Description               |
 |-------------------|---------|----------------|---------------------------|
-| auto-width        | false   | true, false    | Auto Width                |
 | sheet-name        | Sheet1  |                | Excel Sheet Name          |
+| auto-width        | false   | true, false    | Auto Width                |
 | text-format       | true    | true, false    | force text format         |
 
 ## firebase
@@ -144,9 +144,7 @@ None
 | bold-header       | false   | true, false    | Table Header Bold         |
 | bold-first-column | false   | true, false    | Bold first column         |
 | escape            | false   | true, false    | Escape Markdown table     |
-| first-row-header  | true    | true, false    | Use first row as headers  |
 | pretty            | true    | true, false    | Pretty-print Markdown     |
-| simple            | false   | true, false    | Use simple Markdown table |
 
 ## matlab
 
@@ -206,10 +204,9 @@ None
 
 | Argument          | Default | Allowed Values | Description                     |
 |-------------------|---------|----------------|---------------------------------|
-| create            | false   | true, false    | Generate CREATE TABLE statement |
-| drop              | false   | true, false    | Drop table if exists            |
 | one-insert        | false   | true, false    | Insert multiple rows at once    |
-| quote             | ∅       | ∅, `, [], ", ' | Use Quotes                      |
+| replace           | false   | true, false    | Use REPLACE instead of INSERT   |
+| dialect           | mysql   | none, mysql, oracle, mssql, postgresql | identity escape SQL Dialect, none for no escape |
 | table             |         |                | Table Name                      |
 
 ## textile
@@ -226,19 +223,16 @@ None
 
 ## tracwiki
 
-| Argument            | Default | Allowed Values | Description                |
-|---------------------|---------|----------------|----------------------------|
-| first-column-header | false   | true, false    | Use first column as headers|
-| first-row-header    | true    | true, false    | Use first row as headers   |
+None
 
 ## xml
 
 | Argument            | Default | Allowed Values | Description                |
 |---------------------|---------|----------------|----------------------------|
-| escape              | true    | true, false    | Escape XML                 |
 | minify              | false   | true, false    | Minify XML                 |
-| root-element        | table   | table, row     | Root Element               |
-| row-element         | row     | row, cell      | Row Element                |
+| root-element        | dataset | string         | Root Element Tag           |
+| row-element         | record  | string         | Row Element Tag            |
+| declaration         | true    | true, false    | Include XML Declaration    |
 
 ## yaml
 
