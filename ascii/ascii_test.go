@@ -117,7 +117,7 @@ func TestMarshal(t *testing.T) {
 				},
 			},
 			expected: "",
-			err:      errors.New("Marshal: 0 row has 1 columns, but table has 2"),
+			err:      errors.New("Marshal: row 0 has 1 columns, but table header has 2 columns"),
 		},
 		{
 			name: "single row",

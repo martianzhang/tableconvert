@@ -110,7 +110,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	transpose := cfg.GetExtensionBool("transpose", false)
 	if transpose {
 		if len(table.Headers) == 0 {
-			return fmt.Errorf("no headers available for first-column-header mode")
+			return fmt.Errorf("no headers available for transpose mode")
 		}
 
 		// Create records with headers as first column

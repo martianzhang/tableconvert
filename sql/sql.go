@@ -89,6 +89,13 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		return fmt.Errorf("Marshal: table must have at least one header")
 	}
 
+	// Validate all rows have consistent column count upfront
+	for _, row := range table.Rows {
+		if len(row) != columnCount {
+			return fmt.Errorf("Marshal: row has %d columns, but table has %d", len(row), columnCount)
+		}
+	}
+
 	writer := cfg.Writer
 
 	// table name
@@ -127,10 +134,6 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 
 	// Build and write SQL INSERT statements
 	for j, row := range table.Rows {
-		if len(row) != columnCount {
-			return fmt.Errorf("Marshal: row has %d columns, but table has %d", len(row), columnCount)
-		}
-
 		values := make([]string, columnCount)
 		for i, cell := range row {
 			values[i] = escapeValue(cell)

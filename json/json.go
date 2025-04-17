@@ -163,6 +163,9 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 
 		// Rows
 		for _, row := range table.Rows {
+			if len(row) != len(table.Headers) {
+				return fmt.Errorf("row length %d does not match header length %d", len(row), len(table.Headers))
+			}
 			record := make([]interface{}, len(table.Headers))
 			for i := range table.Headers {
 				if i < len(row) {
@@ -188,6 +191,9 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			columns[header] = []interface{}{}
 		}
 		for _, row := range table.Rows {
+			if len(row) != len(table.Headers) {
+				return fmt.Errorf("row length %d does not match header length %d", len(row), len(table.Headers))
+			}
 			for i, cell := range row {
 				if i >= len(table.Headers) {
 					continue

@@ -24,7 +24,7 @@ Examples:
 
 Each format or file type has its own arguments, please refer to the [arguments.md](https://github.com/martianzhang/tableconvert/blob/master/arguments.md) for more details.
 
-## Support source
+## Support Format
 
 - [x] Excel
 - [x] CSV
@@ -32,51 +32,12 @@ Each format or file type has its own arguments, please refer to the [arguments.m
 - [x] HTML
 - [x] Markdown
 - [x] JSON
+- [x] JSONL
 - [x] SQL
 - [x] MySQL
 - [x] LaTeX
 - [x] MediaWiki
 - [x] TWiki/TracWiki
-
-## Support destination
-
-- [ ] actionscript
-- [x] ascii
-- [ ] asciidoc
-- [ ] asp
-- [ ] avro
-- [ ] bbcode
-- [x] csv
-- [ ] dax
-- [x] excel
-- [ ] firebase
-- [x] html
-- [ ] ini
-- [ ] jira
-- [ ] jpeg
-- [x] json
-- [ ] jsonlines
-- [x] latex
-- [ ] magic
-- [x] markdown
-- [ ] matlab
-- [x] mediawiki
-- [ ] pandasdataframe
-- [ ] pdf
-- [ ] php
-- [ ] png
-- [ ] protobuf
-- [ ] qlik
-- [ ] rdataframe
-- [ ] rdf
-- [ ] restructuredtext
-- [ ] ruby
-- [x] sql
-- [ ] textile
-- [ ] toml
-- [x] tracwiki
-- [x] xml
-- [ ] yaml
 
 ## Reference
 

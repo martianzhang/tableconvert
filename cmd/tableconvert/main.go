@@ -10,6 +10,7 @@ import (
 	"github.com/martianzhang/tableconvert/excel"
 	"github.com/martianzhang/tableconvert/html"
 	"github.com/martianzhang/tableconvert/json"
+	"github.com/martianzhang/tableconvert/jsonl"
 	"github.com/martianzhang/tableconvert/latex"
 	"github.com/martianzhang/tableconvert/markdown"
 	"github.com/martianzhang/tableconvert/mediawiki"
@@ -30,10 +31,9 @@ func main() {
 	}
 
 	if cfg.Verbose {
-		// Here we can process the read data according to business needs, this is just a print example
-		fmt.Printf("# From: %s\n", cfg.From)
-		fmt.Printf("# To: %s\n", cfg.To)
-		fmt.Printf("# Extra Configs: %v\n", cfg.Extension)
+		fmt.Fprintf(os.Stderr, "# From: %s\n", cfg.From)
+		fmt.Fprintf(os.Stderr, "# To: %s\n", cfg.To)
+		fmt.Fprintf(os.Stderr, "# Extra Configs: %v\n", cfg.Extension)
 	}
 
 	// Reader
@@ -63,9 +63,10 @@ func main() {
 		err = mediawiki.Unmarshal(&cfg, &table)
 	case "latex":
 		err = latex.Unmarshal(&cfg, &table)
+	case "jsonl", "jsonlines":
+		err = latex.Unmarshal(&cfg, &table)
 	default:
-		fmt.Fprintf(os.Stderr, "Unsupported `--from` format: %s\n", cfg.From)
-		os.Exit(1)
+		err = fmt.Errorf("Unsupported `--from` format: %s", cfg.From)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
@@ -98,9 +99,10 @@ func main() {
 		err = mediawiki.Marshal(&cfg, &table)
 	case "latex":
 		err = latex.Marshal(&cfg, &table)
+	case "jsonl", "jsonlines":
+		err = jsonl.Marshal(&cfg, &table)
 	default:
-		fmt.Fprintf(os.Stderr, "Unsupported `--to` format: %s\n", cfg.To)
-		os.Exit(1)
+		err = fmt.Errorf("Unsupported `--to` format: %s", cfg.To)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing result: %v\n", err)

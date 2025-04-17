@@ -28,26 +28,30 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 		return err
 	}
 
-	// Process rows
 	useFirstColAsHeader := cfg.GetExtensionBool("first-column-header", false)
 	if useFirstColAsHeader {
 		if len(rows) > 0 {
-			// Process headers - handle empty rows by using empty string
+			// 1. Process headers and calculate max number of data columns
+			maxDataCols := 0
 			for _, row := range rows {
 				if len(row) > 0 {
 					table.Headers = append(table.Headers, row[0])
+					if len(row)-1 > maxDataCols {
+						maxDataCols = len(row) - 1
+					}
 				} else {
 					table.Headers = append(table.Headers, "")
 				}
 			}
 
-			// Process data rows
-			for i := range rows {
-				if len(rows[i]) > 1 {
-					table.Rows = append(table.Rows, rows[i][1:])
-				} else {
-					// If row is empty or has only 1 column, add empty slice
-					table.Rows = append(table.Rows, []string{})
+			// 2. Initialize result rows and populate data
+			table.Rows = make([][]string, maxDataCols)
+			for colIdx := range table.Rows {
+				table.Rows[colIdx] = make([]string, len(table.Headers))
+				for headerIdx := range table.Headers {
+					if headerIdx < len(rows) && colIdx+1 < len(rows[headerIdx]) {
+						table.Rows[colIdx][headerIdx] = rows[headerIdx][colIdx+1]
+					}
 				}
 			}
 		}

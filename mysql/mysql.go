@@ -248,19 +248,19 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		return fmt.Errorf("Marshal: input table pointer cannot be nil")
 	}
 	// --- Header Row ---
-	columnCounts := len(table.Headers)
-	if columnCounts == 0 {
+	columnCount := len(table.Headers)
+	if columnCount == 0 {
 		return fmt.Errorf("Marshal: table must have at least one header")
 	}
 	// Calculate column widths
-	columnWidths := make([]int, columnCounts)
+	columnWidths := make([]int, columnCount)
 	for i, header := range table.Headers {
 		columnWidths[i] = len(header)
 	}
 	// Update widths based on row data
 	for j, row := range table.Rows {
-		if len(row) != columnCounts {
-			return fmt.Errorf("Marshal: %d row has %d columns, but table has %d", j, len(row), columnCounts)
+		if len(row) != columnCount {
+			return fmt.Errorf("Marshal: %d row has %d columns, but table has %d", j, len(row), columnCount)
 		}
 		for i, cell := range row {
 			if len(cell) > columnWidths[i] {

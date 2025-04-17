@@ -40,6 +40,22 @@ const (
 	TableFormatTWiki     = "twiki"
 )
 
+// Define a mapping from file extensions to table formats
+var extensions = map[string]string{
+	".xlsx":      TableFormatExcel,
+	".xls":       TableFormatExcel,
+	".csv":       TableFormatCSV,
+	".sql":       TableFormatSQL,
+	".json":      TableFormatJSON,
+	".tex":       TableFormatLatex,
+	".xml":       TableFormatXML,
+	".md":        TableFormatMarkdown,
+	".markdown":  TableFormatMarkdown,
+	".html":      TableFormatHTML,
+	".mediawiki": TableFormatMediaWiki,
+	".wiki":      TableFormatMediaWiki,
+}
+
 // DetectTableFormatByExtension detects the table format by the file extension.
 func DetectTableFormatByExtension(filename string) string {
 	// Check if the input filename is empty
@@ -49,22 +65,6 @@ func DetectTableFormatByExtension(filename string) string {
 
 	// Get the file extension in lowercase
 	ext := strings.ToLower(filepath.Ext(filename))
-
-	// Define a mapping from file extensions to table formats
-	extensions := map[string]string{
-		".xlsx":      TableFormatExcel,
-		".xls":       TableFormatExcel,
-		".csv":       TableFormatCSV,
-		".sql":       TableFormatSQL,
-		".json":      TableFormatJSON,
-		".tex":       TableFormatLatex,
-		".xml":       TableFormatXML,
-		".md":        TableFormatMarkdown,
-		".markdown":  TableFormatMarkdown,
-		".html":      TableFormatHTML,
-		".mediawiki": TableFormatMediaWiki,
-		".wiki":      TableFormatMediaWiki,
-	}
 
 	// Look up the extension in the map
 	if format, ok := extensions[ext]; ok {
@@ -81,6 +81,7 @@ func DetectTableFormatByData(reader io.Reader) (string, error) {
 	}
 	strContent := string(content)
 
+	// Attention: file type detection order is important
 	switch {
 	case isHTML(strContent):
 		return TableFormatHTML, nil

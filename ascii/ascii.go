@@ -8,6 +8,8 @@ import (
 	"github.com/martianzhang/tableconvert/common"
 )
 
+const ASCIIDefaultStyle = "box"
+
 var tableStyleMap = map[string]string{
 	"dot":    "·",
 	"bubble": "◌",
@@ -15,10 +17,10 @@ var tableStyleMap = map[string]string{
 }
 
 func Unmarshal(cfg *common.Config, table *common.Table) error {
-	style := cfg.GetExtensionString("style", "box")
+	style := cfg.GetExtensionString("style", ASCIIDefaultStyle)
 
 	switch style {
-	case "box":
+	case ASCIIDefaultStyle:
 		return boxUnmarshal(cfg, table)
 	default:
 		return omniUnmarshal(cfg, table)
@@ -26,13 +28,8 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 }
 
 func omniUnmarshal(cfg *common.Config, table *common.Table) error {
-	style := cfg.GetExtensionString("style", "box")
-	if len(style) != 1 && style != "box" {
-		var tableStyleMap = map[string]string{
-			"dot":    "·",
-			"bubble": "◌",
-			"plus":   "+",
-		}
+	style := cfg.GetExtensionString("style", "dot")
+	if len(style) != 1 {
 		if v, ok := tableStyleMap[style]; ok {
 			style = v
 		} else {
@@ -257,7 +254,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	// Update widths based on row data
 	for j, row := range table.Rows {
 		if len(row) != columnCounts {
-			return fmt.Errorf("Marshal: %d row has %d columns, but table has %d", j, len(row), columnCounts)
+			return fmt.Errorf("Marshal: row %d has %d columns, but table header has %d columns", j, len(row), columnCounts)
 		}
 		for i, cell := range row {
 			if len(cell) > columnWidths[i] {
@@ -268,18 +265,18 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	writer := cfg.Writer
 
 	// Table Style
-	style := cfg.GetExtensionString("style", "box")
-	if style != "box" {
+	style := cfg.GetExtensionString("style", ASCIIDefaultStyle)
+	if style != ASCIIDefaultStyle {
 		if v, ok := tableStyleMap[style]; ok {
 			style = v
 		} else if len(style) != 1 {
-			style = "box"
+			style = ASCIIDefaultStyle
 		}
 	}
 
 	// Draw table
 	switch style {
-	case "box":
+	case ASCIIDefaultStyle:
 		separator := func() {
 			for _, width := range columnWidths {
 				fmt.Fprintf(writer, "+-%s-", strings.Repeat("-", width))
