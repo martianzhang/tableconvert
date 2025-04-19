@@ -67,7 +67,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 			if cell == "~" || cell == "\\textasciitilde{}" {
 				cell = "" // Empty cell
 			}
-			cell = unescapeLaTeX(cell)
+			cell = common.LaTeXUnescape(cell)
 			cells = append(cells, cell)
 		}
 
@@ -131,22 +131,6 @@ func splitLaTeXLine(line string) []string {
 	return cells
 }
 
-func unescapeLaTeX(s string) string {
-	// Handle common LaTeX escapes
-	replacements := map[string]string{
-		"\\&": "&", "\\%": "%", "\\$": "$",
-		"\\#": "#", "\\_": "_", "\\{": "{",
-		"\\}": "}", "\\~": "~", "\\^": "^",
-		"\\textasciitilde": "~", "\\textbackslash": "\\",
-		"\\textasciitilde{}": "~", "\\ ": " ",
-	}
-
-	for from, to := range replacements {
-		s = strings.ReplaceAll(s, from, to)
-	}
-	return strings.TrimSpace(s)
-}
-
 func Marshal(cfg *common.Config, table *common.Table) error {
 	if table == nil {
 		return fmt.Errorf("Marshal: input table pointer cannot be nil")
@@ -173,7 +157,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			if i > 0 {
 				headerLine += " & "
 			}
-			headerLine += escapeLaTeX(header)
+			headerLine += common.LaTeXEscape(header)
 		}
 		headerLine += " \\\\\n\\hline\n"
 		writer.Write([]byte(headerLine))
@@ -186,7 +170,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			if i > 0 {
 				rowLine += " & "
 			}
-			rowLine += escapeLaTeX(cell)
+			rowLine += common.LaTeXEscape(cell)
 		}
 		rowLine += " \\\\\n\\hline\n"
 		writer.Write([]byte(rowLine))
@@ -196,14 +180,4 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	writer.Write([]byte("\\end{tabular}\n"))
 
 	return nil
-}
-
-// escapeLaTeX escapes special LaTeX characters in the content
-func escapeLaTeX(s string) string {
-	// List of LaTeX special characters that need escaping
-	specialChars := []string{"\\", "&", "%", "$", "#", "_", "{", "}", "~", "^"}
-	for _, char := range specialChars {
-		s = strings.ReplaceAll(s, char, "\\"+char)
-	}
-	return s
 }

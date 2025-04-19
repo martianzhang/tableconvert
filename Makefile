@@ -62,3 +62,5 @@ test-cli: build
 	@echo "\n$(CGREEN)Run Case 2: convert mysql to xlsx$(CEND)"
 	@./bin/tableconvert --from mysql -t xlsx --file test/mysql.txt --result test/mysql.xlsx -v
 	@./bin/tableconvert --from xlsx -t mysql --file test/mysql.xlsx
+	@echo "\n$(CGREEN)Run Case 3: convert mysql use template$(CEND)"
+	@./bin/tableconvert --from mysql -t template --file test/mysql.txt --template test/jsonlines.tmpl -v

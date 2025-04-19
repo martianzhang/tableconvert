@@ -1,0 +1,4 @@
+| {{range .Headers}}{{MarkdownEscape .}} | {{end}}
+|{{range .Headers}}---|{{end}}
+{{range .Rows}}| {{range .}}{{MarkdownEscape .}} | {{end}}
+{{end}}

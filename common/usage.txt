@@ -1,0 +1,24 @@
+Usage: tableconvert [OPTIONS]
+
+Convert between different table formats (MySQL, Markdown, CSV, JSON, Excel, etc.)
+
+Options:
+  --from|-f={FORMAT}     Source format (e.g. mysql, csv, json, xlsx)
+  --to|-t={FORMAT}       Target format (e.g. mysql, csv, json, xlsx)
+  --file={PATH}          Input file path (or use stdin if not specified)
+  --result|-r={PATH}     Output file path (or use stdout if not specified)
+  --template={PATH}      Template file path
+  --verbose|-v           Enable verbose output
+  -h|--help              Show this help message
+
+Examples:
+  # Convert from CSV to JSON
+  tableconvert --from=csv --to=json --file=input.csv --result=output.json
+  # Read from stdin and write to stdout
+  cat input.csv | tableconvert --from=csv --to=json
+  # Convert from MySQL to Markdown using template
+  tableconvert --from=mysql --to=template --file=input.csv --tempalte=markdown.tmpl
+
+Extension Arguments:
+  For eash format there are many extension config, please refer to:
+  https://github.com/martianzhang/tableconvert/blob/main/docs/arguments.md

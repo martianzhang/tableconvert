@@ -3,7 +3,6 @@ package sql
 import (
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
 
 	"github.com/martianzhang/tableconvert/common"
@@ -136,7 +135,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	for j, row := range table.Rows {
 		values := make([]string, columnCount)
 		for i, cell := range row {
-			values[i] = escapeValue(cell)
+			values[i] = common.SQLValueEscape(cell)
 		}
 		if allInOne {
 			if j == 0 {
@@ -172,30 +171,14 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 func escapeIdentifier(s string, dialect string) string {
 	switch dialect {
 	case "oracle":
-		return "\"" + strings.ReplaceAll(s, "\"", "\"\"") + "\""
+		return common.OracleIdentifierEscape(s)
 	case "postgres":
-		return "\"" + strings.ReplaceAll(s, "\"", "\\\"") + "\""
+		return common.PostgreSQLIdentifierEscape(s)
 	case "mssql":
-		return "[" + strings.ReplaceAll(s, "[", "[]") + "]"
+		return common.MssqlIdentifierEscape(s)
 	case "none":
 		return s
 	default:
-		// mysql
-		return "`" + strings.ReplaceAll(s, "`", "\\`") + "`"
+		return common.SQLIdentifierEscape(s)
 	}
-}
-
-// Escape values for SQL insertion (handle quotes, NULLs, etc.)
-func escapeValue(s string) string {
-	if strings.EqualFold(s, "NULL") {
-		return "NULL"
-	}
-
-	// Double Quote string
-	s = strconv.Quote(s)
-	// Convert to Single Quote string
-	s = s[1 : len(s)-1]
-	s = strings.ReplaceAll(s, "\\\"", "\"")
-	s = strings.ReplaceAll(s, "'", "\\'")
-	return "'" + s + "'"
 }

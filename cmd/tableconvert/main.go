@@ -16,6 +16,7 @@ import (
 	"github.com/martianzhang/tableconvert/mediawiki"
 	"github.com/martianzhang/tableconvert/mysql"
 	"github.com/martianzhang/tableconvert/sql"
+	"github.com/martianzhang/tableconvert/tmpl"
 	"github.com/martianzhang/tableconvert/twiki"
 	"github.com/martianzhang/tableconvert/xml"
 )
@@ -101,6 +102,8 @@ func main() {
 		err = latex.Marshal(&cfg, &table)
 	case "jsonl", "jsonlines":
 		err = jsonl.Marshal(&cfg, &table)
+	case "tmpl", "template":
+		err = tmpl.Marshal(&cfg, &table)
 	default:
 		err = fmt.Errorf("Unsupported `--to` format: %s", cfg.To)
 	}

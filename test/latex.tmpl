@@ -1,0 +1,9 @@
+\begin{table}[!ht]
+    \centering
+    \begin{tabular}{|{{range .Headers}}l|{{end}}}
+    \hline
+    {{range .Headers}}{{.}} & {{end}}\\ \hline
+    {{range .Rows}}{{range .}}{{.}} & {{end}}\\ \hline
+    {{end}}
+    \end{tabular}
+\end{table}

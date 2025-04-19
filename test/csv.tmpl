@@ -1,0 +1,3 @@
+{{range $i, $headers := .Headers}}{{if $i}},{{end}}{{CSVForceQuote .}}{{end}}
+{{range $rowIndex, $rows := .Rows}}{{range $colIndex, $cols := $rows}}{{if $colIndex}},{{end}}{{CSVForceQuote .}}{{end}}
+{{end}}

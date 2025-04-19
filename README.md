@@ -2,27 +2,20 @@
 
 Offline table convert tool. **Not production ready.**
 
-## Usage
+## Usage Example
 
-```txt
-Usage: tableconvert [OPTIONS]
-
-Convert between different table formats (MySQL, Markdown, CSV, JSON, Excel, etc.)
-
-Options:
-  --from|-f={FORMAT}     Source format (e.g. mysql, csv, json, xlsx)
-  --to|-t={FORMAT}       Target format (e.g. mysql, csv, json, xlsx)
-  --file={PATH}          Input file path (or use stdin if not specified)
-  --result|-r={PATH}     Output file path (or use stdout if not specified)
-  --verbose|-v           Enable verbose output
-  -h|--help              Show this help message
-
-Examples:
-  tableconvert --from=csv --to=json --file=input.csv --result=output.json
-  cat input.csv | tableconvert --from=csv --to=json
+```bash
+# Convert from CSV to JSON
+tableconvert --from=csv --to=json --file=input.csv --result=output.json
+# Read from stdin and write to stdout
+cat input.csv | tableconvert --from=csv --to=json
+# Convert from MySQL to Markdown using template
+tableconvert --from=mysql --to=template --file=input.csv --tempalte=markdown.tmpl
 ```
 
-Each format or file type has its own arguments, please refer to the [arguments.md](https://github.com/martianzhang/tableconvert/blob/master/arguments.md) for more details.
+Simple usage please refer to [Usage](https://github.com/martianzhang/tableconvert/blob/main/common/usage.txt).
+
+Each format or file type has its own arguments, please refer to the [arguments.md](https://github.com/martianzhang/tableconvert/blob/main/docs/arguments.md) for more details.
 
 ## Support Format
 
@@ -38,6 +31,7 @@ Each format or file type has its own arguments, please refer to the [arguments.m
 - [x] LaTeX
 - [x] MediaWiki
 - [x] TWiki/TracWiki
+- [x] User Define template Output
 
 ## Reference
 

@@ -80,6 +80,12 @@ Each format may has its own extended arguments, for its own style. Following are
 | minify            | false   | true, false    | Minify MediaWiki table    |
 | sort              | false   | true, false    | Make table sortable in Wikipedia |
 
+## tmpl
+
+| Argument          | Default | Allowed Values | Description               |
+|-------------------|---------|----------------|---------------------------|
+| template          |         |                | Template file path        |
+
 ## sql
 
 | Argument          | Default | Allowed Values | Description                     |

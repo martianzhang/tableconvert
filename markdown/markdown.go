@@ -188,15 +188,6 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	return nil // Success
 }
 
-func escapeMarkdown(text string) string {
-	// Escape special Markdown characters
-	chars := []string{"\\", "`", "*", "_", "{", "}", "[", "]", "(", ")", "#", "+", "-", ".", "!", "|"}
-	for _, c := range chars {
-		text = strings.ReplaceAll(text, c, "\\"+c)
-	}
-	return text
-}
-
 func Marshal(cfg *common.Config, table *common.Table) error {
 	if table == nil {
 		return fmt.Errorf("Marshal: input table pointer cannot be nil")
@@ -255,7 +246,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	// Escape content if needed
 	if escape {
 		for i := range headers {
-			headers[i] = escapeMarkdown(headers[i])
+			headers[i] = common.MarkdownEscape(headers[i])
 		}
 	}
 
@@ -316,7 +307,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		// Escape content if needed
 		if escape {
 			for i := range rowData {
-				rowData[i] = escapeMarkdown(rowData[i])
+				rowData[i] = common.MarkdownEscape(rowData[i])
 			}
 		}
 

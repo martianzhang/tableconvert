@@ -1,0 +1,4 @@
+[table]
+  [tr]{{range .Headers}}[th]{{.}}[/th]{{end}}[/tr]
+{{range .Rows}}  [tr]{{range .}}[td]{{.}}[/td]{{end}}[/tr]
+{{end}}[/table]

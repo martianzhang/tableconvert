@@ -1,6 +1,7 @@
 package common
 
 import (
+	_ "embed"
 	"fmt"
 	"io"
 	"os"
@@ -19,26 +20,11 @@ type Config struct {
 	Extension map[string]string
 }
 
+//go:embed usage.txt
+var usageText string
+
 func Usage() {
-	fmt.Println(`Usage: tableconvert [OPTIONS]
-
-Convert between different table formats (MySQL, Markdown, CSV, JSON, Excel, etc.)
-
-Options:
-  --from|-f={FORMAT}     Source format (e.g. mysql, csv, json, xlsx)
-  --to|-t={FORMAT}       Target format (e.g. mysql, csv, json, xlsx)
-  --file={PATH}          Input file path (or use stdin if not specified)
-  --result|-r={PATH}     Output file path (or use stdout if not specified)
-  --verbose|-v           Enable verbose output
-  -h|--help              Show this help message
-
-Examples:
-  tableconvert --from=csv --to=json --file=input.csv --result=output.json
-  cat input.csv | tableconvert --from=csv --to=json
-
-Extension Arguments:
-  For eash format there are many extension config, please refer to:
-  https://github.com/martianzhang/tableconvert/blob/main/docs/arguments.md`)
+	fmt.Fprint(os.Stderr, usageText)
 }
 
 // ParseConfig parses arguments in format "--key=value" or "--key value" and returns a key-value map
