@@ -77,17 +77,22 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 }
 
 func Marshal(cfg *common.Config, table *common.Table) error {
+	parsing := cfg.GetExtensionBool("parsing-json", false)
+
 	writer := bufio.NewWriter(cfg.Writer)
 	defer writer.Flush()
 
 	// Each row becomes a JSON object with headers as keys
 	for _, row := range table.Rows {
+		if len(row) != len(table.Headers) {
+			return fmt.Errorf("row length %d does not match header length %d", len(row), len(table.Headers))
+		}
 		record := make(map[string]interface{})
 		for i, header := range table.Headers {
-			if i < len(row) {
-				record[header] = row[i]
+			if parsing {
+				record[header] = common.InferType(row[i])
 			} else {
-				record[header] = "" // pad with empty string if column is missing
+				record[header] = row[i]
 			}
 		}
 

@@ -2,6 +2,7 @@ package common
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -278,4 +279,10 @@ func TestParseConfigWithValidFileInput(t *testing.T) {
 	if reader, ok := cfg.Reader.(*os.File); ok && reader != tmpFile {
 		reader.Close()
 	}
+}
+
+func TestGetProjectRootPath(t *testing.T) {
+	path, err := GetProjectRootPath()
+	assert.Nil(t, err)
+	assert.Equal(t, true, strings.HasSuffix(path, "/tableconvert/"))
 }

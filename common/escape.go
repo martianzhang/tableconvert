@@ -50,19 +50,34 @@ func LaTeXEscape(s string) string {
 }
 
 func LaTeXUnescape(s string) string {
-	// Handle common LaTeX escapes
+	// First handle special characters with {}
+	s = strings.ReplaceAll(s, `\^{}`, "^")
+	s = strings.ReplaceAll(s, `\~{}`, "~")
+	s = strings.ReplaceAll(s, `\textasciitilde{}`, "~")
+
+	// Handle basic escape characters
 	replacements := map[string]string{
-		"\\&": "&", "\\%": "%", "\\$": "$",
-		"\\#": "#", "\\_": "_", "\\{": "{",
-		"\\}": "}", "\\~": "~", "\\^": "^",
-		"\\textasciitilde": "~", "\\textbackslash": "\\",
-		"\\textasciitilde{}": "~", "\\ ": " ",
+		`\&`:              "&",
+		`\%`:              "%",
+		`\$`:              "$",
+		`\#`:              "#",
+		`\_`:              "_",
+		`\~`:              "~",
+		`\{`:              "{",
+		`\}`:              "}",
+		`\textasciitilde`: "~",
+		`\textbackslash`:  `\`,
+		`\ `:              " ", // Handle LaTeX space escape
 	}
 
 	for from, to := range replacements {
 		s = strings.ReplaceAll(s, from, to)
 	}
-	return strings.TrimSpace(s)
+
+	// Trim extra whitespace
+	s = strings.TrimSpace(s)
+
+	return s
 }
 
 // SQLValueEscape values for SQL insertion (handle quotes, NULLs, etc.)

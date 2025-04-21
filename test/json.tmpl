@@ -1,0 +1,5 @@
+[
+{{range $i, $row := .Rows}}{{if $i}},{{end}}{
+{{range $j, $header := $.Headers}}"{{$header}}": "{{index $row $j}}"{{if lt $j (Sub (len $.Headers) 1)}},{{end}}
+{{end}}}{{end}}
+]

@@ -168,3 +168,41 @@ func TestMarshal(t *testing.T) {
 		})
 	}
 }
+
+func TestMarshal_CustomStyleTable(t *testing.T) {
+	// Create a buffer to capture output
+	var buf bytes.Buffer
+
+	// Create config with custom style
+	cfg := &common.Config{
+		Writer: &buf,
+		Extension: map[string]string{
+			"style": "*",
+		},
+	}
+
+	// Create test table
+	table := &common.Table{
+		Headers: []string{"ID", "Name", "Value"},
+		Rows: [][]string{
+			{"1", "Item A", "100"},
+			{"2", "Item B", "200"},
+		},
+	}
+
+	// Expected output
+	expected := `***********************
+* ID * Name   * Value *
+***********************
+* 1  * Item A * 100   *
+* 2  * Item B * 200   *
+***********************
+`
+
+	// Call the function
+	err := Marshal(cfg, table)
+
+	// Assertions
+	assert.Nil(t, err)
+	assert.Equal(t, expected, buf.String())
+}

@@ -46,6 +46,12 @@ Each format may has its own extended arguments, for its own style. Following are
 | minify            | false   | true, false    | Minify JSON               |
 | parsing-json      | false   | true, false    | Parsing JSON              |
 
+## jsonlines
+
+| Argument          | Default | Allowed Values | Description               |
+| ------------------|---------|----------------|---------------------------|
+| parsing-json      | false   | true, false    | Parsing JSON              |
+
 ## latex
 
 | Argument          | Default | Allowed Values | Description               |

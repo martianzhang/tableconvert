@@ -34,6 +34,9 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		"Capitalize": func(s string) string {
 			return strings.Title(s)
 		},
+		"Sub": func(a, b int) int {
+			return a - b
+		},
 		"Quote":                      strconv.Quote,
 		"CSVForceQuote":              common.CSVForceQuote,
 		"CSVQuoteEscape":             common.CSVQuoteEscape,

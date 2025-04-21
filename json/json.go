@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strconv"
-	"strings"
 
 	"github.com/martianzhang/tableconvert/common"
 )
@@ -170,7 +168,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			for i := range table.Headers {
 				if i < len(row) {
 					if parsing {
-						record[i] = inferType(row[i])
+						record[i] = common.InferType(row[i])
 					} else {
 						record[i] = row[i]
 					}
@@ -200,7 +198,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 				}
 				header := table.Headers[i]
 				if parsing {
-					columns[header] = append(columns[header], inferType(cell))
+					columns[header] = append(columns[header], common.InferType(cell))
 				} else {
 					columns[header] = append(columns[header], cell)
 				}
@@ -224,7 +222,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			for i, header := range table.Headers {
 				if i < len(row) {
 					if parsing {
-						record[header] = inferType(row[i])
+						record[header] = common.InferType(row[i])
 					} else {
 						record[header] = row[i]
 					}
@@ -246,48 +244,4 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 
 	_, err = cfg.Writer.Write(data)
 	return err
-}
-
-// inferType attempts to convert a string value to a more specific type (bool, int64, float64, nil)
-// If no conversion is successful, it returns the original string.
-func inferType(value string) interface{} {
-	trimmedValue := strings.TrimSpace(value)
-
-	// 1. Check for explicit null (case-insensitive)
-	if strings.ToLower(trimmedValue) == "null" {
-		return nil
-	}
-
-	// 2. Check for boolean (case-insensitive)
-	lowerValue := strings.ToLower(trimmedValue)
-	if lowerValue == "true" {
-		return true
-	}
-	if lowerValue == "false" {
-		return false
-	}
-
-	// 3. Check for integer
-	// Use ParseInt for potentially larger numbers and better base control
-	if intVal, err := strconv.ParseInt(trimmedValue, 10, 64); err == nil {
-		// Optional: Double-check if the string representation truly matches
-		// to avoid interpreting things like "0xf" as integers if that's not desired.
-		// Here, we assume a valid ParseInt result means it's an integer.
-		return intVal
-	}
-
-	// 4. Check for float
-	// It must contain ".", "e", or "E" to be considered float by some stricter definitions,
-	// but ParseFloat is more general. We'll parse anything that looks like a float.
-	if floatVal, err := strconv.ParseFloat(trimmedValue, 64); err == nil {
-		// Check if it's actually an integer represented as float (e.g., "123.0")
-		// If you want "123.0" to become integer 123, you might need extra logic here.
-		// For simplicity, we'll let ParseFloat decide.
-		return floatVal
-	}
-
-	// 5. Default: return the original string (or trimmed, depending on preference)
-	// Returning the original 'value' preserves leading/trailing whitespace if needed.
-	// If you always want trimmed strings, return 'trimmedValue'.
-	return value
 }

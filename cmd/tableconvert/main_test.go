@@ -1,10 +1,10 @@
-// FILEPATH: /workspace/github.com/martianzhang/tableconvert/cmd/tableconvert/main_test.go
 package main
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
+
+	"github.com/martianzhang/tableconvert/common"
 
 	"github.com/hexops/gotextdiff"
 	"github.com/hexops/gotextdiff/myers"
@@ -15,28 +15,12 @@ import (
 var ProjectRoot string
 
 func init() {
-
+	var err error
 	// Get project root path
-	rootPath, err := os.Getwd()
+	ProjectRoot, err = common.GetProjectRootPath()
 	if err != nil {
-		panic("Failed to get project root path: " + err.Error())
+		panic(err)
 	}
-	for {
-		// Check if go.mod exists in current directory
-		goModPath := filepath.Join(rootPath, "go.mod")
-		if _, err := os.Stat(goModPath); err == nil {
-			break
-		}
-
-		// Move up one directory
-		parent := filepath.Dir(rootPath)
-		if parent == rootPath {
-			// We've reached the filesystem root without finding go.mod
-			panic("Could not find project root (go.mod not found in any parent directory)")
-		}
-		rootPath = parent
-	}
-	ProjectRoot = rootPath + "/"
 
 	// Check if feature directory exists， if not create it
 	if _, err := os.Stat(ProjectRoot + "feature"); os.IsNotExist(err) {

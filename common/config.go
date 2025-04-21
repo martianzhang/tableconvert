@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -172,4 +173,28 @@ func (c *Config) GetExtensionInt(key string, defaultValue int) int {
 		}
 	}
 	return defaultValue
+}
+
+func GetProjectRootPath() (string, error) {
+	// Get project root path
+	rootPath, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	for {
+		// Check if go.mod exists in current directory
+		goModPath := filepath.Join(rootPath, "go.mod")
+		if _, err := os.Stat(goModPath); err == nil {
+			break
+		}
+
+		// Move up one directory
+		parent := filepath.Dir(rootPath)
+		if parent == rootPath {
+			return "", fmt.Errorf("could not find go.mod in any parent directory")
+		}
+		rootPath = parent
+	}
+
+	return strings.TrimSuffix(rootPath, "/") + "/", nil
 }
