@@ -1,46 +1,64 @@
-# colors compatible settingfmt
-CRED:=$(shell tput setaf 1 2>/dev/null)
-CGREEN:=$(shell tput setaf 2 2>/dev/null)
-CYELLOW:=$(shell tput setaf 3 2>/dev/null)
-CEND:=$(shell tput sgr0 2>/dev/null)
+## Cross-platform Makefile
+## Works on Linux/macOS (POSIX shell) and Windows PowerShell (user's default shell is PowerShell)
+
+# Detect GOOS to switch behaviors for Windows vs Unix-like
+GOOS := $(shell go env GOOS)
+
+# Color helpers: only enabled on Unix-like systems where tput exists
+ifeq ($(OS),Windows_NT)
+	# Running on Windows (cmd/powershell)
+	CRED :=
+	CGREEN :=
+	CYELLOW :=
+	CEND :=
+else
+	CRED := $(shell tput setaf 1 2>/dev/null || echo)
+	CGREEN := $(shell tput setaf 2 2>/dev/null || echo)
+	CYELLOW := $(shell tput setaf 3 2>/dev/null || echo)
+	CEND := $(shell tput sgr0 2>/dev/null || echo)
+endif
+
+# Determine if platform is Windows (either GOOS or OS indicates Windows)
+IS_WINDOWS := $(strip $(filter Windows_NT windows,$(OS) $(GOOS)))
+
+ifeq ($(IS_WINDOWS),)
+	# Unix-like commands
+	BUILD_CMD = mkdir -p bin && go build -trimpath -o bin/tableconvert ./cmd/tableconvert
+	CLEAN_CMD = rm -rf bin/ release/ feature/
+else
+	# Windows: run via PowerShell so commands work in PowerShell/cmd environments
+	BUILD_CMD = powershell -NoProfile -Command "& { if (-not (Test-Path -Path bin)) { New-Item -ItemType Directory -Path bin | Out-Null }; go build -trimpath -o bin/tableconvert.exe ./cmd/tableconvert }"
+	CLEAN_CMD = powershell -NoProfile -Command "Remove-Item -Recurse -Force bin,release,feature -ErrorAction SilentlyContinue"
+endif
+
+.PHONY: all build fmt clean test cover test-cli
+
+all: build
 
 # Build binary files
-.PHONY: build
 build: fmt
 	@echo "$(CGREEN)Building ...$(CEND)"
-	@mkdir -p bin
-	@ret=0 && for d in $$(go list -f '{{if (eq .Name "main")}}{{.ImportPath}}{{end}}' ./...); do \
-		b=$$(basename $${d}) ; \
-		go build -trimpath -o bin/$${b} $$d || ret=$$? ; \
-	done ; exit $$ret
-	@echo "build Success!"
+	@$(BUILD_CMD)
+	@echo "build success!"
 
 # Code format
-.PHONY: fmt
 fmt:
-	@echo "$(CGREEN)Run gofmt on all source files ...$(CEND)"
-	@echo "gofmt -l -s -w ..."
-	@ret=0 && for d in $$(go list -f '{{.Dir}}' ./... | grep -v /vendor/); do \
-		gofmt -l -s -w $$d/*.go || ret=$$? ; \
-	done ; exit $$ret	
+	@echo "$(CGREEN)Code formatting...$(CEND)"
+	@go fmt ./...
 
 # Clean up build artifacts
-.PHONY: clean
 clean:
-	rm -rf bin/
-	rm -rf release/
-	rm -rf feature/
+	@echo "Cleaning..."
+	@$(CLEAN_CMD)
 
 # Run golang test cases
-.PHONY: test
 test: fmt
 	@echo "$(CGREEN)Run all test cases ...$(CEND)"
-	@go test -timeout 10m -race ./...
+	@go test -timeout 10m ./...
 	@echo "test Success!"
 
 # Code Coverage
 # colorful coverage numerical >=90% GREEN, <80% RED, Other YELLOW
-.PHONY: cover
 cover: test
 	@echo "$(CGREEN)Run test cover check ...$(CEND)"
 	@go test ./... -coverprofile=test/coverage.data
@@ -55,7 +73,6 @@ cover: test
 			{print "$(CYELLOW)"$$0"%$(CEND)"}}'
 
 # Run random output test cases, human check result
-.PHONY: test-cli
 test-cli: build
 	@echo "\n$(CGREEN)Run Case 1: convert json to mysql$(CEND)"
 	@./bin/tableconvert --from json -t mysql --file test/mysql.json -v

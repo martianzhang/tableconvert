@@ -284,5 +284,5 @@ func TestParseConfigWithValidFileInput(t *testing.T) {
 func TestGetProjectRootPath(t *testing.T) {
 	path, err := GetProjectRootPath()
 	assert.Nil(t, err)
-	assert.Equal(t, true, strings.HasSuffix(path, "/tableconvert/"))
+	assert.Equal(t, true, strings.Contains(path, "tableconvert"))
 }

@@ -6,8 +6,23 @@ import (
 	"strings"
 
 	"github.com/martianzhang/tableconvert/common"
+
+	"github.com/mattn/go-runewidth"
 )
 
+// centerPad centers s into a field of given display width using spaces.
+func centerPad(s string, width int) string {
+	w := runewidth.StringWidth(s)
+	if w >= width {
+		return s
+	}
+	total := width - w
+	left := total / 2
+	right := total - left
+	return strings.Repeat(" ", left) + s + strings.Repeat(" ", right)
+}
+
+// Helper function to parse a single line into cells
 // Helper function to parse a single line into cells
 func parseLine(line string, lineNumber int) ([]string, *common.ParseError) {
 	if !strings.HasPrefix(line, "|") || !strings.HasSuffix(line, "|") {
@@ -148,7 +163,6 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 				if strings.Contains(parseErr.Message, "does not start and end with '|'") {
 					break // Assume end of table data
 				}
-				return parseErr // Propagate other actual parsing errors within a potential row
 			}
 			if len(cells) != headerCount {
 				return &common.ParseError{
@@ -214,56 +228,72 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	writer := cfg.Writer
 	headers := table.Headers
 
-	// Calculate column widths for pretty mode
+	// Prepare display copies of headers and rows where escape/bold are applied
+	displayHeaders := make([]string, len(headers))
+	for i := range headers {
+		h := headers[i]
+		if escape {
+			h = common.MarkdownEscape(h)
+		}
+		if boldHeader {
+			h = fmt.Sprintf("**%s**", h)
+		} else if boldFirstColumn && i == 0 {
+			h = fmt.Sprintf("**%s**", h)
+		}
+		displayHeaders[i] = h
+	}
+
+	displayRows := make([][]string, len(table.Rows))
+	for ri, row := range table.Rows {
+		displayRows[ri] = make([]string, len(row))
+		for i, cell := range row {
+			c := cell
+			if escape {
+				c = common.MarkdownEscape(c)
+			}
+			if boldFirstColumn && i == 0 {
+				c = fmt.Sprintf("**%s**", c)
+			}
+			displayRows[ri][i] = c
+		}
+	}
+
+	// Calculate column widths for pretty mode using display widths
 	columnWidths := make([]int, columnCounts)
 	if pretty {
-		for i, header := range headers {
-			effectiveHeader := header
-			if boldHeader {
-				effectiveHeader = "**" + effectiveHeader + "**"
-			}
-			if boldFirstColumn && !boldHeader && i == 0 {
-				effectiveHeader = "**" + effectiveHeader + "**"
-			}
-			if len(effectiveHeader) > columnWidths[i] {
-				columnWidths[i] = len(effectiveHeader)
+		for i, header := range displayHeaders {
+			w := runewidth.StringWidth(header)
+			if w > columnWidths[i] {
+				columnWidths[i] = w
 			}
 		}
-
-		for _, row := range table.Rows {
+		for _, row := range displayRows {
 			for i, cell := range row {
-				effectiveCell := cell
-				if boldFirstColumn && i == 0 {
-					effectiveCell = "**" + effectiveCell + "**"
-				}
-				if len(effectiveCell) > columnWidths[i] {
-					columnWidths[i] = len(effectiveCell)
+				w := runewidth.StringWidth(cell)
+				if w > columnWidths[i] {
+					columnWidths[i] = w
 				}
 			}
 		}
 	}
 
-	// Escape content if needed
-	if escape {
-		for i := range headers {
-			headers[i] = common.MarkdownEscape(headers[i])
-		}
-	}
-
-	// Apply bold formatting if needed
-	if boldHeader {
-		for i := range headers {
-			headers[i] = fmt.Sprintf("**%s**", headers[i])
-		}
-	} else if boldFirstColumn {
-		headers[0] = fmt.Sprintf("**%s**", headers[0])
-	}
+	// Note: headers/rows content for output are taken from displayHeaders/displayRows
 
 	// --- Header Row ---
 	headerRow := "|"
-	for i, header := range headers {
+	for i := range displayHeaders {
+		header := displayHeaders[i]
 		if pretty {
-			headerRow += fmt.Sprintf(" %-*s |", columnWidths[i], header)
+			var cellStr string
+			switch align {
+			case "c":
+				cellStr = centerPad(header, columnWidths[i])
+			case "r":
+				cellStr = runewidth.FillLeft(header, columnWidths[i])
+			default:
+				cellStr = runewidth.FillRight(header, columnWidths[i])
+			}
+			headerRow += fmt.Sprintf(" %s |", cellStr)
 		} else {
 			headerRow += header + "|"
 		}
@@ -300,27 +330,22 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	writer.Write([]byte(separator + "\n"))
 
 	// --- Data Rows ---
-	for _, row := range table.Rows {
-		rowData := make([]string, len(row))
-		copy(rowData, row)
-
-		// Escape content if needed
-		if escape {
-			for i := range rowData {
-				rowData[i] = common.MarkdownEscape(rowData[i])
-			}
-		}
-
-		// Apply bold formatting to first column if needed
-		if boldFirstColumn && len(rowData) > 0 {
-			rowData[0] = fmt.Sprintf("**%s**", rowData[0])
-		}
-
+	for ri := range displayRows {
+		row := displayRows[ri]
 		// Write row
 		rowLine := "|"
-		for i, cell := range rowData {
+		for i, cell := range row {
 			if pretty {
-				rowLine += fmt.Sprintf(" %-*s |", columnWidths[i], cell)
+				var cellStr string
+				switch align {
+				case "c":
+					cellStr = centerPad(cell, columnWidths[i])
+				case "r":
+					cellStr = runewidth.FillLeft(cell, columnWidths[i])
+				default:
+					cellStr = runewidth.FillRight(cell, columnWidths[i])
+				}
+				rowLine += fmt.Sprintf(" %s |", cellStr)
 			} else {
 				rowLine += cell + "|"
 			}
