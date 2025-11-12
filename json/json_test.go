@@ -32,8 +32,8 @@ func TestUnmarshalDefaultFormatBasicCase(t *testing.T) {
 
 	// Assert headers are correct
 	expectedHeaders := []string{"id", "name"}
-	sort.Sort(sort.StringSlice(expectedHeaders))
-	sort.Sort(sort.StringSlice(table.Headers))
+	sort.Strings(expectedHeaders)
+	sort.Strings(table.Headers)
 	assert.Equal(t, len(expectedHeaders), len(table.Headers), "Headers don't match expected values")
 
 	// Assert row data is correct

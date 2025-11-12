@@ -3,15 +3,14 @@ package xml
 import (
 	"encoding/xml"
 	"fmt"
-	"io"
 
 	"github.com/martianzhang/tableconvert/common"
 )
 
 func Unmarshal(cfg *common.Config, table *common.Table) error {
-	reader, ok := cfg.Reader.(io.Reader)
-	if !ok {
-		return fmt.Errorf("writer is not an io.Reader, please provide a valid reader")
+	reader := cfg.Reader
+	if reader == nil {
+		return fmt.Errorf("reader is nil, please provide a valid reader")
 	}
 
 	// Define the structure for dynamic XML parsing

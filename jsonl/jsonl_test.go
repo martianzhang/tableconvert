@@ -33,7 +33,7 @@ func TestMarshal(t *testing.T) {
 	// Check the output
 	var expected, actual map[string]string
 	json.Unmarshal([]byte("{\"name\":\"John\",\"age\":\"30\"}\n"), &expected)
-	json.Unmarshal([]byte(buf.String()), &actual)
+	json.Unmarshal(buf.Bytes(), &actual)
 
 	assert.Equal(t, expected, actual, "Output doesn't match expected values")
 

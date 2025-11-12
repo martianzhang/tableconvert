@@ -43,6 +43,7 @@ func omniUnmarshal(cfg *common.Config, table *common.Table) error {
 	var rows [][]string
 	parsingState := "start" // states: start, header, header_separator, data, end
 
+	done := false
 	for scanner.Scan() {
 		lineNumber++
 		line := scanner.Text()
@@ -53,7 +54,7 @@ func omniUnmarshal(cfg *common.Config, table *common.Table) error {
 		}
 
 		// Inline separator line check
-		isSeparator := func(line string) bool {
+		isSeparator := func() bool {
 			if !strings.HasPrefix(trimmedLine, style) || !strings.HasSuffix(trimmedLine, style) {
 				return false
 			}
@@ -66,7 +67,7 @@ func omniUnmarshal(cfg *common.Config, table *common.Table) error {
 		}
 
 		// Inline data line check and parsing
-		parseDataLine := func(line string) []string {
+		parseDataLine := func() []string {
 			trimmed := strings.TrimPrefix(strings.TrimSuffix(trimmedLine, style), style)
 			parts := strings.Split(trimmed, style)
 			var cells []string
@@ -78,12 +79,12 @@ func omniUnmarshal(cfg *common.Config, table *common.Table) error {
 
 		switch parsingState {
 		case "start":
-			if isSeparator(line) {
+			if isSeparator() {
 				parsingState = "header"
 			}
 		case "header":
 			if strings.HasPrefix(trimmedLine, style) && strings.HasSuffix(trimmedLine, style) {
-				headers = parseDataLine(line)
+				headers = parseDataLine()
 				if len(headers) == 0 {
 					return &common.ParseError{
 						LineNumber: lineNumber,
@@ -94,14 +95,15 @@ func omniUnmarshal(cfg *common.Config, table *common.Table) error {
 				parsingState = "header_separator"
 			}
 		case "header_separator":
-			if isSeparator(line) {
+			if isSeparator() {
 				parsingState = "data"
 			}
 		case "data":
-			if isSeparator(line) {
+			if isSeparator() {
 				parsingState = "end"
+				done = true
 			} else if strings.HasPrefix(trimmedLine, style) && strings.HasSuffix(trimmedLine, style) {
-				row := parseDataLine(line)
+				row := parseDataLine()
 				if len(row) != len(headers) {
 					return &common.ParseError{
 						LineNumber: lineNumber,
@@ -112,10 +114,13 @@ func omniUnmarshal(cfg *common.Config, table *common.Table) error {
 				rows = append(rows, row)
 			}
 		case "end":
+			done = true
+		}
+
+		if done {
 			break
 		}
 	}
-
 	if err := scanner.Err(); err != nil {
 		return err
 	}
@@ -173,6 +178,8 @@ func boxUnmarshal(cfg *common.Config, table *common.Table) error {
 			continue // Skip empty lines
 		}
 
+		done := false
+
 		switch parsingState {
 		case "start":
 			if isBorderLine(line) {
@@ -207,11 +214,16 @@ func boxUnmarshal(cfg *common.Config, table *common.Table) error {
 				// Remain in 'data' state to process more rows
 			} else if isBorderLine(line) {
 				parsingState = "end" // Found bottom border
+				done = true
 			} else {
 				return &common.ParseError{LineNumber: lineNumber, Message: "expected data line (| Data |) or bottom border line (+--+)", Line: line}
 			}
 		case "end":
-			break // Parsing complete
+			done = true // Parsing complete, break out of the loop
+		}
+
+		if done {
+			break
 		}
 	}
 

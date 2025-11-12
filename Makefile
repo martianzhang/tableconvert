@@ -21,14 +21,40 @@ endif
 # Determine if platform is Windows (either GOOS or OS indicates Windows)
 IS_WINDOWS := $(strip $(filter Windows_NT windows,$(OS) $(GOOS)))
 
+# Unified colored echo helpers per platform
+ifeq ($(IS_WINDOWS),)
+define ECHO_GREEN
+	@printf "%s%s%s\n" "$(CGREEN)" "$(1)" "$(CEND)"
+endef
+define ECHO_YELLOW
+	@printf "%s%s%s\n" "$(CYELLOW)" "$(1)" "$(CEND)"
+endef
+define ECHO_RED
+	@printf "%s%s%s\n" "$(CRED)" "$(1)" "$(CEND)"
+endef
+else
+define ECHO_GREEN
+	@powershell -NoProfile -Command "Write-Host '$(1)' -ForegroundColor Green"
+endef
+define ECHO_YELLOW
+	@powershell -NoProfile -Command "Write-Host '$(1)' -ForegroundColor Yellow"
+endef
+define ECHO_RED
+	@powershell -NoProfile -Command "Write-Host '$(1)' -ForegroundColor Red"
+endef
+endif
+
 ifeq ($(IS_WINDOWS),)
 	# Unix-like commands
 	BUILD_CMD = mkdir -p bin && go build -trimpath -o bin/tableconvert ./cmd/tableconvert
 	CLEAN_CMD = rm -rf bin/ release/ feature/
+	COVER_SUMMARY_CMD = tail -n 1 test/coverage.txt | awk '{sub(/%/, "", $$NF); if($$NF < 80) {print "$(CRED)"$$0"%$(CEND)"} else if ($$NF >= 90) {print "$(CGREEN)"$$0"%$(CEND)"} else {print "$(CYELLOW)"$$0"%$(CEND)"}}'
 else
 	# Windows: run via PowerShell so commands work in PowerShell/cmd environments
 	BUILD_CMD = powershell -NoProfile -Command "& { if (-not (Test-Path -Path bin)) { New-Item -ItemType Directory -Path bin | Out-Null }; go build -trimpath -o bin/tableconvert.exe ./cmd/tableconvert }"
 	CLEAN_CMD = powershell -NoProfile -Command "Remove-Item -Recurse -Force bin,release,feature -ErrorAction SilentlyContinue"
+	# Use Write-Host -ForegroundColor for colored coverage output
+	COVER_SUMMARY_CMD = powershell -NoProfile -Command "$$line = (Get-Content test/coverage.txt | Select-Object -Last 1); if ($$line -match '(\d+(\.\d+)?)%') { $$p=[double]$$Matches[1]; if($$p -lt 80){ Write-Host $$line -ForegroundColor Red } elseif($$p -ge 90){ Write-Host $$line -ForegroundColor Green } else { Write-Host $$line -ForegroundColor Yellow } } else { Write-Host $$line }"
 endif
 
 .PHONY: all build fmt clean test cover test-cli
@@ -37,13 +63,13 @@ all: build
 
 # Build binary files
 build: fmt
-	@echo "$(CGREEN)Building ...$(CEND)"
+	$(call ECHO_GREEN,Building ...)
 	@$(BUILD_CMD)
 	@echo "build success!"
 
 # Code format
 fmt:
-	@echo "$(CGREEN)Code formatting...$(CEND)"
+	$(call ECHO_GREEN,Code formatting...)
 	@go fmt ./...
 
 # Clean up build artifacts
@@ -53,31 +79,28 @@ clean:
 
 # Run golang test cases
 test: fmt
-	@echo "$(CGREEN)Run all test cases ...$(CEND)"
+	$(call ECHO_GREEN,Run all test cases ...)
 	@go test -timeout 10m ./...
 	@echo "test Success!"
 
 # Code Coverage
 # colorful coverage numerical >=90% GREEN, <80% RED, Other YELLOW
 cover: test
-	@echo "$(CGREEN)Run test cover check ...$(CEND)"
+	$(call ECHO_GREEN,Run test cover check ...)
 	@go test ./... -coverprofile=test/coverage.data
 	@go tool cover -html=test/coverage.data -o test/coverage.html
 	@go tool cover -func=test/coverage.data -o test/coverage.txt
-	@tail -n 1 test/coverage.txt | awk '{sub(/%/, "", $$NF); \
-		if($$NF < 80) \
-			{print "$(CRED)"$$0"%$(CEND)"} \
-		else if ($$NF >= 90) \
-			{print "$(CGREEN)"$$0"%$(CEND)"} \
-		else \
-			{print "$(CYELLOW)"$$0"%$(CEND)"}}'
+	@$(COVER_SUMMARY_CMD)
 
 # Run random output test cases, human check result
 test-cli: build
-	@echo "\n$(CGREEN)Run Case 1: convert json to mysql$(CEND)"
+	@echo ""
+	$(call ECHO_GREEN,Run Case 1: convert json to mysql)
 	@./bin/tableconvert --from json -t mysql --file test/mysql.json -v
-	@echo "\n$(CGREEN)Run Case 2: convert mysql to xlsx$(CEND)"
+	@echo ""
+	$(call ECHO_GREEN,Run Case 2: convert mysql to xlsx)
 	@./bin/tableconvert --from mysql -t xlsx --file test/mysql.txt --result test/mysql.xlsx -v
 	@./bin/tableconvert --from xlsx -t mysql --file test/mysql.xlsx
-	@echo "\n$(CGREEN)Run Case 3: convert mysql use template$(CEND)"
+	@echo ""
+	$(call ECHO_GREEN,Run Case 3: convert mysql use template)
 	@./bin/tableconvert --from mysql -t template --file test/mysql.txt --template test/jsonlines.tmpl -v

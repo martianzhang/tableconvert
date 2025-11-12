@@ -35,6 +35,30 @@ func TestUnmarshal(t *testing.T) {
 	assert.Equal(t, 3, len(table.Rows))
 }
 
+// TestUnmarshalUTF8Student verifies UTF-8 handling with a generic student info table (no business data).
+func TestUnmarshalUTF8Student(t *testing.T) {
+	mysqlOutput := `
++----------+--------------------+--------+----------+--------+----------------+
+|  学生ID  |        姓名        | 年级   |   班级   | 状态   |     备注       |
++----------+--------------------+--------+----------+--------+----------------+
+| stu001   | 张三               | 高一   | 一班     | 在读   | 喜欢数学       |
+| stu002   | 李四               | 高一   | 一班     | 在读   |                |
+| stu003   | 王五               | 高二   | 二班     | 休学   | 转专业申请中   |
++----------+--------------------+--------+----------+--------+----------------+
+` + "\n"
+	args := []string{"--from", "mysql", "--to", "mysql"}
+	cfg, err := common.ParseConfig(args)
+	assert.Nil(t, err)
+	cfg.Reader = strings.NewReader(mysqlOutput)
+	var table common.Table
+	err = Unmarshal(&cfg, &table)
+	assert.Nil(t, err)
+	assert.Equal(t, []string{"学生ID", "姓名", "年级", "班级", "状态", "备注"}, table.Headers)
+	assert.Equal(t, 3, len(table.Rows))
+	assert.Equal(t, []string{"stu001", "张三", "高一", "一班", "在读", "喜欢数学"}, table.Rows[0])
+	assert.Equal(t, []string{"stu003", "王五", "高二", "二班", "休学", "转专业申请中"}, table.Rows[2])
+}
+
 func TestParseASCIIArtTable(t *testing.T) {
 	asciiArtTable := `
 
@@ -52,6 +76,7 @@ anything else after the table is ignored
 `
 	args := []string{"--from", "mysql", "--to", "mysql"}
 	cfg, err := common.ParseConfig(args)
+	assert.Nil(t, err)
 	cfg.Reader = strings.NewReader(asciiArtTable)
 
 	var table common.Table

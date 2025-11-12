@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/martianzhang/tableconvert/ascii"
 	"github.com/martianzhang/tableconvert/common"
@@ -39,8 +40,8 @@ func main() {
 
 	// Reader
 	var table common.Table
-	switch cfg.From {
-	case "markdown":
+	switch strings.ToLower(cfg.From) {
+	case "markdown", "md":
 		err = markdown.Unmarshal(&cfg, &table)
 	case "ascii":
 		err = ascii.Unmarshal(&cfg, &table)
@@ -67,7 +68,7 @@ func main() {
 	case "jsonl", "jsonlines":
 		err = latex.Unmarshal(&cfg, &table)
 	default:
-		err = fmt.Errorf("Unsupported `--from` format: %s", cfg.From)
+		err = fmt.Errorf("unsupported `--from` format: %s", cfg.From)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
@@ -75,8 +76,8 @@ func main() {
 	}
 
 	// Writer
-	switch cfg.To {
-	case "markdown":
+	switch strings.ToLower(cfg.To) {
+	case "markdown", "md":
 		err = markdown.Marshal(&cfg, &table)
 	case "ascii":
 		err = ascii.Marshal(&cfg, &table)
@@ -105,7 +106,7 @@ func main() {
 	case "tmpl", "template":
 		err = tmpl.Marshal(&cfg, &table)
 	default:
-		err = fmt.Errorf("Unsupported `--to` format: %s", cfg.To)
+		err = fmt.Errorf("unsupported `--to` format: %s", cfg.To)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing result: %v\n", err)

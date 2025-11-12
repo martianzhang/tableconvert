@@ -36,13 +36,27 @@ func findAnchors(line string) []int {
 }
 
 // parseFields parse eche line and extract fields values.
-func parseFields(line string, anchors []int) []string {
-	result := make([]string, len(anchors)-1)
-	for i, anchor := range anchors {
-		if i == len(anchors)-1 { // Skip the last anchor
-			break
-		}
-		result[i] = strings.TrimSpace(line[anchor+2 : anchors[i+1]-1])
+// parseFields extracts the field values from a MySQL/ascii style data line.
+// Previous implementation attempted to slice the line using anchor positions
+// derived from the border line. That approach fails for multi-byte (UTF-8)
+// characters because anchor indices are byte-based (from the border which is
+// pure ASCII) while the data line contains runes of varying byte lengths.
+// This led to slicing in the middle of a rune and produced corrupted output
+// (replacement characters, truncation). To robustly handle UTF-8 content we
+// ignore anchors and simply split the data line by '|' delimiters, trimming
+// surrounding whitespace for each cell.
+func parseFields(line string) []string { // anchors kept for signature compatibility
+	if !isDataLine(line) {
+		return []string{}
+	}
+	trimmed := strings.TrimSpace(line)
+	// Remove leading and trailing pipe
+	trimmed = strings.TrimPrefix(trimmed, "|")
+	trimmed = strings.TrimSuffix(trimmed, "|")
+	raw := strings.Split(trimmed, "|")
+	result := make([]string, 0, len(raw))
+	for _, cell := range raw {
+		result = append(result, strings.TrimSpace(cell))
 	}
 	return result
 }
@@ -122,7 +136,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 					preline = line // Assume it's a partial line
 					continue
 				}
-				headers = parseFields(line, anchors)
+				headers = parseFields(line)
 				if len(headers) == 0 {
 					// Check if the line structure *looks* right but parsing failed
 					if len(strings.Split(strings.Trim(line, "|"), "|")) >= 1 {
@@ -164,7 +178,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 			}
 
 			if isDataLine(line) {
-				rowData := parseFields(line, anchors)
+				rowData := parseFields(line)
 				// Check column count consistency (optional, but good practice)
 				if len(rowData) != len(headers) {
 					// Decide how strict to be. Log a warning or return an error.
