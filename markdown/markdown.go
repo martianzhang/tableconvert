@@ -228,6 +228,25 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	writer := cfg.Writer
 	headers := table.Headers
 
+	// deal with align config: trim, default to "l", pad/truncate to headers length
+	aligns := strings.Split(align, ",")
+	for i := range aligns {
+		aligns[i] = strings.ToLower(strings.TrimSpace(aligns[i]))
+		switch aligns[i] {
+		case "l", "c", "r":
+			// valid
+		default:
+			aligns[i] = "l" // default fallback
+		}
+	}
+	if len(aligns) < len(headers) {
+		for len(aligns) < len(headers) {
+			aligns = append(aligns, "l")
+		}
+	} else if len(aligns) > len(headers) {
+		aligns = aligns[:len(headers)]
+	}
+
 	// Prepare display copies of headers and rows where escape/bold are applied
 	displayHeaders := make([]string, len(headers))
 	for i := range headers {
@@ -283,9 +302,10 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	headerRow := "|"
 	for i := range displayHeaders {
 		header := displayHeaders[i]
+		alignChar := aligns[i]
 		if pretty {
 			var cellStr string
-			switch align {
+			switch alignChar {
 			case "c":
 				cellStr = centerPad(header, columnWidths[i])
 			case "r":
@@ -303,8 +323,9 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	// --- Separator Row ---
 	separator := "|"
 	for i := 0; i < columnCounts; i++ {
+		alignChar := aligns[i]
 		var alignMarker string
-		switch align {
+		switch alignChar {
 		case "c":
 			if pretty {
 				alignMarker = fmt.Sprintf(":%s-:", strings.Repeat("-", columnWidths[i]))
@@ -335,9 +356,10 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		// Write row
 		rowLine := "|"
 		for i, cell := range row {
+			alignChar := aligns[i]
 			if pretty {
 				var cellStr string
-				switch align {
+				switch alignChar {
 				case "c":
 					cellStr = centerPad(cell, columnWidths[i])
 				case "r":
