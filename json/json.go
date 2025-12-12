@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 
 	"github.com/martianzhang/tableconvert/common"
 )
@@ -28,7 +29,11 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 		// Extract headers
 		table.Headers = make([]string, len(input[0]))
 		for i, header := range input[0] {
-			table.Headers[i] = fmt.Sprint(header)
+			if header == nil {
+				table.Headers[i] = "NULL"
+			} else {
+				table.Headers[i] = fmt.Sprint(header)
+			}
 		}
 		// Extract rows
 		for _, row := range input[1:] {
@@ -40,6 +45,9 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 					} else {
 						stringRow[i] = fmt.Sprint(row[i])
 					}
+				} else {
+					// Handle missing values
+					stringRow[i] = "NULL"
 				}
 			}
 			table.Rows = append(table.Rows, stringRow)
@@ -67,10 +75,11 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 			}
 		}
 
-		// Set headers
+		// Set headers (sorted for determinism)
 		for k := range columnData {
 			table.Headers = append(table.Headers, k)
 		}
+		sort.Strings(table.Headers)
 
 		// Fill rows
 		for i := 0; i < numRows; i++ {
@@ -78,10 +87,10 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 			for j, header := range table.Headers {
 				col := columnData[header]
 				if i < len(col) {
-					if col[j] == nil {
+					if col[i] == nil {
 						row[j] = "NULL"
 					} else {
-						row[j] = fmt.Sprint(col[j])
+						row[j] = fmt.Sprint(col[i])
 					}
 				}
 			}
@@ -94,24 +103,18 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 			return err
 		}
 
-		// Collect headers in consistent order
+		// Collect all headers and sort them for deterministic order
 		headerSet := make(map[string]struct{})
 		for _, obj := range input {
 			for key := range obj {
 				headerSet[key] = struct{}{}
 			}
 		}
-		// Use the first object to get header order
-		if len(input) > 0 {
-			for key := range input[0] {
-				table.Headers = append(table.Headers, key)
-			}
-			for key := range headerSet {
-				if !contains(table.Headers, key) {
-					table.Headers = append(table.Headers, key)
-				}
-			}
+		// Sort all headers
+		for key := range headerSet {
+			table.Headers = append(table.Headers, key)
 		}
+		sort.Strings(table.Headers)
 
 		for _, obj := range input {
 			row := make([]string, len(table.Headers))
@@ -129,16 +132,6 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	}
 
 	return nil
-}
-
-// contains checks if a string exists in a slice
-func contains(slice []string, target string) bool {
-	for _, s := range slice {
-		if s == target {
-			return true
-		}
-	}
-	return false
 }
 
 func Marshal(cfg *common.Config, table *common.Table) error {
@@ -193,9 +186,6 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 				return fmt.Errorf("row length %d does not match header length %d", len(row), len(table.Headers))
 			}
 			for i, cell := range row {
-				if i >= len(table.Headers) {
-					continue
-				}
 				header := table.Headers[i]
 				if parsing {
 					columns[header] = append(columns[header], common.InferType(cell))
