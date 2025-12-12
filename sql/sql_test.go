@@ -2,6 +2,7 @@ package sql
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/martianzhang/tableconvert/common"
@@ -94,4 +95,34 @@ func TestUnmarshalMultipleValidInsertStatements(t *testing.T) {
 	// Note: The exact handling of multiple INSERTs depends on the handleInsert implementation
 	// which isn't shown in the provided code. This test assumes it adds rows to the table.
 	assert.True(t, len(table.Rows) >= 2, "Table should contain at least 2 rows from the INSERT statements")
+}
+
+// TestUnmarshalInsertWithEscapedQuotes tests that escaped quotes are handled correctly
+func TestUnmarshalInsertWithEscapedQuotes(t *testing.T) {
+	input := "INSERT INTO table1 (name) VALUES ('Don\\'t worry');\n"
+	cfg := &common.Config{
+		Reader: strings.NewReader(input),
+	}
+	table := &common.Table{}
+
+	err := Unmarshal(cfg, table)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"name"}, table.Headers)
+	assert.Equal(t, 1, len(table.Rows))
+	assert.Equal(t, "Don't worry", table.Rows[0][0]) // Should preserve escaped quotes
+}
+
+// TestUnmarshalInsertColumnMismatch tests error handling for column mismatches
+func TestUnmarshalInsertColumnMismatch(t *testing.T) {
+	input := "INSERT INTO table1 (id, name) VALUES (1, 'a');\nINSERT INTO table1 (name, id) VALUES ('b', 2);\n"
+	cfg := &common.Config{
+		Reader: strings.NewReader(input),
+	}
+	table := &common.Table{}
+
+	err := Unmarshal(cfg, table)
+
+	assert.Error(t, err) // Should return error for column order mismatch
+	assert.Contains(t, err.Error(), "column order mismatch")
 }
