@@ -57,3 +57,25 @@ func TestUnmarshalValidSingleJSONLine(t *testing.T) {
 	assert.Equal(t, 2, len(table.Headers), "Header count doesn't match expected value")
 	assert.Equal(t, 1, len(table.Rows), "Row count doesn't match expected value")
 }
+
+// TestUnmarshalDeterministicHeaders tests that headers are in sorted order
+func TestUnmarshalDeterministicHeaders(t *testing.T) {
+	// Prepare test input with fields in different orders
+	input := `{"z": 1, "a": 2}
+{"m": 3, "z": 4}`
+	reader := bytes.NewReader([]byte(input))
+	cfg := &common.Config{
+		Reader: reader,
+	}
+	table := &common.Table{}
+
+	err := Unmarshal(cfg, table)
+
+	assert.NoError(t, err)
+	// Headers should be sorted alphabetically
+	assert.Equal(t, []string{"a", "m", "z"}, table.Headers, "Headers should be sorted for deterministic order")
+	assert.Equal(t, 2, len(table.Rows), "Row count doesn't match expected value")
+	// Check row values
+	assert.Equal(t, "2", table.Rows[0][0]) // a=2
+	assert.Equal(t, "4", table.Rows[1][2]) // z=4
+}

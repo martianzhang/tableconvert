@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"github.com/martianzhang/tableconvert/common"
 )
@@ -51,11 +52,12 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 		}
 	}
 
-	// Convert map to sorted slice of headers
+	// Convert map to sorted slice of headers for deterministic order
 	headers := make([]string, 0, len(headerMap))
 	for key := range headerMap {
 		headers = append(headers, key)
 	}
+	sort.Strings(headers)
 
 	// Convert records to rows
 	rows := make([][]string, len(records))
