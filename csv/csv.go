@@ -49,9 +49,11 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 		// Extract headers from first column
 		for i, record := range records {
 			if len(record) == 0 {
-				continue
+				// Empty record, use empty string as header to maintain length
+				headers[i] = ""
+			} else {
+				headers[i] = record[0]
 			}
-			headers[i] = record[0]
 		}
 
 		// Extract data from remaining columns
