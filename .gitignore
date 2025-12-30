@@ -28,6 +28,8 @@ go.work.sum
 feature/
 bin/
 release/
+.vscode/
+.claude/
 
 # ignore coverage files
 coverage.*

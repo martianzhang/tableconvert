@@ -66,7 +66,7 @@ func main() {
 	case "latex":
 		err = latex.Unmarshal(&cfg, &table)
 	case "jsonl", "jsonlines":
-		err = latex.Unmarshal(&cfg, &table)
+		err = jsonl.Unmarshal(&cfg, &table)
 	default:
 		err = fmt.Errorf("unsupported `--from` format: %s", cfg.From)
 	}

@@ -72,7 +72,7 @@ Each format may has its own extended arguments, for its own style. Following are
 
 | Argument          | Default | Allowed Values | Description               |
 |-------------------|---------|----------------|---------------------------|
-| align             | l       | l, c, r        | Text Alignment            |
+| align             | l       | l, c, r        | Text Alignment, columns seperate by comma |
 | bold-header       | false   | true, false    | Table Header Bold         |
 | bold-first-column | false   | true, false    | Bold first column         |
 | escape            | false   | true, false    | Escape Markdown table     |

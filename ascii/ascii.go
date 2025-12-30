@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/martianzhang/tableconvert/common"
+
+	"github.com/mattn/go-runewidth"
 )
 
 const ASCIIDefaultStyle = "box"
@@ -258,10 +260,10 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	if columnCounts == 0 {
 		return fmt.Errorf("Marshal: table must have at least one header")
 	}
-	// Calculate column widths
+	// Calculate column widths using runewidth for proper CJK support
 	columnWidths := make([]int, columnCounts)
 	for i, header := range table.Headers {
-		columnWidths[i] = len(header)
+		columnWidths[i] = runewidth.StringWidth(header)
 	}
 	// Update widths based on row data
 	for j, row := range table.Rows {
@@ -269,8 +271,9 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			return fmt.Errorf("Marshal: row %d has %d columns, but table header has %d columns", j, len(row), columnCounts)
 		}
 		for i, cell := range row {
-			if len(cell) > columnWidths[i] {
-				columnWidths[i] = len(cell)
+			cellWidth := runewidth.StringWidth(cell)
+			if cellWidth > columnWidths[i] {
+				columnWidths[i] = cellWidth
 			}
 		}
 	}
@@ -300,7 +303,8 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 
 		// Write header row
 		for i, header := range table.Headers {
-			fmt.Fprintf(writer, "| %-*s ", columnWidths[i], header)
+			paddedHeader := runewidth.FillRight(header, columnWidths[i])
+			fmt.Fprintf(writer, "| %s ", paddedHeader)
 		}
 		fmt.Fprintln(writer, "|")
 
@@ -309,7 +313,8 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		// --- Data Rows ---
 		for _, row := range table.Rows {
 			for i, cell := range row {
-				fmt.Fprintf(writer, "| %-*s ", columnWidths[i], cell)
+				paddedCell := runewidth.FillRight(cell, columnWidths[i])
+				fmt.Fprintf(writer, "| %s ", paddedCell)
 			}
 			fmt.Fprintln(writer, "|")
 		}
@@ -329,7 +334,8 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 
 		// Write header row
 		for i, header := range table.Headers {
-			fmt.Fprintf(writer, "%s %-*s ", style, columnWidths[i], header)
+			paddedHeader := runewidth.FillRight(header, columnWidths[i])
+			fmt.Fprintf(writer, "%s %s ", style, paddedHeader)
 		}
 		fmt.Fprintln(writer, style)
 
@@ -338,7 +344,8 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		// --- Data Rows ---
 		for _, row := range table.Rows {
 			for i, cell := range row {
-				fmt.Fprintf(writer, "%s %-*s ", style, columnWidths[i], cell)
+				paddedCell := runewidth.FillRight(cell, columnWidths[i])
+				fmt.Fprintf(writer, "%s %s ", style, paddedCell)
 			}
 			fmt.Fprintln(writer, style)
 		}

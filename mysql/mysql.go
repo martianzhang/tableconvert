@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/martianzhang/tableconvert/common"
+
+	"github.com/mattn/go-runewidth"
 )
 
 // isBorderLine checks if a line is a table border (e.g., "+---+---+").
@@ -266,10 +268,10 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	if columnCount == 0 {
 		return fmt.Errorf("Marshal: table must have at least one header")
 	}
-	// Calculate column widths
+	// Calculate column widths using runewidth for proper CJK support
 	columnWidths := make([]int, columnCount)
 	for i, header := range table.Headers {
-		columnWidths[i] = len(header)
+		columnWidths[i] = runewidth.StringWidth(header)
 	}
 	// Update widths based on row data
 	for j, row := range table.Rows {
@@ -277,8 +279,9 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			return fmt.Errorf("Marshal: %d row has %d columns, but table has %d", j, len(row), columnCount)
 		}
 		for i, cell := range row {
-			if len(cell) > columnWidths[i] {
-				columnWidths[i] = len(cell)
+			cellWidth := runewidth.StringWidth(cell)
+			if cellWidth > columnWidths[i] {
+				columnWidths[i] = cellWidth
 			}
 		}
 	}
@@ -291,7 +294,8 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	fmt.Fprintln(writer, "+")
 	// Write header row
 	for i, header := range table.Headers {
-		fmt.Fprintf(writer, "| %-*s ", columnWidths[i], header)
+		paddedHeader := runewidth.FillRight(header, columnWidths[i])
+		fmt.Fprintf(writer, "| %s ", paddedHeader)
 	}
 	fmt.Fprintln(writer, "|")
 	// --- Separator Row ---
@@ -302,7 +306,8 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	// --- Data Rows ---
 	for _, row := range table.Rows {
 		for i, cell := range row {
-			fmt.Fprintf(writer, "| %-*s ", columnWidths[i], cell)
+			paddedCell := runewidth.FillRight(cell, columnWidths[i])
+			fmt.Fprintf(writer, "| %s ", paddedCell)
 		}
 		fmt.Fprintln(writer, "|")
 	}
