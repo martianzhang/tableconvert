@@ -198,3 +198,36 @@ func GetProjectRootPath() (string, error) {
 
 	return strings.TrimSuffix(rootPath, "/") + "/", nil
 }
+
+// ApplyTransformations applies data transformations to the table based on configuration.
+// Transformations are applied in a specific order: transpose -> delete-empty -> deduplicate -> case transformations
+func (c *Config) ApplyTransformations(table *Table) {
+	if table == nil {
+		return
+	}
+
+	// 1. Transpose (columns to rows, rows to columns)
+	if c.GetExtensionBool("transpose", false) {
+		Transpose(table)
+	}
+
+	// 2. Delete empty rows
+	if c.GetExtensionBool("delete-empty", false) {
+		DeleteEmptyRows(table)
+	}
+
+	// 3. Deduplicate rows
+	if c.GetExtensionBool("deduplicate", false) {
+		DeduplicateRows(table)
+	}
+
+	// 4. Case transformations (uppercase, lowercase, capitalize)
+	// Note: These are mutually exclusive, priority: uppercase > lowercase > capitalize
+	if c.GetExtensionBool("uppercase", false) {
+		Uppercase(table)
+	} else if c.GetExtensionBool("lowercase", false) {
+		Lowercase(table)
+	} else if c.GetExtensionBool("capitalize", false) {
+		Capitalize(table)
+	}
+}

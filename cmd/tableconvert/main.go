@@ -75,6 +75,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Apply transformations
+	cfg.ApplyTransformations(&table)
+
 	// Writer
 	switch strings.ToLower(cfg.To) {
 	case "markdown", "md":
