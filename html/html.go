@@ -27,17 +27,6 @@ const (
 {{end}}</table>`
 
 	minfyTableTemplate = `{{if .UseThead}}<table><thead><tr>{{range .Headers}}<th>{{.}}</th>{{end}}</tr></thead><tbody>{{range .Rows}}<tr>{{range .}}<td>{{.}}</td>{{end}}</tr>{{end}}</tbody></table>{{else}}<table><tr>{{range .Headers}}<th>{{.}}</th>{{end}}</tr>{{range .Rows}}<tr>{{range .}}<td>{{.}}</td>{{end}}</tr>{{end}}</table>{{end}}`
-
-	// Transposed templates
-	transposedDivTemplate = `<div class="table">
-{{range $i, $header := .Headers}}  <div class="tr"><div class="th">{{$header}}</div>{{range $.Rows}}<div class="td">{{index . $i}}</div>{{end}}</div>
-{{end}}</div>`
-	transposedMinifyDivTemplate = `<div class="table">{{range $i, $header := .Headers}}<div class="tr"><div class="th">{{$header}}</div>{{range $.Rows}}<div class="td">{{index . $i}}</div>{{end}}</div>{{end}}</div>`
-
-	transposedTableTemplate = `<table>
-{{range $i, $header := .Headers}}  <tr><th>{{$header}}</th>{{range $.Rows}}<td>{{index . $i}}</td>{{end}}</tr>
-{{end}}</table>`
-	transposedMinifyTableTemplate = `<table>{{range $i, $header := .Headers}}<tr><th>{{$header}}</th>{{range $.Rows}}<td>{{index . $i}}</td>{{end}}</tr>{{end}}</table>`
 )
 
 // Marshal converts a table structure to HTML format and writes it to the config's Writer.
@@ -63,7 +52,6 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	useDiv := cfg.GetExtensionBool("div", false)
 	minify := cfg.GetExtensionBool("minify", false)
 	useThead := cfg.GetExtensionBool("thead", false)
-	transpose := cfg.GetExtensionBool("transpose", false)
 
 	writer := cfg.Writer
 
@@ -71,31 +59,15 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	var templateStr string
 	if minify {
 		if useDiv {
-			if transpose {
-				templateStr = transposedMinifyDivTemplate
-			} else {
-				templateStr = minifyDivTemplate
-			}
+			templateStr = minifyDivTemplate
 		} else {
-			if transpose {
-				templateStr = transposedMinifyTableTemplate
-			} else {
-				templateStr = minfyTableTemplate
-			}
+			templateStr = minfyTableTemplate
 		}
 	} else {
 		if useDiv {
-			if transpose {
-				templateStr = transposedDivTemplate
-			} else {
-				templateStr = divTemplate
-			}
+			templateStr = divTemplate
 		} else {
-			if transpose {
-				templateStr = transposedTableTemplate
-			} else {
-				templateStr = tableTemplate
-			}
+			templateStr = tableTemplate
 		}
 	}
 
@@ -109,7 +81,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		Headers  []string
 		Rows     [][]string
 	}{
-		UseThead: useThead && !transpose, // Disable thead when transposed
+		UseThead: useThead,
 		Headers:  table.Headers,
 		Rows:     table.Rows,
 	}

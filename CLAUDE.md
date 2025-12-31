@@ -39,7 +39,7 @@ The codebase follows a **plugin architecture** with a central dispatcher pattern
 ### Build and Run
 
 ```bash
-# Build the CLI
+# Build the CLI (generates bin/tableconvert or bin/tableconvert.exe)
 make build
 
 # Run tests
@@ -51,6 +51,11 @@ go test ./mysql/
 
 # Run with verbose output
 go test -v ./...
+
+# Run the built binary
+./bin/tableconvert --help
+# On Windows:
+# bin\tableconvert.exe --help
 ```
 
 ### Adding a New Format
@@ -81,15 +86,29 @@ Format-specific options are passed via `Config.Extension` map:
 - `cfg.GetExtensionString(key, default)` - for string values
 - `cfg.GetExtensionInt(key, default)` - for integer values
 
-See `docs/arguments.md` for all format-specific parameters.
+#### Viewing Format Parameters
+
+The CLI provides built-in help for format-specific parameters:
+
+```bash
+# Show all formats and their parameters
+./bin/tableconvert --help-formats
+
+# Show parameters for a specific format
+./bin/tableconvert --help-format=markdown
+./bin/tableconvert --help-format=csv
+```
+
+See `docs/arguments.md` for complete parameter reference.
 
 ## Important Files
 
 - `cmd/tableconvert/main.go` - CLI entry point and format dispatcher
 - `common/types.go` - Core `Table` struct and type definitions
-- `common/config.go` - Config parsing and format detection
-- `common/escape.go` - String escaping utilities for various formats
+- `common/config.go` - Config parsing, format detection, and help functions
+- `common/format_params.go` - Registry of all format-specific parameters
 - `common/usage.txt` - Embedded CLI help text
+- `common/escape.go` - String escaping utilities for various formats
 - `docs/arguments.md` - Extension parameter reference
 
 ## Format-Specific Notes

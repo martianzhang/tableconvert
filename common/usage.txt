@@ -10,6 +10,8 @@ Options:
   --template={PATH}      Template file path
   --verbose|-v           Enable verbose output
   -h|--help              Show this help message
+  --help-formats         Show all supported formats and their parameters
+  --help-format={FORMAT} Show parameters for a specific format (e.g. --help-format=markdown)
 
 Data Transformation Options:
   --transpose            Transpose the table (swap rows and columns)
@@ -19,16 +21,29 @@ Data Transformation Options:
   --lowercase            Convert all text to lowercase
   --capitalize           Capitalize the first letter of each cell
 
+Format-Specific Options:
+  Each format supports its own extension parameters. Examples:
+    --align=l,c,r         For markdown: column alignment
+    --style=box           For ascii: table style (box, plus, dot, bubble)
+    --delimiter=TAB       For csv: value delimiter
+    --format=object       For json: output format (object, 2d, column, keyed)
+    --minify=true         For html/json/xml: minify output
+    --table=mytable       For sql: table name
+    --template=file.tmpl  For tmpl: template file path
+
 Examples:
   # Convert from CSV to JSON
   tableconvert --from=csv --to=json --file=input.csv --result=output.json
   # Read from stdin and write to stdout
   cat input.csv | tableconvert --from=csv --to=json
-  # Convert from MySQL to Markdown using template
-  tableconvert --from=mysql --to=template --file=input.csv --tempalte=markdown.tmpl
+  # Convert from MySQL to Markdown with options
+  tableconvert --from=mysql --to=markdown --file=input.csv --bold-header --align=l,c,r
   # Transpose and capitalize
   tableconvert --from=csv --to=markdown --file=input.csv --transpose --capitalize
+  # Show help for markdown format
+  tableconvert --help-format=markdown
+  # Show all formats and their parameters
+  tableconvert --help-formats
 
-Extension Arguments:
-  For eash format there are many extension config, please refer to:
+For complete parameter reference:
   https://github.com/martianzhang/tableconvert/blob/main/docs/arguments.md

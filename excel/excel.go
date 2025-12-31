@@ -93,108 +93,53 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	// Text format configuration
 	textFormat := cfg.GetExtensionBool("text-format", true)
 
-	// Transpose configuration
-	transpose := cfg.GetExtensionBool("transpose", false)
+	// Write headers
+	for colIndex, header := range table.Headers {
+		cell, err := excelize.CoordinatesToCellName(colIndex+1, 1)
+		if err != nil {
+			return err
+		}
+		if err := f.SetCellValue(sheetName, cell, header); err != nil {
+			return err
+		}
+	}
 
-	if transpose {
-		// Write headers
-		for colIndex := range table.Headers {
-			cell, err := excelize.CoordinatesToCellName(1, colIndex+1)
+	// Write data
+	for rowIndex, row := range table.Rows {
+		for colIndex, value := range row {
+			cell, err := excelize.CoordinatesToCellName(colIndex+1, rowIndex+2)
 			if err != nil {
 				return err
 			}
-			if err := f.SetCellValue(sheetName, cell, table.Headers[colIndex]); err != nil {
-				return err
-			}
-		}
 
-		// Write data
-		for rowIndex, row := range table.Rows {
-			for colIndex, value := range row {
-				cell, err := excelize.CoordinatesToCellName(rowIndex+2, colIndex+1)
+			if textFormat {
+				// Set cell format to text
+				style, err := f.NewStyle(&excelize.Style{
+					NumFmt: 49, // 49 is the built-in text format
+				})
 				if err != nil {
 					return err
 				}
-
-				if textFormat {
-					// Set cell format to text
-					style, err := f.NewStyle(&excelize.Style{
-						NumFmt: 49, // 49 is the built-in text format
-					})
-					if err != nil {
-						return err
-					}
-					if err := f.SetCellStyle(sheetName, cell, cell, style); err != nil {
-						return err
-					}
-				}
-
-				if err := f.SetCellValue(sheetName, cell, value); err != nil {
+				if err := f.SetCellStyle(sheetName, cell, cell, style); err != nil {
 					return err
 				}
 			}
-		}
-	} else {
-		// Write headers
-		for colIndex, header := range table.Headers {
-			cell, err := excelize.CoordinatesToCellName(colIndex+1, 1)
-			if err != nil {
+
+			if err := f.SetCellValue(sheetName, cell, value); err != nil {
 				return err
-			}
-			if err := f.SetCellValue(sheetName, cell, header); err != nil {
-				return err
-			}
-		}
-
-		// Write data
-		for rowIndex, row := range table.Rows {
-			for colIndex, value := range row {
-				cell, err := excelize.CoordinatesToCellName(colIndex+1, rowIndex+2)
-				if err != nil {
-					return err
-				}
-
-				if textFormat {
-					// Set cell format to text
-					style, err := f.NewStyle(&excelize.Style{
-						NumFmt: 49, // 49 is the built-in text format
-					})
-					if err != nil {
-						return err
-					}
-					if err := f.SetCellStyle(sheetName, cell, cell, style); err != nil {
-						return err
-					}
-				}
-
-				if err := f.SetCellValue(sheetName, cell, value); err != nil {
-					return err
-				}
 			}
 		}
 	}
 
 	// Auto adjust column widths if enabled
 	if autoWidth {
-		if transpose {
-			for colIndex := range table.Rows {
-				colName, err := excelize.ColumnNumberToName(colIndex + 2)
-				if err != nil {
-					return err
-				}
-				if err := f.SetColWidth(sheetName, colName, colName, 0); err != nil {
-					return err
-				}
+		for colIndex := range table.Headers {
+			colName, err := excelize.ColumnNumberToName(colIndex + 1)
+			if err != nil {
+				return err
 			}
-		} else {
-			for colIndex := range table.Headers {
-				colName, err := excelize.ColumnNumberToName(colIndex + 1)
-				if err != nil {
-					return err
-				}
-				if err := f.SetColWidth(sheetName, colName, colName, 0); err != nil {
-					return err
-				}
+			if err := f.SetColWidth(sheetName, colName, colName, 0); err != nil {
+				return err
 			}
 		}
 	}

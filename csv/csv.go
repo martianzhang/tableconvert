@@ -106,50 +106,15 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		// default remains comma
 	}
 
-	// Handle transpose option
-	transpose := cfg.GetExtensionBool("transpose", false)
-	if transpose {
-		if len(table.Headers) == 0 {
-			return fmt.Errorf("no headers available for transpose mode")
-		}
+	// Default behavior: first row is headers
+	if err := csvWriter.Write(table.Headers); err != nil {
+		return fmt.Errorf("failed to write headers: %w", err)
+	}
 
-		// Create records with headers as first column
-		records := make([][]string, len(table.Headers))
-
-		// First column is headers
-		for i, header := range table.Headers {
-			record := make([]string, len(table.Rows)+1)
-			record[0] = header
-
-			// Fill in row values for this header
-			for j, row := range table.Rows {
-				if i < len(row) {
-					record[j+1] = row[i]
-				} else {
-					record[j+1] = "" // pad with empty string if column is missing
-				}
-			}
-
-			records[i] = record
-		}
-
-		// Write all records
-		for _, record := range records {
-			if err := csvWriter.Write(record); err != nil {
-				return fmt.Errorf("failed to write row: %w", err)
-			}
-		}
-	} else {
-		// Default behavior: first row is headers
-		if err := csvWriter.Write(table.Headers); err != nil {
-			return fmt.Errorf("failed to write headers: %w", err)
-		}
-
-		// Write data rows
-		for _, row := range table.Rows {
-			if err := csvWriter.Write(row); err != nil {
-				return fmt.Errorf("failed to write row: %w", err)
-			}
+	// Write data rows
+	for _, row := range table.Rows {
+		if err := csvWriter.Write(row); err != nil {
+			return fmt.Errorf("failed to write row: %w", err)
 		}
 	}
 

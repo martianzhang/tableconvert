@@ -10,17 +10,6 @@ import (
 	"strings"
 )
 
-type Config struct {
-	From      string
-	To        string
-	File      string
-	Reader    io.Reader
-	Result    string
-	Writer    io.Writer
-	Verbose   bool
-	Extension map[string]string
-}
-
 //go:embed usage.txt
 var usageText string
 
@@ -28,9 +17,206 @@ func Usage() {
 	fmt.Fprint(os.Stderr, usageText)
 }
 
+// ShowFormatsHelp displays help for all supported formats and their parameters
+func ShowFormatsHelp() {
+	fmt.Fprintln(os.Stderr, "Supported Formats and Their Parameters:")
+	fmt.Fprintln(os.Stderr, "========================================")
+	fmt.Fprintln(os.Stderr, "")
+
+	// Get all formats in a consistent order
+	formats := []string{"ascii", "csv", "excel", "html", "json", "jsonl", "latex", "markdown", "mediawiki", "sql", "tmpl", "xml"}
+
+	for _, format := range formats {
+		params := GetFormatParams(format)
+		if len(params) > 0 {
+			fmt.Fprintf(os.Stderr, "## %s\n\n", format)
+
+			// Calculate column widths for this format
+			maxParamLen := len("Parameter")
+			maxDefaultLen := len("Default")
+			maxValuesLen := len("Allowed Values")
+			maxDescLen := len("Description")
+
+			for _, p := range params {
+				if len(p.Name) > maxParamLen {
+					maxParamLen = len(p.Name)
+				}
+				if len(p.DefaultValue) > maxDefaultLen {
+					maxDefaultLen = len(p.DefaultValue)
+				}
+				if len(p.AllowedValues) > maxValuesLen {
+					maxValuesLen = len(p.AllowedValues)
+				}
+				if len(p.Description) > maxDescLen {
+					maxDescLen = len(p.Description)
+				}
+			}
+
+			// Print header
+			fmt.Fprintf(os.Stderr, "%-*s  %-*s  %-*s  %-*s\n",
+				maxParamLen, "Parameter",
+				maxDefaultLen, "Default",
+				maxValuesLen, "Allowed Values",
+				maxDescLen, "Description")
+
+			// Print separator
+			fmt.Fprintf(os.Stderr, "%s  %s  %s  %s\n",
+				strings.Repeat("-", maxParamLen),
+				strings.Repeat("-", maxDefaultLen),
+				strings.Repeat("-", maxValuesLen),
+				strings.Repeat("-", maxDescLen))
+
+			// Print rows
+			for _, param := range params {
+				fmt.Fprintf(os.Stderr, "%-*s  %-*s  %-*s  %-*s\n",
+					maxParamLen, param.Name,
+					maxDefaultLen, param.DefaultValue,
+					maxValuesLen, param.AllowedValues,
+					maxDescLen, param.Description)
+			}
+			fmt.Fprintln(os.Stderr, "")
+		}
+	}
+
+	// Show global transformation parameters
+	fmt.Fprintln(os.Stderr, "## Global Transformation Parameters")
+	fmt.Fprintln(os.Stderr, "These parameters work with all formats:")
+	fmt.Fprintln(os.Stderr, "")
+
+	// Calculate column widths for global params
+	maxParamLen := len("Parameter")
+	maxDefaultLen := len("Default")
+	maxDescLen := len("Description")
+
+	for _, p := range GlobalTransformParams {
+		if len(p.Name) > maxParamLen {
+			maxParamLen = len(p.Name)
+		}
+		if len(p.DefaultValue) > maxDefaultLen {
+			maxDefaultLen = len(p.DefaultValue)
+		}
+		if len(p.Description) > maxDescLen {
+			maxDescLen = len(p.Description)
+		}
+	}
+
+	// Print header
+	fmt.Fprintf(os.Stderr, "%-*s  %-*s  %-*s\n",
+		maxParamLen, "Parameter",
+		maxDefaultLen, "Default",
+		maxDescLen, "Description")
+
+	// Print separator
+	fmt.Fprintf(os.Stderr, "%s  %s  %s\n",
+		strings.Repeat("-", maxParamLen),
+		strings.Repeat("-", maxDefaultLen),
+		strings.Repeat("-", maxDescLen))
+
+	// Print rows
+	for _, param := range GlobalTransformParams {
+		fmt.Fprintf(os.Stderr, "%-*s  %-*s  %-*s\n",
+			maxParamLen, param.Name,
+			maxDefaultLen, param.DefaultValue,
+			maxDescLen, param.Description)
+	}
+
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, "Usage examples:")
+	fmt.Fprintln(os.Stderr, "  tableconvert --from=csv --to=markdown --align=l,c,r --bold-header")
+	fmt.Fprintln(os.Stderr, "  tableconvert --from=mysql --to=json --format=2d --minify")
+}
+
+// ShowFormatHelp displays help for a specific format
+func ShowFormatHelp(format string) {
+	// Normalize format name
+	format = strings.ToLower(format)
+
+	// Handle aliases
+	switch format {
+	case "md":
+		format = "markdown"
+	case "xlsx":
+		format = "excel"
+	case "jsonlines", "jsonl":
+		format = "jsonl"
+	case "tracwiki":
+		format = "twiki"
+	case "template":
+		format = "tmpl"
+	}
+
+	params := GetFormatParams(format)
+
+	if len(params) == 0 {
+		fmt.Fprintf(os.Stderr, "Unknown format: %s\n\n", format)
+		fmt.Fprintln(os.Stderr, "Use --help-formats to see all supported formats.")
+		os.Exit(1)
+	}
+
+	fmt.Fprintf(os.Stderr, "Format-Specific Parameters for %s:\n", strings.ToUpper(format))
+	fmt.Fprintln(os.Stderr, strings.Repeat("=", 50))
+	fmt.Fprintln(os.Stderr, "")
+
+	// Calculate column widths for pretty alignment
+	maxParamLen := len("Parameter")
+	maxDefaultLen := len("Default")
+	maxValuesLen := len("Allowed Values")
+	maxDescLen := len("Description")
+
+	for _, p := range params {
+		if len(p.Name) > maxParamLen {
+			maxParamLen = len(p.Name)
+		}
+		if len(p.DefaultValue) > maxDefaultLen {
+			maxDefaultLen = len(p.DefaultValue)
+		}
+		if len(p.AllowedValues) > maxValuesLen {
+			maxValuesLen = len(p.AllowedValues)
+		}
+		if len(p.Description) > maxDescLen {
+			maxDescLen = len(p.Description)
+		}
+	}
+
+	// Print header
+	fmt.Fprintf(os.Stderr, "%-*s  %-*s  %-*s  %-*s\n",
+		maxParamLen, "Parameter",
+		maxDefaultLen, "Default",
+		maxValuesLen, "Allowed Values",
+		maxDescLen, "Description")
+
+	// Print separator
+	fmt.Fprintf(os.Stderr, "%s  %s  %s  %s\n",
+		strings.Repeat("-", maxParamLen),
+		strings.Repeat("-", maxDefaultLen),
+		strings.Repeat("-", maxValuesLen),
+		strings.Repeat("-", maxDescLen))
+
+	// Print rows
+	for _, param := range params {
+		fmt.Fprintf(os.Stderr, "%-*s  %-*s  %-*s  %-*s\n",
+			maxParamLen, param.Name,
+			maxDefaultLen, param.DefaultValue,
+			maxValuesLen, param.AllowedValues,
+			maxDescLen, param.Description)
+	}
+
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, "Global Transformation Parameters (also available):")
+	fmt.Fprintln(os.Stderr, "  --transpose, --delete-empty, --deduplicate, --uppercase, --lowercase, --capitalize")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintf(os.Stderr, "Usage Example:\n")
+	fmt.Fprintf(os.Stderr, "  tableconvert --from=%s --to=csv", format)
+	for i, param := range params {
+		if i < 2 { // Show first 2 params as examples
+			fmt.Fprintf(os.Stderr, " --%s=%s", param.Name, param.DefaultValue)
+		}
+	}
+	fmt.Fprintln(os.Stderr, "")
+}
+
 // ParseConfig parses arguments in format "--key=value" or "--key value" and returns a key-value map
 func ParseConfig(args []string) (Config, error) {
-	var err error
 	configs := make(map[string]string)
 	for i, arg := range args {
 		// Only process arguments starting with "--"
@@ -75,41 +261,14 @@ func ParseConfig(args []string) (Config, error) {
 		case "h", "help":
 			Usage()
 			os.Exit(0)
+		case "help-formats":
+			ShowFormatsHelp()
+			os.Exit(0)
+		case "help-format":
+			ShowFormatHelp(v)
+			os.Exit(0)
 		default:
 			cfg.Extension[k] = v
-		}
-	}
-
-	// Determine input target (Reader)
-	if cfg.File != "" {
-		// Check if file exists
-		if _, err := os.Stat(cfg.File); os.IsNotExist(err) {
-			return cfg, fmt.Errorf("file does not exist: %s", cfg.File)
-		}
-
-		// Try to open file
-		cfg.Reader, err = os.Open(cfg.File)
-		if err != nil {
-			return cfg, fmt.Errorf("failed to open file: %v", err)
-		}
-	} else {
-		cfg.Reader = os.Stdin
-	}
-
-	// Auto detect `--from` and `--to` format
-	if cfg.From == "" && cfg.File != "" {
-		if ext := DetectTableFormatByExtension(cfg.File); ext != "" {
-			cfg.From = ext
-		} else {
-			format, err := DetectTableFormatByData(cfg.Reader)
-			if err != nil {
-				cfg.From = format
-			}
-		}
-	}
-	if cfg.To == "" && cfg.Result != "" {
-		if ext := DetectTableFormatByExtension(cfg.Result); ext != "" {
-			cfg.To = ext
 		}
 	}
 
@@ -118,18 +277,47 @@ func ParseConfig(args []string) (Config, error) {
 		return cfg, fmt.Errorf("must provide -f|--from and -t|--to parameters")
 	}
 
+	// Determine input target (Reader)
+	if cfg.File != "" {
+		// Check if file exists
+		if _, err := os.Stat(cfg.File); os.IsNotExist(err) {
+			return cfg, fmt.Errorf("file does not exist: %s", cfg.File)
+		}
+		// Open file for reading
+		file, err := os.Open(cfg.File)
+		if err != nil {
+			return cfg, fmt.Errorf("failed to open file: %w", err)
+		}
+		cfg.Reader = file
+	} else {
+		// Use stdin
+		cfg.Reader = os.Stdin
+	}
+
 	// Determine output destination (Writer)
 	if cfg.Result != "" {
 		file, err := os.Create(cfg.Result)
 		if err != nil {
 			return cfg, err
 		}
-		cfg.Writer = file // Set output to file
+		cfg.Writer = file
 	} else {
-		cfg.Writer = os.Stdout // Set output to standard output
+		cfg.Writer = os.Stdout
 	}
 
 	return cfg, nil
+}
+
+// Config holds configuration, reader/writer, and extension parameters
+type Config struct {
+	From      string
+	To        string
+	File      string
+	Result    string
+	Verbose   bool
+	Reader    io.Reader
+	Writer    io.Writer
+	Extension map[string]string
 }
 
 // GetExtensionBool gets a boolean value from Extension with default
