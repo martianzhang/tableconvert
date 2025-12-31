@@ -88,6 +88,190 @@ anything else after the table is ignored
 	assert.Equal(t, []string{"C", "The Ugly", "120"}, table.Rows[2])
 }
 
+func TestUnmarshalEmptyCells(t *testing.T) {
+	// Test empty cells are preserved
+	input := `+----+----+----+
+| A  | B  | C  |
++----+----+----+
+| 1  |    | 3  |
++----+----+----+`
+
+	cfg := &common.Config{
+		Reader: bytes.NewBufferString(input),
+	}
+	var table common.Table
+	err := Unmarshal(cfg, &table)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"A", "B", "C"}, table.Headers)
+	assert.Equal(t, 1, len(table.Rows))
+	assert.Equal(t, []string{"1", "", "3"}, table.Rows[0])
+}
+
+func TestUnmarshalHeadersOnly(t *testing.T) {
+	// Test table with headers but no data rows
+	input := `+----+----+
+| A  | B  |
++----+----+`
+
+	cfg := &common.Config{
+		Reader: bytes.NewBufferString(input),
+	}
+	var table common.Table
+	err := Unmarshal(cfg, &table)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"A", "B"}, table.Headers)
+	assert.Equal(t, 0, len(table.Rows))
+}
+
+func TestUnmarshalMissingBottomBorder(t *testing.T) {
+	// Test table without bottom border (should be allowed)
+	input := `+----+----+
+| A  | B  |
++----+----+
+| 1  | 2  |`
+
+	cfg := &common.Config{
+		Reader: bytes.NewBufferString(input),
+	}
+	var table common.Table
+	err := Unmarshal(cfg, &table)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"A", "B"}, table.Headers)
+	assert.Equal(t, 1, len(table.Rows))
+	assert.Equal(t, []string{"1", "2"}, table.Rows[0])
+}
+
+func TestUnmarshalColumnMismatch(t *testing.T) {
+	// Test that column count mismatches are detected
+	input := `+----+----+
+| A  | B  |
++----+----+
+| 1  | 2  | 3  |
++----+----+`
+
+	cfg := &common.Config{
+		Reader: bytes.NewBufferString(input),
+	}
+	var table common.Table
+	err := Unmarshal(cfg, &table)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "column count")
+}
+
+func TestUnmarshalPipesInContent(t *testing.T) {
+	// Test that pipes in content are detected as errors
+	// MySQL format doesn't support pipes in content
+	input := `+----+----+
+| A  | B  |
++----+----+
+| 1  | 2|3|
++----+----+`
+
+	cfg := &common.Config{
+		Reader: bytes.NewBufferString(input),
+	}
+	var table common.Table
+	err := Unmarshal(cfg, &table)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "column count")
+}
+
+func TestMarshalEmptyRows(t *testing.T) {
+	// Test that marshal with no rows doesn't output extra separator
+	table := &common.Table{
+		Headers: []string{"A", "B"},
+		Rows:    [][]string{},
+	}
+
+	var buf bytes.Buffer
+	cfg := &common.Config{
+		Writer: &buf,
+	}
+
+	err := Marshal(cfg, table)
+	assert.NoError(t, err)
+
+	output := buf.String()
+	expected := `+---+---+
+| A | B |
++---+---+
+`
+
+	assert.Equal(t, expected, output)
+}
+
+func TestMarshalNilTable(t *testing.T) {
+	// Test nil table
+	var buf bytes.Buffer
+	cfg := &common.Config{
+		Writer: &buf,
+	}
+
+	err := Marshal(cfg, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot be nil")
+}
+
+func TestMarshalEmptyHeaders(t *testing.T) {
+	// Test empty headers
+	table := &common.Table{
+		Headers: []string{},
+		Rows:    [][]string{},
+	}
+
+	var buf bytes.Buffer
+	cfg := &common.Config{
+		Writer: &buf,
+	}
+
+	err := Marshal(cfg, table)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "at least one header")
+}
+
+func TestMarshalColumnMismatch(t *testing.T) {
+	// Test column count mismatch
+	table := &common.Table{
+		Headers: []string{"A", "B"},
+		Rows:    [][]string{{"1"}},
+	}
+
+	var buf bytes.Buffer
+	cfg := &common.Config{
+		Writer: &buf,
+	}
+
+	err := Marshal(cfg, table)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "columns")
+}
+
+func TestMarshalPipesInContent(t *testing.T) {
+	// Test that pipes in content are output as-is
+	// Note: This will create output that cannot be parsed back
+	table := &common.Table{
+		Headers: []string{"A", "B"},
+		Rows:    [][]string{{"1", "2|3"}},
+	}
+
+	var buf bytes.Buffer
+	cfg := &common.Config{
+		Writer: &buf,
+	}
+
+	err := Marshal(cfg, table)
+	assert.NoError(t, err)
+
+	output := buf.String()
+	// Should contain the pipe in the output
+	assert.Contains(t, output, "2|3")
+}
+
 func TestMarshal(t *testing.T) {
 	tests := []struct {
 		name     string

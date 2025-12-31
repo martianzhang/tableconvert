@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"io"
+	"reflect"
 )
 
 // UnmarshalFunc is a function type that parses input data into a Table
@@ -126,7 +127,20 @@ func ValidateIO(cfg *Config) error {
 // CopyReaderToWriter is a utility function that copies data from reader to writer
 // Useful for passthrough scenarios or testing
 func CopyReaderToWriter(reader io.Reader, writer io.Writer) error {
-	if reader == nil || writer == nil {
+	// Check for nil using reflection to handle typed nil pointers
+	// This handles the case where a typed nil pointer (e.g., *bytes.Buffer(nil))
+	// is passed to an interface parameter
+	if reader == nil {
+		return fmt.Errorf("reader and writer must not be nil")
+	}
+	if readerVal := reflect.ValueOf(reader); readerVal.IsValid() && readerVal.Kind() == reflect.Ptr && readerVal.IsNil() {
+		return fmt.Errorf("reader and writer must not be nil")
+	}
+
+	if writer == nil {
+		return fmt.Errorf("reader and writer must not be nil")
+	}
+	if writerVal := reflect.ValueOf(writer); writerVal.IsValid() && writerVal.Kind() == reflect.Ptr && writerVal.IsNil() {
 		return fmt.Errorf("reader and writer must not be nil")
 	}
 

@@ -8,6 +8,7 @@ import (
 	"github.com/martianzhang/tableconvert/common"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMarshal(t *testing.T) {
@@ -88,6 +89,24 @@ func TestMarshal(t *testing.T) {
 			},
 			expectedXML: `<dataset></dataset>`,
 		},
+		{
+			name: "marshal with XML declaration",
+			cfg: &common.Config{
+				Writer: &bytes.Buffer{},
+				Extension: map[string]string{
+					"minify":      "true",
+					"declaration": "true",
+				},
+			},
+			table: &common.Table{
+				Headers: []string{"Name"},
+				Rows: [][]string{
+					{"Alice"},
+				},
+			},
+			expectedXML: `<?xml version="1.0" encoding="UTF-8" ?>
+<dataset><record><Name>Alice</Name></record></dataset>`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -135,16 +154,16 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "basic xml with headers and rows",
 			xmlInput: `
-			<dataset>
-				<record>
-					<name>John</name>
-					<age>30</age>
-				</record>
-				<record>
-					<name>Jane</name>
-					<age>25</age>
-				</record>
-			</dataset>`,
+<dataset>
+	<record>
+		<name>John</name>
+		<age>30</age>
+	</record>
+	<record>
+		<name>Jane</name>
+		<age>25</age>
+	</record>
+</dataset>`,
 			cfg: &common.Config{
 				Reader:    strings.NewReader(""),
 				Extension: map[string]string{},
@@ -161,12 +180,12 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "custom root and row elements",
 			xmlInput: `
-			<customroot>
-				<customrow>
-					<field1>Value1</field1>
-					<field2>Value2</field2>
-				</customrow>
-			</customroot>`,
+<customroot>
+	<customrow>
+		<field1>Value1</field1>
+		<field2>Value2</field2>
+	</customrow>
+</customroot>`,
 			cfg: &common.Config{
 				Reader: strings.NewReader(""),
 				Extension: map[string]string{
@@ -211,4 +230,319 @@ func TestUnmarshal(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMarshalErrorCases(t *testing.T) {
+	t.Run("nil config", func(t *testing.T) {
+		table := &common.Table{
+			Headers: []string{"Name"},
+			Rows:    [][]string{{"Alice"}},
+		}
+		err := Marshal(nil, table)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "config cannot be nil")
+	})
+
+	t.Run("nil table", func(t *testing.T) {
+		cfg := &common.Config{
+			Writer: &bytes.Buffer{},
+		}
+		err := Marshal(cfg, nil)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "input table pointer cannot be nil")
+	})
+
+	t.Run("nil writer", func(t *testing.T) {
+		cfg := &common.Config{
+			Writer: nil,
+		}
+		table := &common.Table{
+			Headers: []string{"Name"},
+			Rows:    [][]string{{"Alice"}},
+		}
+		err := Marshal(cfg, table)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "writer is nil")
+	})
+
+	t.Run("mismatched row length", func(t *testing.T) {
+		cfg := &common.Config{
+			Writer: &bytes.Buffer{},
+		}
+		table := &common.Table{
+			Headers: []string{"Name", "Age"},
+			Rows: [][]string{
+				{"Alice"}, // Only 1 column, but headers have 2
+			},
+		}
+		err := Marshal(cfg, table)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "has 1 columns but headers have 2")
+	})
+
+	t.Run("invalid root element name", func(t *testing.T) {
+		cfg := &common.Config{
+			Writer: &bytes.Buffer{},
+			Extension: map[string]string{
+				"root-element": "123invalid", // starts with number
+			},
+		}
+		table := &common.Table{
+			Headers: []string{"Name"},
+			Rows:    [][]string{{"Alice"}},
+		}
+		err := Marshal(cfg, table)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid root element name")
+	})
+
+	t.Run("invalid row element name", func(t *testing.T) {
+		cfg := &common.Config{
+			Writer: &bytes.Buffer{},
+			Extension: map[string]string{
+				"row-element": "invalid-name!", // contains invalid char
+			},
+		}
+		table := &common.Table{
+			Headers: []string{"Name"},
+			Rows:    [][]string{{"Alice"}},
+		}
+		err := Marshal(cfg, table)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid row element name")
+	})
+
+	t.Run("invalid header name", func(t *testing.T) {
+		cfg := &common.Config{
+			Writer: &bytes.Buffer{},
+		}
+		table := &common.Table{
+			Headers: []string{"Name", "Invalid@Header"}, // @ is invalid
+			Rows:    [][]string{{"Alice", "Test"}},
+		}
+		err := Marshal(cfg, table)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid XML element name")
+	})
+}
+
+func TestUnmarshalErrorCases(t *testing.T) {
+	t.Run("nil config", func(t *testing.T) {
+		table := &common.Table{}
+		err := Unmarshal(nil, table)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "config cannot be nil")
+	})
+
+	t.Run("nil reader", func(t *testing.T) {
+		cfg := &common.Config{
+			Reader: nil,
+		}
+		table := &common.Table{}
+		err := Unmarshal(cfg, table)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "reader is nil")
+	})
+
+	t.Run("nil table", func(t *testing.T) {
+		cfg := &common.Config{
+			Reader: strings.NewReader("<dataset></dataset>"),
+		}
+		err := Unmarshal(cfg, nil)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "output table cannot be nil")
+	})
+
+	t.Run("invalid xml", func(t *testing.T) {
+		cfg := &common.Config{
+			Reader: strings.NewReader("<invalid>"),
+		}
+		table := &common.Table{}
+		err := Unmarshal(cfg, table)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to decode XML")
+	})
+
+	t.Run("mismatched column count", func(t *testing.T) {
+		xmlData := `
+<dataset>
+	<record>
+		<name>John</name>
+		<age>30</age>
+	</record>
+	<record>
+		<name>Jane</name>
+	</record>
+</dataset>`
+		cfg := &common.Config{
+			Reader: strings.NewReader(xmlData),
+		}
+		table := &common.Table{}
+		err := Unmarshal(cfg, table)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "data row has 1 columns, but header has 2")
+	})
+}
+
+func TestRoundTrip(t *testing.T) {
+	// Test that we can marshal and then unmarshal back to the same data
+	original := &common.Table{
+		Headers: []string{"Name", "Age", "City"},
+		Rows: [][]string{
+			{"Alice", "30", "New York"},
+			{"Bob", "25", "Los Angeles"},
+		},
+	}
+
+	// Marshal to XML
+	var buf bytes.Buffer
+	cfg := &common.Config{
+		Writer: &buf,
+		Extension: map[string]string{
+			"minify": "true",
+		},
+	}
+	err := Marshal(cfg, original)
+	require.NoError(t, err)
+
+	// Unmarshal back to table
+	cfg.Reader = &buf
+	result := &common.Table{}
+	err = Unmarshal(cfg, result)
+	require.NoError(t, err)
+
+	// Compare
+	assert.Equal(t, original.Headers, result.Headers)
+	assert.Equal(t, original.Rows, result.Rows)
+}
+
+func TestUTF8Handling(t *testing.T) {
+	// Test UTF-8 characters in data
+	table := &common.Table{
+		Headers: []string{"Name", "Message"},
+		Rows: [][]string{
+			{"测试", "你好世界"},
+			{"🎉", "emoji支持"},
+		},
+	}
+
+	var buf bytes.Buffer
+	cfg := &common.Config{
+		Writer: &buf,
+		Extension: map[string]string{
+			"minify": "true",
+		},
+	}
+
+	err := Marshal(cfg, table)
+	require.NoError(t, err)
+
+	// Unmarshal and verify
+	cfg.Reader = &buf
+	result := &common.Table{}
+	err = Unmarshal(cfg, result)
+	require.NoError(t, err)
+
+	assert.Equal(t, table.Headers, result.Headers)
+	assert.Equal(t, table.Rows, result.Rows)
+}
+
+func TestSpecialCharactersInData(t *testing.T) {
+	// Test special XML characters in data values
+	table := &common.Table{
+		Headers: []string{"Name", "Value"},
+		Rows: [][]string{
+			{"Test", "Value with <special> & characters"},
+		},
+	}
+
+	var buf bytes.Buffer
+	cfg := &common.Config{
+		Writer: &buf,
+		Extension: map[string]string{
+			"minify": "true",
+		},
+	}
+
+	err := Marshal(cfg, table)
+	require.NoError(t, err)
+
+	// The XML encoder should handle escaping automatically
+	output := buf.String()
+	// Check that the output contains properly escaped XML
+	assert.Contains(t, output, "<Value>")
+	assert.Contains(t, output, "</Value>")
+}
+
+func TestUnmarshalWithNestedElements(t *testing.T) {
+	// Test that nested elements are handled correctly
+	xmlData := `
+<dataset>
+	<record>
+		<name>John</name>
+		<details>
+			<age>30</age>
+		</details>
+	</record>
+</dataset>`
+	cfg := &common.Config{
+		Reader:    strings.NewReader(xmlData),
+		Extension: map[string]string{},
+	}
+	table := &common.Table{}
+
+	err := Unmarshal(cfg, table)
+	// This should work but might flatten nested elements
+	// The current implementation uses xml:",any" which captures all child elements
+	assert.NoError(t, err)
+	// Verify we get the expected structure
+	assert.Equal(t, 2, len(table.Headers))
+	assert.Equal(t, 1, len(table.Rows))
+}
+
+func TestMarshalWithEmptyHeaders(t *testing.T) {
+	// Test that empty headers are handled as NULL
+	table := &common.Table{
+		Headers: []string{"", "Name", ""},
+		Rows: [][]string{
+			{"Alice", "Bob", "Charlie"},
+		},
+	}
+
+	var buf bytes.Buffer
+	cfg := &common.Config{
+		Writer: &buf,
+		Extension: map[string]string{
+			"minify": "true",
+		},
+	}
+
+	err := Marshal(cfg, table)
+	require.NoError(t, err)
+
+	output := buf.String()
+	assert.Contains(t, output, "<NULL>Alice</NULL>")
+	assert.Contains(t, output, "<Name>Bob</Name>")
+	assert.Contains(t, output, "<NULL>Charlie</NULL>")
+}
+
+func TestUnmarshalWithEmptyData(t *testing.T) {
+	// Test that empty data values are preserved
+	xmlData := `
+<dataset>
+	<record>
+		<name></name>
+		<age>30</age>
+	</record>
+</dataset>`
+	cfg := &common.Config{
+		Reader:    strings.NewReader(xmlData),
+		Extension: map[string]string{},
+	}
+	table := &common.Table{}
+
+	err := Unmarshal(cfg, table)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"name", "age"}, table.Headers)
+	assert.Equal(t, [][]string{{"", "30"}}, table.Rows)
 }

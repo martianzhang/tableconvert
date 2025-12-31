@@ -104,22 +104,26 @@ func parseTWikiHeaderLine(line string, lineNumber int) ([]string, error) {
 	}
 
 	// Remove leading/trailing pipes and split
-	content := strings.Trim(line, "|")
+	content := strings.TrimSuffix(strings.TrimPrefix(line, "|"), "|")
 	parts := strings.Split(content, "|")
 
 	cells := make([]string, 0, len(parts))
 	for _, part := range parts {
+		// Skip empty parts (can happen with consecutive pipes)
+		if part == "" {
+			continue
+		}
 		// TWiki headers are wrapped in = signs
-		trimmed := strings.TrimSpace(part)
-		if !strings.HasPrefix(trimmed, "=") || !strings.HasSuffix(trimmed, "=") {
+		// Check for = signs in the original part (before trimming spaces)
+		if !strings.HasPrefix(part, "=") || !strings.HasSuffix(part, "=") {
 			return nil, &common.ParseError{
 				LineNumber: lineNumber,
 				Message:    fmt.Sprintf("header cell '%s' is not wrapped in '=' signs", part),
 				Line:       line,
 			}
 		}
-		// Remove = signs and trim again
-		cellContent := strings.Trim(trimmed, "=")
+		// Remove = signs and trim spaces to get the actual content
+		cellContent := strings.Trim(part, "=")
 		cellContent = strings.TrimSpace(cellContent)
 		cells = append(cells, cellContent)
 	}
@@ -159,17 +163,27 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	// Write TWiki table header
 	headerLine := "|"
 	for _, header := range table.Headers {
-		headerLine += "=" + header + "=|"
+		// Escape pipe characters in header content
+		escapedHeader := strings.ReplaceAll(header, "|", "\\|")
+		headerLine += "=" + escapedHeader + "=|"
 	}
-	writer.Write([]byte(headerLine + "\n"))
+	headerLine += "\n"
+	if _, err := writer.Write([]byte(headerLine)); err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
 
 	// Write data rows
 	for _, row := range table.Rows {
 		rowLine := "|"
 		for _, cell := range row {
-			rowLine += cell + "|"
+			// Escape pipe characters in cell content
+			escapedCell := strings.ReplaceAll(cell, "|", "\\|")
+			rowLine += escapedCell + "|"
 		}
-		writer.Write([]byte(rowLine + "\n"))
+		rowLine += "\n"
+		if _, err := writer.Write([]byte(rowLine)); err != nil {
+			return fmt.Errorf("failed to write row: %w", err)
+		}
 	}
 
 	return nil

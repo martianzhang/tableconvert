@@ -2,7 +2,7 @@ package tmpl
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 	"text/template"
@@ -16,14 +16,17 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	}
 
 	templateFile := cfg.GetExtensionString("template", "")
-
-	// Read file content into templateStr
-	templateStr, err := ioutil.ReadFile(templateFile)
-	if err != nil {
-		return err
+	if templateFile == "" {
+		return fmt.Errorf("template file path is required (use --template=<file>)")
 	}
 
-	// Create template object with html escape function
+	// Read file content into templateStr
+	templateStr, err := os.ReadFile(templateFile)
+	if err != nil {
+		return fmt.Errorf("failed to read template file %q: %w", templateFile, err)
+	}
+
+	// Create template object with helper functions
 	tmpl, err := template.New("table").Funcs(template.FuncMap{
 		"Upper": func(s string) string {
 			return strings.ToUpper(s)
@@ -51,8 +54,12 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	}).Parse(string(templateStr))
 
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse template %q: %w", templateFile, err)
 	}
 
-	return tmpl.Execute(cfg.Writer, table)
+	if err := tmpl.Execute(cfg.Writer, table); err != nil {
+		return fmt.Errorf("failed to execute template %q: %w", templateFile, err)
+	}
+
+	return nil
 }

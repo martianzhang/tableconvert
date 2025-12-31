@@ -9,6 +9,8 @@ import (
 
 func Unmarshal(cfg *common.Config, table *common.Table) error {
 	csvReader := csv.NewReader(cfg.Reader)
+	// Allow variable number of fields per record
+	csvReader.FieldsPerRecord = -1
 
 	// Set custom delimiter (default: comma)
 	delimiter := cfg.GetExtensionString("delimiter", ",")
@@ -42,35 +44,53 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	// Handle first-column-header option
 	firstColHeader := cfg.GetExtensionBool("first-column-header", false)
 	if firstColHeader {
-		// Use first column as headers
-		headers := make([]string, len(records))
-		rows := make([][]string, len(records[0])-1)
-
-		// Extract headers from first column
-		for i, record := range records {
-			if len(record) == 0 {
-				// Empty record, use empty string as header to maintain length
-				headers[i] = ""
-			} else {
-				headers[i] = record[0]
+		// Find max column count across all records
+		maxCols := 0
+		for _, record := range records {
+			if len(record) > maxCols {
+				maxCols = len(record)
 			}
 		}
 
-		// Extract data from remaining columns
-		for i := 1; i < len(records[0]); i++ {
-			row := make([]string, len(records))
-			for j := 0; j < len(records); j++ {
-				if i < len(records[j]) {
-					row[j] = records[j][i]
+		if maxCols == 1 {
+			// Single column: first row is header, remaining rows are data
+			if len(records) > 0 {
+				table.Headers = records[0]
+			}
+			if len(records) > 1 {
+				table.Rows = records[1:]
+			}
+		} else {
+			// Multi-column: transpose
+			// Use first column as headers
+			headers := make([]string, len(records))
+			rows := make([][]string, maxCols-1)
+
+			// Extract headers from first column
+			for i, record := range records {
+				if len(record) == 0 {
+					headers[i] = ""
 				} else {
-					row[j] = "" // pad with empty string if column is missing
+					headers[i] = record[0]
 				}
 			}
-			rows[i-1] = row
-		}
 
-		table.Headers = headers
-		table.Rows = rows
+			// Extract data from remaining columns
+			for i := 1; i < maxCols; i++ {
+				row := make([]string, len(records))
+				for j := 0; j < len(records); j++ {
+					if i < len(records[j]) {
+						row[j] = records[j][i]
+					} else {
+						row[j] = "" // pad with empty string if column is missing
+					}
+				}
+				rows[i-1] = row
+			}
+
+			table.Headers = headers
+			table.Rows = rows
+		}
 	} else {
 		// Default behavior: first row is headers
 		table.Headers = records[0]

@@ -37,17 +37,11 @@ func findAnchors(line string) []int {
 	return anchors
 }
 
-// parseFields parse eche line and extract fields values.
 // parseFields extracts the field values from a MySQL/ascii style data line.
-// Previous implementation attempted to slice the line using anchor positions
-// derived from the border line. That approach fails for multi-byte (UTF-8)
-// characters because anchor indices are byte-based (from the border which is
-// pure ASCII) while the data line contains runes of varying byte lengths.
-// This led to slicing in the middle of a rune and produced corrupted output
-// (replacement characters, truncation). To robustly handle UTF-8 content we
-// ignore anchors and simply split the data line by '|' delimiters, trimming
-// surrounding whitespace for each cell.
-func parseFields(line string) []string { // anchors kept for signature compatibility
+// It splits by '|' delimiters, which works correctly for UTF-8 content.
+// Note: This approach does not support pipes within cell content, as that
+// would break the MySQL table format anyway.
+func parseFields(line string) []string {
 	if !isDataLine(line) {
 		return []string{}
 	}
@@ -233,9 +227,9 @@ endLoop: // Label for the goto statement
 
 	// Final state check - Did we reach a valid end state?
 	if parsingState != "end" {
-		// Allow ending in 'data' state if at least one row was parsed (tolerates missing bottom border)
-		if parsingState == "data" && len(rows) > 0 {
-			// Successfully parsed headers and some data rows, missing final border is acceptable.
+		// Allow ending in 'data' state (tolerates missing bottom border)
+		if parsingState == "data" {
+			// Successfully parsed headers and possibly data rows, missing final border is acceptable.
 			// fmt.Println("Warning: Input ended without a bottom border.") // Optional warning
 			// Allow ending in 'header_separator' if headers parsed but no rows (empty table)
 		} else if parsingState == "header_separator" && len(headers) > 0 && len(rows) == 0 {
@@ -311,10 +305,13 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		}
 		fmt.Fprintln(writer, "|")
 	}
-	// --- Separator Row ---
-	for _, width := range columnWidths {
-		fmt.Fprintf(writer, "+-%s-", strings.Repeat("-", width))
+	// --- Bottom Separator Row ---
+	// Only output if there are rows, otherwise the header separator is the bottom
+	if len(table.Rows) > 0 {
+		for _, width := range columnWidths {
+			fmt.Fprintf(writer, "+-%s-", strings.Repeat("-", width))
+		}
+		fmt.Fprintln(writer, "+")
 	}
-	fmt.Fprintln(writer, "+")
 	return nil // Success
 }

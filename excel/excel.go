@@ -105,6 +105,19 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	}
 
 	// Write data
+	// Create text format style once if needed
+	var textStyleID int
+	if textFormat {
+		// Set cell format to text - style 49 is built-in text format
+		var err error
+		textStyleID, err = f.NewStyle(&excelize.Style{
+			NumFmt: 49, // 49 is the built-in text format
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	for rowIndex, row := range table.Rows {
 		for colIndex, value := range row {
 			cell, err := excelize.CoordinatesToCellName(colIndex+1, rowIndex+2)
@@ -113,14 +126,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			}
 
 			if textFormat {
-				// Set cell format to text
-				style, err := f.NewStyle(&excelize.Style{
-					NumFmt: 49, // 49 is the built-in text format
-				})
-				if err != nil {
-					return err
-				}
-				if err := f.SetCellStyle(sheetName, cell, cell, style); err != nil {
+				if err := f.SetCellStyle(sheetName, cell, cell, textStyleID); err != nil {
 					return err
 				}
 			}

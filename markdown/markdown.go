@@ -31,16 +31,46 @@ func parseLine(line string, lineNumber int) ([]string, *common.ParseError) {
 			Line:       line,
 		}
 	}
-	// Trim leading/trailing '|' and then split by '|'
+	// Trim leading/trailing '|'
 	trimmedLine := strings.TrimPrefix(strings.TrimSuffix(line, "|"), "|")
-	rawCells := strings.Split(trimmedLine, "|")
-	cells := make([]string, 0, len(rawCells))
-	for _, cell := range rawCells {
-		// Trim whitespace from each cell and unescape markdown
+
+	// Split by unescaped pipes - need to handle escaped pipes properly
+	cells := []string{}
+	currentCell := ""
+	escaped := false
+
+	for i, char := range trimmedLine {
+		if escaped {
+			// Previous char was backslash, include this char literally
+			currentCell += string(char)
+			escaped = false
+		} else if char == '\\' {
+			// Start of escape sequence
+			escaped = true
+		} else if char == '|' {
+			// Unescaped pipe - this is a cell separator
+			cells = append(cells, currentCell)
+			currentCell = ""
+		} else {
+			// Regular character
+			currentCell += string(char)
+		}
+
+		// Handle case where string ends with backslash
+		if i == len(trimmedLine)-1 && escaped {
+			currentCell += "\\"
+		}
+	}
+	// Add the last cell
+	cells = append(cells, currentCell)
+
+	// Trim whitespace and unescape markdown from each cell
+	for i, cell := range cells {
 		trimmed := strings.TrimSpace(cell)
 		unescaped := common.MarkdownUnescape(trimmed)
-		cells = append(cells, unescaped)
+		cells[i] = unescaped
 	}
+
 	return cells, nil
 }
 

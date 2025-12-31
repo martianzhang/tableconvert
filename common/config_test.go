@@ -286,3 +286,359 @@ func TestGetProjectRootPath(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, true, strings.Contains(path, "tableconvert"))
 }
+
+func TestGetExtensionBool(t *testing.T) {
+	tests := []struct {
+		name         string
+		config       *Config
+		key          string
+		defaultValue bool
+		expected     bool
+	}{
+		{
+			name:         "nil extension map returns default",
+			config:       &Config{Extension: nil},
+			key:          "test",
+			defaultValue: true,
+			expected:     true,
+		},
+		{
+			name:         "key not found returns default",
+			config:       &Config{Extension: map[string]string{}},
+			key:          "missing",
+			defaultValue: false,
+			expected:     false,
+		},
+		{
+			name:         "true value",
+			config:       &Config{Extension: map[string]string{"test": "true"}},
+			key:          "test",
+			defaultValue: false,
+			expected:     true,
+		},
+		{
+			name:         "yes value",
+			config:       &Config{Extension: map[string]string{"test": "yes"}},
+			key:          "test",
+			defaultValue: false,
+			expected:     true,
+		},
+		{
+			name:         "y value",
+			config:       &Config{Extension: map[string]string{"test": "y"}},
+			key:          "test",
+			defaultValue: false,
+			expected:     true,
+		},
+		{
+			name:         "1 value",
+			config:       &Config{Extension: map[string]string{"test": "1"}},
+			key:          "test",
+			defaultValue: false,
+			expected:     true,
+		},
+		{
+			name:         "empty string value returns true",
+			config:       &Config{Extension: map[string]string{"test": ""}},
+			key:          "test",
+			defaultValue: false,
+			expected:     true,
+		},
+		{
+			name:         "false value",
+			config:       &Config{Extension: map[string]string{"test": "false"}},
+			key:          "test",
+			defaultValue: true,
+			expected:     false,
+		},
+		{
+			name:         "no value",
+			config:       &Config{Extension: map[string]string{"test": "no"}},
+			key:          "test",
+			defaultValue: true,
+			expected:     false,
+		},
+		{
+			name:         "n value",
+			config:       &Config{Extension: map[string]string{"test": "n"}},
+			key:          "test",
+			defaultValue: true,
+			expected:     false,
+		},
+		{
+			name:         "0 value",
+			config:       &Config{Extension: map[string]string{"test": "0"}},
+			key:          "test",
+			defaultValue: true,
+			expected:     false,
+		},
+		{
+			name:         "unknown value returns default",
+			config:       &Config{Extension: map[string]string{"test": "unknown"}},
+			key:          "test",
+			defaultValue: true,
+			expected:     true,
+		},
+		{
+			name:         "whitespace handling",
+			config:       &Config{Extension: map[string]string{"test": "  true  "}},
+			key:          "test",
+			defaultValue: false,
+			expected:     true,
+		},
+		{
+			name:         "case insensitive - TRUE",
+			config:       &Config{Extension: map[string]string{"test": "TRUE"}},
+			key:          "test",
+			defaultValue: false,
+			expected:     true,
+		},
+		{
+			name:         "case insensitive - FALSE",
+			config:       &Config{Extension: map[string]string{"test": "FALSE"}},
+			key:          "test",
+			defaultValue: true,
+			expected:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.config.GetExtensionBool(tt.key, tt.defaultValue)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGetExtensionString(t *testing.T) {
+	tests := []struct {
+		name         string
+		config       *Config
+		key          string
+		defaultValue string
+		expected     string
+	}{
+		{
+			name:         "nil extension map returns default",
+			config:       &Config{Extension: nil},
+			key:          "test",
+			defaultValue: "default",
+			expected:     "default",
+		},
+		{
+			name:         "key not found returns default",
+			config:       &Config{Extension: map[string]string{}},
+			key:          "missing",
+			defaultValue: "default",
+			expected:     "default",
+		},
+		{
+			name:         "key found returns value",
+			config:       &Config{Extension: map[string]string{"test": "value"}},
+			key:          "test",
+			defaultValue: "default",
+			expected:     "value",
+		},
+		{
+			name:         "empty string value",
+			config:       &Config{Extension: map[string]string{"test": ""}},
+			key:          "test",
+			defaultValue: "default",
+			expected:     "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.config.GetExtensionString(tt.key, tt.defaultValue)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGetExtensionInt(t *testing.T) {
+	tests := []struct {
+		name         string
+		config       *Config
+		key          string
+		defaultValue int
+		expected     int
+	}{
+		{
+			name:         "nil extension map returns default",
+			config:       &Config{Extension: nil},
+			key:          "test",
+			defaultValue: 42,
+			expected:     42,
+		},
+		{
+			name:         "key not found returns default",
+			config:       &Config{Extension: map[string]string{}},
+			key:          "missing",
+			defaultValue: 42,
+			expected:     42,
+		},
+		{
+			name:         "valid integer string",
+			config:       &Config{Extension: map[string]string{"test": "123"}},
+			key:          "test",
+			defaultValue: 42,
+			expected:     123,
+		},
+		{
+			name:         "negative integer",
+			config:       &Config{Extension: map[string]string{"test": "-5"}},
+			key:          "test",
+			defaultValue: 42,
+			expected:     -5,
+		},
+		{
+			name:         "invalid integer returns default",
+			config:       &Config{Extension: map[string]string{"test": "abc"}},
+			key:          "test",
+			defaultValue: 42,
+			expected:     42,
+		},
+		{
+			name:         "empty string returns default",
+			config:       &Config{Extension: map[string]string{"test": ""}},
+			key:          "test",
+			defaultValue: 42,
+			expected:     42,
+		},
+		{
+			name:         "float string returns default",
+			config:       &Config{Extension: map[string]string{"test": "3.14"}},
+			key:          "test",
+			defaultValue: 42,
+			expected:     42,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.config.GetExtensionInt(tt.key, tt.defaultValue)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestParseConfigMCPMode(t *testing.T) {
+	// Test MCP mode enabled
+	args := []string{"--mcp"}
+	cfg, err := ParseConfig(args)
+	assert.NoError(t, err)
+	assert.True(t, cfg.MCPMode)
+
+	// Test MCP mode with value
+	args = []string{"--mcp=true"}
+	cfg, err = ParseConfig(args)
+	assert.NoError(t, err)
+	assert.True(t, cfg.MCPMode)
+
+	// Test MCP mode disabled - should still validate from/to
+	args = []string{"--mcp=false"}
+	cfg, err = ParseConfig(args)
+	assert.Error(t, err)
+	assert.False(t, cfg.MCPMode)
+
+	// Test MCP mode skips validation
+	args = []string{"--mcp", "--from", "csv"}
+	cfg, err = ParseConfig(args)
+	assert.NoError(t, err)
+	assert.True(t, cfg.MCPMode)
+	assert.Equal(t, "csv", cfg.From)
+}
+
+func TestParseConfigHelpFlags(t *testing.T) {
+	// These tests will call os.Exit(0), so we can't test them directly
+	// But we can verify the parsing logic doesn't fail before exit
+	// For now, we'll skip these as they require mocking os.Exit
+	t.Skip("Help flags call os.Exit and cannot be tested directly")
+}
+
+func TestParseConfigVerboseFlagVariations(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		expected bool
+	}{
+		{"verbose without value", []string{"--mcp", "--verbose"}, true},
+		{"verbose=true", []string{"--mcp", "--verbose=true"}, true},
+		{"verbose=false", []string{"--mcp", "--verbose=false"}, false},
+		{"verbose=True", []string{"--mcp", "--verbose=True"}, true},
+		{"verbose=FALSE", []string{"--mcp", "--verbose=FALSE"}, false},
+		{"verbose=yes", []string{"--mcp", "--verbose=yes"}, true},
+		{"verbose=no", []string{"--mcp", "--verbose=no"}, false},
+		{"verbose=1", []string{"--mcp", "--verbose=1"}, true},
+		{"verbose=0", []string{"--mcp", "--verbose=0"}, false},
+		{"verbose=y", []string{"--mcp", "--verbose=y"}, true},
+		{"verbose=n", []string{"--mcp", "--verbose=n"}, false},
+		{"verbose=unknown", []string{"--mcp", "--verbose=unknown"}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := ParseConfig(tt.args)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, cfg.Verbose)
+		})
+	}
+}
+
+func TestParseConfigMCPFlagVariations(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		expected bool
+		needsIO  bool // whether from/to are needed for validation
+	}{
+		{"mcp without value", []string{"--mcp"}, true, false},
+		{"mcp=true", []string{"--mcp=true"}, true, false},
+		{"mcp=false", []string{"--mcp=false", "--from", "csv", "--to", "json"}, false, true},
+		{"mcp=True", []string{"--mcp=True"}, true, false},
+		{"mcp=FALSE", []string{"--mcp=FALSE", "--from", "csv", "--to", "json"}, false, true},
+		{"mcp=yes", []string{"--mcp=yes"}, true, false},
+		{"mcp=no", []string{"--mcp=no", "--from", "csv", "--to", "json"}, false, true},
+		{"mcp=1", []string{"--mcp=1"}, true, false},
+		{"mcp=0", []string{"--mcp=0", "--from", "csv", "--to", "json"}, false, true},
+		{"mcp=y", []string{"--mcp=y"}, true, false},
+		{"mcp=n", []string{"--mcp=n", "--from", "csv", "--to", "json"}, false, true},
+		{"mcp=unknown", []string{"--mcp=unknown", "--from", "csv", "--to", "json"}, false, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := ParseConfig(tt.args)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, cfg.MCPMode)
+		})
+	}
+}
+
+func TestParseConfigMixedAndEdgeCases(t *testing.T) {
+	// Test mixed parameter formats
+	args := []string{"--from=csv", "-t", "json", "--verbose", "--param1", "val1", "--param2=val2"}
+	cfg, err := ParseConfig(args)
+	assert.NoError(t, err)
+	assert.Equal(t, "csv", cfg.From)
+	assert.Equal(t, "json", cfg.To)
+	assert.True(t, cfg.Verbose)
+	assert.Equal(t, "val1", cfg.Extension["param1"])
+	assert.Equal(t, "val2", cfg.Extension["param2"])
+
+	// Test parameters with special characters
+	args = []string{"--from", "csv", "--to", "json", "--delimiter", ";", "--table", "users_data"}
+	cfg, err = ParseConfig(args)
+	assert.NoError(t, err)
+	assert.Equal(t, ";", cfg.Extension["delimiter"])
+	assert.Equal(t, "users_data", cfg.Extension["table"])
+
+	// Test multiple unknown parameters
+	args = []string{"--from", "csv", "--to", "json", "--a", "1", "--b", "2", "--c", "3"}
+	cfg, err = ParseConfig(args)
+	assert.NoError(t, err)
+	assert.Equal(t, "1", cfg.Extension["a"])
+	assert.Equal(t, "2", cfg.Extension["b"])
+	assert.Equal(t, "3", cfg.Extension["c"])
+}

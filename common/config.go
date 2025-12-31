@@ -253,11 +253,7 @@ func ParseConfig(args []string) (Config, error) {
 		case "result", "r":
 			cfg.Result = v
 		case "verbose", "v":
-			if v == "" || strings.ToLower(v) == "true" {
-				cfg.Verbose = true
-			} else {
-				cfg.Verbose = false
-			}
+			cfg.Verbose = parseBool(v, true) // empty -> true, unknown -> false
 		case "h", "help":
 			Usage()
 			os.Exit(0)
@@ -268,11 +264,7 @@ func ParseConfig(args []string) (Config, error) {
 			ShowFormatHelp(v)
 			os.Exit(0)
 		case "mcp":
-			if v == "" || strings.ToLower(v) == "true" {
-				cfg.MCPMode = true
-			} else {
-				cfg.MCPMode = false
-			}
+			cfg.MCPMode = parseBool(v, true) // empty -> true, unknown -> false
 		default:
 			cfg.Extension[k] = v
 		}
@@ -317,6 +309,23 @@ func ParseConfig(args []string) (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// parseBool parses a string value to boolean, with a default for empty string
+// For non-empty values: true/yes/y/1 -> true, false/no/n/0 -> false, anything else -> defaultValue
+func parseBool(value string, defaultValue bool) bool {
+	if value == "" {
+		return defaultValue
+	}
+	lower := strings.ToLower(value)
+	switch lower {
+	case "true", "yes", "y", "1":
+		return true
+	case "false", "no", "n", "0":
+		return false
+	default:
+		return false // unknown values default to false
+	}
 }
 
 // Config holds configuration, reader/writer, and extension parameters

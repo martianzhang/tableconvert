@@ -73,3 +73,29 @@ Bob & 25 & Los Angeles & USA \\
 `
 	assert.Equal(t, expectedOutput, buf.String())
 }
+
+func TestUnmarshal_AmpersandInsideBraces(t *testing.T) {
+	input := `\begin{tabular}{|l|c|}
+\hline
+Name & Info \\
+\hline
+Alice & {30 & New York} \\
+Bob & {\textbf{25} & Los Angeles} \\
+\hline
+\end{tabular}`
+
+	args := []string{"--from", "latex", "--to", "latex"}
+	cfg, err := common.ParseConfig(args)
+	assert.Nil(t, err)
+	cfg.Reader = strings.NewReader(input)
+
+	var table common.Table
+	err = Unmarshal(&cfg, &table)
+	assert.NoError(t, err)
+
+	assert.Equal(t, []string{"Name", "Info"}, table.Headers)
+	assert.Equal(t, [][]string{
+		{"Alice", "{30 & New York}"},            // Braces are preserved
+		{"Bob", "{\\textbf{25} & Los Angeles}"}, // \textbf{} is preserved
+	}, table.Rows)
+}

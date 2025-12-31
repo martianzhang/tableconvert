@@ -31,7 +31,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	}
 
 	// Parse the SQL
-	stmts, err := parser.SplitStatements(string(sqls))
+	stmts, err := parser.ParseMultiple(string(sqls))
 	if err != nil {
 		return fmt.Errorf("failed to parse SQL: %w", err)
 	}
@@ -100,6 +100,10 @@ func handleInsert(insert *sqlparser.Insert, table *common.Table) error {
 			default:
 				values = append(values, sqlparser.String(val)) // fallback: stringify everything else
 			}
+		}
+		// Validate column count matches
+		if len(values) != len(table.Headers) {
+			return fmt.Errorf("column count mismatch: expected %d values, got %d", len(table.Headers), len(values))
 		}
 		table.Rows = append(table.Rows, values)
 	}

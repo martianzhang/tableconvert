@@ -21,7 +21,7 @@ func TestUnmarshal(t *testing.T) {
 		"| 1/4/2014 | February Extra Bandwidth | 2233 | $30.00 |\n" +
 		"```" // Added closing fence
 
-	args := []string{"--from", "mardown", "--to", "markdown"}
+	args := []string{"--from", "markdown", "--to", "markdown"}
 	cfg, err := common.ParseConfig(args)
 	cfg.Reader = strings.NewReader(input)
 	assert.Nil(t, err)
@@ -53,6 +53,89 @@ func TestUmarshalEmptyCells(t *testing.T) {
 
 	err = Unmarshal(&cfg, &table)
 	assert.Nil(t, err)
+}
+
+func TestUnmarshalPipesInContent(t *testing.T) {
+	// Test escaped pipes in content
+	input := "| A | B |\n|---|---|\n| x | y\\|z |"
+
+	args := []string{"--from", "markdown", "--to", "markdown"}
+	cfg, err := common.ParseConfig(args)
+	assert.Nil(t, err)
+	cfg.Reader = strings.NewReader(input)
+
+	var table common.Table
+	err = Unmarshal(&cfg, &table)
+
+	assert.Nil(t, err)
+	assert.Equal(t, []string{"A", "B"}, table.Headers)
+	assert.Equal(t, 1, len(table.Rows))
+	assert.Equal(t, []string{"x", "y|z"}, table.Rows[0])
+}
+
+func TestMarshalPipesInContent(t *testing.T) {
+	// Test that pipes in data are properly escaped
+	table := &common.Table{
+		Headers: []string{"A", "B"},
+		Rows:    [][]string{{"x", "y|z"}},
+	}
+
+	args := []string{"--from", "markdown", "--to", "markdown"}
+	cfg, err := common.ParseConfig(args)
+	assert.Nil(t, err)
+
+	var buf bytes.Buffer
+	cfg.Writer = &buf
+
+	err = Marshal(&cfg, table)
+	assert.Nil(t, err)
+
+	output := buf.String()
+	// Should contain escaped pipe
+	assert.Contains(t, output, "y\\|z")
+
+	// Test round-trip
+	cfg.Reader = strings.NewReader(output)
+	var table2 common.Table
+	err = Unmarshal(&cfg, &table2)
+	assert.Nil(t, err)
+	assert.Equal(t, table.Headers, table2.Headers)
+	assert.Equal(t, table.Rows, table2.Rows)
+}
+
+func TestMarshalSpecialChars(t *testing.T) {
+	// Test that various special characters are properly escaped
+	table := &common.Table{
+		Headers: []string{"A|B", "C*D", "E_F"},
+		Rows:    [][]string{{"x|y", "z*w", "u_v"}},
+	}
+
+	args := []string{"--from", "markdown", "--to", "markdown"}
+	cfg, err := common.ParseConfig(args)
+	assert.Nil(t, err)
+
+	var buf bytes.Buffer
+	cfg.Writer = &buf
+
+	err = Marshal(&cfg, table)
+	assert.Nil(t, err)
+
+	output := buf.String()
+	// Should contain escaped special chars
+	assert.Contains(t, output, "A\\|B")
+	assert.Contains(t, output, "C\\*D")
+	assert.Contains(t, output, "E\\_F")
+	assert.Contains(t, output, "x\\|y")
+	assert.Contains(t, output, "z\\*w")
+	assert.Contains(t, output, "u\\_v")
+
+	// Test round-trip
+	cfg.Reader = strings.NewReader(output)
+	var table2 common.Table
+	err = Unmarshal(&cfg, &table2)
+	assert.Nil(t, err)
+	assert.Equal(t, table.Headers, table2.Headers)
+	assert.Equal(t, table.Rows, table2.Rows)
 }
 
 func TestMarshal(t *testing.T) {

@@ -106,6 +106,7 @@ func splitLaTeXLine(line string) []string {
 	var cells []string
 	var currentCell strings.Builder
 	inEscape := false
+	braceDepth := 0 // Track nested braces to handle & inside braces
 
 	for _, r := range line {
 		switch {
@@ -115,7 +116,15 @@ func splitLaTeXLine(line string) []string {
 		case inEscape:
 			inEscape = false
 			currentCell.WriteRune(r)
-		case r == '&' && !inEscape:
+		case r == '{':
+			braceDepth++
+			currentCell.WriteRune(r)
+		case r == '}':
+			if braceDepth > 0 {
+				braceDepth--
+			}
+			currentCell.WriteRune(r)
+		case r == '&' && !inEscape && braceDepth == 0: // Only split if not in escape and not inside braces
 			cells = append(cells, currentCell.String())
 			currentCell.Reset()
 		default:
