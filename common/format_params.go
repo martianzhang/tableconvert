@@ -55,7 +55,7 @@ var FormatParamsRegistry = map[string][]FormatParam{
 		{Name: "align", DefaultValue: "l", AllowedValues: "l, c, r", Description: "Text Alignment, columns seperate by comma"},
 		{Name: "bold-header", DefaultValue: "false", AllowedValues: "true, false", Description: "Table Header Bold"},
 		{Name: "bold-first-column", DefaultValue: "false", AllowedValues: "true, false", Description: "Bold first column"},
-		{Name: "escape", DefaultValue: "false", AllowedValues: "true, false", Description: "Escape Markdown table"},
+		{Name: "escape", DefaultValue: "true", AllowedValues: "true, false", Description: "Escape Markdown table"},
 		{Name: "pretty", DefaultValue: "true", AllowedValues: "true, false", Description: "Pretty-print Markdown"},
 	},
 	"mediawiki": {

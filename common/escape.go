@@ -35,6 +35,58 @@ func MarkdownEscape(s string) string {
 	return s
 }
 
+func MarkdownUnescape(s string) string {
+	// Unescape special Markdown characters
+	// First, replace escaped backslashes with a temporary marker
+	s = strings.ReplaceAll(s, `\\`, "\x00")
+
+	// Then replace other escapes
+	replacements := map[string]string{
+		`\ `: ` `,
+		`\!`: `!`,
+		`\#`: `#`,
+		`\$`: `$`,
+		`\%`: `%`,
+		`\&`: `&`,
+		`\(`: `(`,
+		`\)`: `)`,
+		`\*`: `*`,
+		`\+`: `+`,
+		`\,`: `,`,
+		`\-`: `-`,
+		`\.`: `.`,
+		`\/`: `/`,
+		`\:`: `:`,
+		`\;`: `;`,
+		`\<`: `<`,
+		`\=`: `=`,
+		`\>`: `>`,
+		`\?`: `?`,
+		`\@`: `@`,
+		`\[`: `[`,
+		`\]`: `]`,
+		`\^`: `^`,
+		`\_`: `_`,
+		`\{`: `{`,
+		`\|`: `|`,
+		`\}`: `}`,
+		`\~`: `~`,
+	}
+	for from, to := range replacements {
+		s = strings.ReplaceAll(s, from, to)
+	}
+
+	// Handle backtick, double quote, and single quote
+	s = strings.ReplaceAll(s, "`", "`")
+	s = strings.ReplaceAll(s, `\"`, `"`)
+	s = strings.ReplaceAll(s, `'`, `'`)
+
+	// Finally restore the single backslashes
+	s = strings.ReplaceAll(s, "\x00", `\`)
+
+	return s
+}
+
 func HtmlEscape(s string) string {
 	return html.EscapeString(s)
 }

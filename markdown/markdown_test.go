@@ -98,8 +98,8 @@ func TestMarshal(t *testing.T) {
 					{"Cell3", "Cell4"},
 				},
 			},
-			err:      nil,                                                            // No error expected
-			expected: "|Header1|Header2|\n|---|---|\n|Cell1|Cell2|\n|Cell3|Cell4|\n", // Original expected Markdown output
+			err:      nil,                                                                                            // No error expected
+			expected: "| Header1 | Header2 |\n|---------|---------|\n| Cell1   | Cell2   |\n| Cell3   | Cell4   |\n", // Pretty-printed expected output
 		},
 		{
 			name: "no rows", // Added test case for table with headers but no rows
@@ -108,7 +108,7 @@ func TestMarshal(t *testing.T) {
 				Rows:    [][]string{},
 			},
 			err:      nil,
-			expected: "|ColA|ColB|\n|---|---|\n", // Should output headers and separator line
+			expected: "| ColA | ColB |\n|------|------|\n", // Should output headers and separator line
 		},
 	}
 

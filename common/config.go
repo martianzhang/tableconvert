@@ -267,9 +267,20 @@ func ParseConfig(args []string) (Config, error) {
 		case "help-format":
 			ShowFormatHelp(v)
 			os.Exit(0)
+		case "mcp":
+			if v == "" || strings.ToLower(v) == "true" {
+				cfg.MCPMode = true
+			} else {
+				cfg.MCPMode = false
+			}
 		default:
 			cfg.Extension[k] = v
 		}
+	}
+
+	// If MCP mode is enabled, skip from/to validation
+	if cfg.MCPMode {
+		return cfg, nil
 	}
 
 	// Check if required parameters are provided
@@ -315,6 +326,7 @@ type Config struct {
 	File      string
 	Result    string
 	Verbose   bool
+	MCPMode   bool
 	Reader    io.Reader
 	Writer    io.Writer
 	Extension map[string]string

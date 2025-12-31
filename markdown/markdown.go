@@ -23,7 +23,6 @@ func centerPad(s string, width int) string {
 }
 
 // Helper function to parse a single line into cells
-// Helper function to parse a single line into cells
 func parseLine(line string, lineNumber int) ([]string, *common.ParseError) {
 	if !strings.HasPrefix(line, "|") || !strings.HasSuffix(line, "|") {
 		return nil, &common.ParseError{
@@ -37,8 +36,10 @@ func parseLine(line string, lineNumber int) ([]string, *common.ParseError) {
 	rawCells := strings.Split(trimmedLine, "|")
 	cells := make([]string, 0, len(rawCells))
 	for _, cell := range rawCells {
-		// Trim whitespace from each cell
-		cells = append(cells, strings.TrimSpace(cell))
+		// Trim whitespace from each cell and unescape markdown
+		trimmed := strings.TrimSpace(cell)
+		unescaped := common.MarkdownUnescape(trimmed)
+		cells = append(cells, unescaped)
 	}
 	return cells, nil
 }
@@ -222,8 +223,8 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	align := cfg.GetExtensionString("align", "l")
 	boldHeader := cfg.GetExtensionBool("bold-header", false)
 	boldFirstColumn := cfg.GetExtensionBool("bold-first-column", false)
-	escape := cfg.GetExtensionBool("escape", false)
-	pretty := cfg.GetExtensionBool("pretty", false)
+	escape := cfg.GetExtensionBool("escape", true)
+	pretty := cfg.GetExtensionBool("pretty", true)
 
 	writer := cfg.Writer
 	headers := table.Headers

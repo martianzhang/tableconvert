@@ -1,9 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"os"
-	"strings"
 
 	"github.com/martianzhang/tableconvert/ascii"
 	"github.com/martianzhang/tableconvert/common"
@@ -20,7 +21,18 @@ import (
 	"github.com/martianzhang/tableconvert/tmpl"
 	"github.com/martianzhang/tableconvert/twiki"
 	"github.com/martianzhang/tableconvert/xml"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
+
+var formatRegistry *common.FormatRegistry
+
+func init() {
+	// Initialize format registry
+	formatRegistry = common.NewFormatRegistry()
+
+	// Register all formats
+	registerFormats()
+}
 
 func main() {
 	// Parse config
@@ -32,87 +44,90 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Check if MCP mode is requested
+	if cfg.MCPMode {
+		runMCPMode()
+		return
+	}
+
 	if cfg.Verbose {
 		fmt.Fprintf(os.Stderr, "# From: %s\n", cfg.From)
 		fmt.Fprintf(os.Stderr, "# To: %s\n", cfg.To)
 		fmt.Fprintf(os.Stderr, "# Extra Configs: %v\n", cfg.Extension)
 	}
 
-	// Reader
-	var table common.Table
-	switch strings.ToLower(cfg.From) {
-	case "markdown", "md":
-		err = markdown.Unmarshal(&cfg, &table)
-	case "ascii":
-		err = ascii.Unmarshal(&cfg, &table)
-	case "mysql":
-		err = mysql.Unmarshal(&cfg, &table)
-	case "csv":
-		err = csv.Unmarshal(&cfg, &table)
-	case "json":
-		err = json.Unmarshal(&cfg, &table)
-	case "html":
-		err = html.Unmarshal(&cfg, &table)
-	case "sql":
-		err = sql.Unmarshal(&cfg, &table)
-	case "xml":
-		err = xml.Unmarshal(&cfg, &table)
-	case "excel", "xlsx":
-		err = excel.Unmarshal(&cfg, &table)
-	case "twiki", "tracwiki":
-		err = twiki.Unmarshal(&cfg, &table)
-	case "mediawiki":
-		err = mediawiki.Unmarshal(&cfg, &table)
-	case "latex":
-		err = latex.Unmarshal(&cfg, &table)
-	case "jsonl", "jsonlines":
-		err = jsonl.Unmarshal(&cfg, &table)
-	default:
-		err = fmt.Errorf("unsupported `--from` format: %s", cfg.From)
-	}
+	// Perform conversion
+	err = performConversion(&cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+}
 
-	// Apply transformations
-	cfg.ApplyTransformations(&table)
+// runMCPMode starts the MCP server
+func runMCPMode() {
+	// Create the MCP server using the common package
+	server := common.CreateMCPServer(formatRegistry)
 
-	// Writer
-	switch strings.ToLower(cfg.To) {
-	case "markdown", "md":
-		err = markdown.Marshal(&cfg, &table)
-	case "ascii":
-		err = ascii.Marshal(&cfg, &table)
-	case "mysql":
-		err = mysql.Marshal(&cfg, &table)
-	case "csv":
-		err = csv.Marshal(&cfg, &table)
-	case "json":
-		err = json.Marshal(&cfg, &table)
-	case "html":
-		err = html.Marshal(&cfg, &table)
-	case "sql":
-		err = sql.Marshal(&cfg, &table)
-	case "xml":
-		err = xml.Marshal(&cfg, &table)
-	case "excel", "xlsx":
-		err = excel.Marshal(&cfg, &table)
-	case "twiki", "tracwiki":
-		err = twiki.Marshal(&cfg, &table)
-	case "mediawiki":
-		err = mediawiki.Marshal(&cfg, &table)
-	case "latex":
-		err = latex.Marshal(&cfg, &table)
-	case "jsonl", "jsonlines":
-		err = jsonl.Marshal(&cfg, &table)
-	case "tmpl", "template":
-		err = tmpl.Marshal(&cfg, &table)
-	default:
-		err = fmt.Errorf("unsupported `--to` format: %s", cfg.To)
+	// Run the server using stdio transport
+	ctx := context.Background()
+	if err := server.Run(ctx, &mcp.StdioTransport{}); err != nil {
+		log.Fatalf("MCP server failed: %v", err)
 	}
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing result: %v\n", err)
-		os.Exit(1)
-	}
+}
+
+// registerFormats registers all format unmarshal/marshal functions
+func registerFormats() {
+	// ASCII
+	formatRegistry.RegisterFormat("ascii", ascii.Unmarshal, ascii.Marshal)
+
+	// CSV
+	formatRegistry.RegisterFormat("csv", csv.Unmarshal, csv.Marshal)
+
+	// Excel
+	formatRegistry.RegisterFormat("excel", excel.Unmarshal, excel.Marshal)
+	formatRegistry.RegisterFormatAlias("xlsx", "excel")
+
+	// HTML
+	formatRegistry.RegisterFormat("html", html.Unmarshal, html.Marshal)
+
+	// JSON
+	formatRegistry.RegisterFormat("json", json.Unmarshal, json.Marshal)
+
+	// JSONL
+	formatRegistry.RegisterFormat("jsonl", jsonl.Unmarshal, jsonl.Marshal)
+	formatRegistry.RegisterFormatAlias("jsonlines", "jsonl")
+
+	// LaTeX
+	formatRegistry.RegisterFormat("latex", latex.Unmarshal, latex.Marshal)
+
+	// Markdown
+	formatRegistry.RegisterFormat("markdown", markdown.Unmarshal, markdown.Marshal)
+	formatRegistry.RegisterFormatAlias("md", "markdown")
+
+	// MediaWiki
+	formatRegistry.RegisterFormat("mediawiki", mediawiki.Unmarshal, mediawiki.Marshal)
+
+	// MySQL
+	formatRegistry.RegisterFormat("mysql", mysql.Unmarshal, mysql.Marshal)
+
+	// SQL
+	formatRegistry.RegisterFormat("sql", sql.Unmarshal, sql.Marshal)
+
+	// Template (write-only format)
+	formatRegistry.RegisterWriteOnlyFormat("tmpl", tmpl.Marshal)
+	formatRegistry.RegisterFormatAlias("template", "tmpl")
+
+	// TWiki
+	formatRegistry.RegisterFormat("twiki", twiki.Unmarshal, twiki.Marshal)
+	formatRegistry.RegisterFormatAlias("tracwiki", "twiki")
+
+	// XML
+	formatRegistry.RegisterFormat("xml", xml.Unmarshal, xml.Marshal)
+}
+
+// performConversion performs the core table conversion logic
+func performConversion(cfg *common.Config) error {
+	// Use the registry-based conversion
+	return common.PerformConversionWithRegistry(formatRegistry, cfg)
 }

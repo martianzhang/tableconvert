@@ -147,8 +147,31 @@ Table → Marshal() → Writer
 - `vitess.io/vitess` - SQL parsing (for SQL format)
 - `github.com/mattn/go-runewidth` - UTF-8 width handling
 - `github.com/stretchr/testify` - Testing utilities
+- `github.com/modelcontextprotocol/go-sdk` - MCP server implementation
+
+## MCP (Model Context Protocol) Server
+
+tableconvert can run as an MCP server for AI assistants:
+
+```bash
+# Start MCP server (uses stdio transport)
+./bin/tableconvert --mcp
+```
+
+The MCP server provides two tools:
+
+1. **convert_table**: Convert table data between formats
+   - Parameters: `from`, `to`, `input`, `options`, `transformations`
+   - Example: Convert CSV to Markdown with alignment
+
+2. **get_formats**: Get information about supported formats
+   - Parameters: `format` (optional)
+   - Returns format list or specific format parameters
+
+MCP mode uses the `performConversion()` function shared with CLI mode, ensuring consistent behavior. All format-specific parameters and global transformations are available.
 
 ## Notes
 
 - The project is marked as "In progress, Not production ready" in README
 - Format detection order in `common/types.go:78-106` is important for auto-detection
+- MCP mode is integrated into the main binary (no separate executable needed)

@@ -9,6 +9,7 @@ Options:
   --result|-r={PATH}     Output file path (or use stdout if not specified)
   --template={PATH}      Template file path
   --verbose|-v           Enable verbose output
+  --mcp                  Run as MCP (Model Context Protocol) server
   -h|--help              Show this help message
   --help-formats         Show all supported formats and their parameters
   --help-format={FORMAT} Show parameters for a specific format (e.g. --help-format=markdown)
@@ -44,6 +45,8 @@ Examples:
   tableconvert --help-format=markdown
   # Show all formats and their parameters
   tableconvert --help-formats
+  # Run as MCP server for AI assistants
+  tableconvert --mcp
 
 For complete parameter reference:
   https://github.com/martianzhang/tableconvert/blob/main/docs/arguments.md
