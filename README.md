@@ -26,6 +26,41 @@ More usage info please refer to [Usage](https://github.com/martianzhang/tablecon
 
 Each format or file type has its own arguments, please refer to the [arguments.md](https://github.com/martianzhang/tableconvert/blob/main/docs/arguments.md) for more details.
 
+## MCP (Model Context Protocol) Usage
+
+`tableconvert` provides MCP stdio tools for AI assistants like Claude Code.
+
+### Add to Claude Code
+
+Add this to your Claude Code settings:
+
+```bash
+claude mcp add tableconvert -- /path/to/tableconvert --mcp
+```
+
+On Windows:
+```bash
+claude mcp add tableconvert -- "C:\path\to\tableconvert.exe" --mcp
+```
+
+Or add directly to your config file.
+
+```json
+{
+  "mcpServers": {
+    "tableconvert": {
+      "command": "/path/to/tableconvert",
+      "args": ["--mcp"]
+    }
+  }
+}
+```
+
+### Available Tools
+
+- **`convert_table`**: Convert table data between formats
+- **`get_formats`**: Get information about supported formats and their parameters
+
 ## Support Format
 
 - [x] Excel
