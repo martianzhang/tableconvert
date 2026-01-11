@@ -308,7 +308,7 @@ func ParseConfig(args []string) (Config, error) {
 		// Batch mode: skip single file validation
 		// Validate that to format is provided
 		if cfg.To == "" {
-			return cfg, fmt.Errorf("batch mode requires --to format to be specified\n\nExample:\n  tableconvert --batch=\"*.csv\" --to=json")
+			return cfg, fmt.Errorf("batch mode requires --to format\n\nExample:\n  tableconvert --batch=\"*.csv\" --to=json")
 		}
 		if !FormatExists(cfg.To) {
 			return cfg, fmt.Errorf("unsupported output format: %s\n\nSupported formats: %v", cfg.To, getSupportedFormats())
@@ -338,10 +338,10 @@ func ParseConfig(args []string) (Config, error) {
 
 	// Validate formats are supported
 	if !FormatExists(cfg.From) {
-		return cfg, fmt.Errorf("unsupported input format: %s\n\nSupported formats: %v", cfg.From, getSupportedFormats())
+		return cfg, fmt.Errorf("unsupported input format: %s\n\nSupported formats: %v\nRun 'tableconvert --help-formats' for details", cfg.From, getSupportedFormats())
 	}
 	if !FormatExists(cfg.To) {
-		return cfg, fmt.Errorf("unsupported output format: %s\n\nSupported formats: %v", cfg.To, getSupportedFormats())
+		return cfg, fmt.Errorf("unsupported output format: %s\n\nSupported formats: %v\nRun 'tableconvert --help-formats' for details", cfg.To, getSupportedFormats())
 	}
 
 	// Determine input target (Reader)
@@ -449,19 +449,13 @@ func newParseError(from, to, file, result string) error {
 		}
 	}
 
-	// Show usage examples
-	msg.WriteString("Usage examples:\n")
-	msg.WriteString("  # Basic conversion with flags\n")
-	msg.WriteString("  tableconvert --from=csv --to=json --file=input.csv --result=output.json\n\n")
-	msg.WriteString("  # Short flags\n")
-	msg.WriteString("  tableconvert -i input.csv -o output.json\n\n")
-	msg.WriteString("  # Auto-detect formats from extensions\n")
-	msg.WriteString("  tableconvert input.csv output.json\n\n")
-	msg.WriteString("  # Pipe mode\n")
-	msg.WriteString("  cat data.csv | tableconvert --from=csv --to=json\n\n")
-	msg.WriteString("  # Get format-specific help\n")
-	msg.WriteString("  tableconvert --help-format=markdown\n\n")
-	msg.WriteString(fmt.Sprintf("Supported formats: %v\n", getSupportedFormats()))
+	// Show concise usage examples
+	msg.WriteString("Quick examples:\n")
+	msg.WriteString("  tableconvert --from=csv --to=json input.csv output.json\n")
+	msg.WriteString("  tableconvert input.csv output.json  (auto-detect)\n")
+	msg.WriteString("  tableconvert -i input.csv -o output.json  (short flags)\n")
+	msg.WriteString("  tableconvert --batch=\"*.csv\" --to=json  (batch mode)\n\n")
+	msg.WriteString("Run 'tableconvert --help' for full usage.\n")
 
 	return fmt.Errorf("%s", msg.String())
 }

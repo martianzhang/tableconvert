@@ -39,8 +39,8 @@ func main() {
 	args := os.Args[1:]
 	cfg, err := common.ParseConfig(args)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Parameter parsing error: %v\n\n---\n", err)
-		common.Usage()
+		// Show concise error message with helpful tips
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
