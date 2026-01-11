@@ -23,6 +23,11 @@ Data Transformation Options:
   --lowercase            Convert all text to lowercase
   --capitalize           Capitalize the first letter of each cell
 
+Batch Processing Options:
+  --batch|-b={PATTERN}   Process multiple files matching a pattern (e.g., *.csv, data/*.json)
+  --recursive|-r         Enable recursive directory traversal for batch mode
+  --output-dir|--dir={PATH} Specify output directory for batch results (default: same as input)
+
 Format-Specific Options:
   Each format supports its own extension parameters. Examples:
     --align=l,c,r         For markdown: column alignment
@@ -51,6 +56,18 @@ Examples:
 
   # Transpose and capitalize
   tableconvert input.csv output.md --transpose --capitalize
+
+  # Batch mode: convert all CSV files in a directory
+  tableconvert --batch="data/*.csv" --to=json
+
+  # Batch mode with recursive search
+  tableconvert --batch="data/**/*.csv" --to=json --recursive
+
+  # Batch mode with output directory
+  tableconvert --batch="input/*.csv" --to=json --output-dir=output
+
+  # Batch mode with short flags
+  tableconvert -b "*.csv" -t json -r -v
 
   # Show help for markdown format
   tableconvert --help-format=markdown

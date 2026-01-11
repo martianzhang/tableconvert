@@ -34,6 +34,18 @@ tableconvert input.csv output.md --transpose --capitalize
 
 # Convert from MySQL to Markdown using template
 tableconvert --from=mysql --to=template --file=input.csv --template=markdown.tmpl
+
+# Batch mode: convert all CSV files in a directory
+tableconvert --batch="data/*.csv" --to=json
+
+# Batch mode with recursive search
+tableconvert --batch="data/**/*.csv" --to=json --recursive
+
+# Batch mode with output directory
+tableconvert --batch="input/*.csv" --to=json --output-dir=output
+
+# Batch mode with short flags
+tableconvert -b "*.csv" -t json -r -v
 ```
 
 More usage info please refer to [Usage](https://github.com/martianzhang/tableconvert/blob/main/common/usage.txt).
@@ -52,6 +64,11 @@ More usage info please refer to [Usage](https://github.com/martianzhang/tablecon
 - `-h, --help` - Show help message
 - `--help-formats` - Show all supported formats and their parameters
 - `--help-format={FORMAT}` - Show parameters for a specific format
+
+**Batch Processing Options:**
+- `--batch|-b={PATTERN}` - Process multiple files matching a pattern (e.g., `*.csv`, `data/*.json`)
+- `--recursive|-r` - Enable recursive directory traversal for batch mode
+- `--output-dir|--dir={PATH}` - Specify output directory for batch results (default: same as input)
 
 **Data Transformation Options:**
 - `--transpose` - Transpose the table (swap rows and columns)

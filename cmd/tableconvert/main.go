@@ -50,6 +50,12 @@ func main() {
 		return
 	}
 
+	// Check if batch mode is requested
+	if cfg.Batch != "" {
+		runBatchMode(&cfg)
+		return
+	}
+
 	if cfg.Verbose {
 		fmt.Fprintf(os.Stderr, "# From: %s\n", cfg.From)
 		fmt.Fprintf(os.Stderr, "# To: %s\n", cfg.To)
@@ -73,6 +79,85 @@ func runMCPMode() {
 	ctx := context.Background()
 	if err := server.Run(ctx, &mcp.StdioTransport{}); err != nil {
 		log.Fatalf("MCP server failed: %v", err)
+	}
+}
+
+// runBatchMode processes multiple files in batch
+func runBatchMode(cfg *common.Config) {
+	// Get list of files to process
+	files, err := cfg.GetBatchFiles()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Create output directory if specified and doesn't exist
+	if cfg.OutputDir != "" {
+		if err := os.MkdirAll(cfg.OutputDir, 0755); err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating output directory: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	// Process each file
+	successCount := 0
+	failCount := 0
+
+	for _, file := range files {
+		if cfg.Verbose {
+			fmt.Fprintf(os.Stderr, "Processing: %s -> %s\n", file.InputPath, file.OutputPath)
+		}
+
+		// Open input file
+		inputFile, err := os.Open(file.InputPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "  ✗ Failed to open %s: %v\n", file.InputPath, err)
+			failCount++
+			continue
+		}
+
+		// Create output file
+		outputFile, err := os.Create(file.OutputPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "  ✗ Failed to create %s: %v\n", file.OutputPath, err)
+			inputFile.Close()
+			failCount++
+			continue
+		}
+
+		// Create a temporary config for this file
+		fileCfg := &common.Config{
+			From:      file.FromFormat,
+			To:        file.ToFormat,
+			Reader:    inputFile,
+			Writer:    outputFile,
+			Verbose:   cfg.Verbose,
+			Extension: cfg.Extension,
+		}
+
+		// Perform conversion
+		err = common.PerformConversionWithRegistry(formatRegistry, fileCfg)
+		inputFile.Close()
+		outputFile.Close()
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "  ✗ Conversion failed: %v\n", err)
+			// Clean up failed output file
+			os.Remove(file.OutputPath)
+			failCount++
+		} else {
+			if cfg.Verbose {
+				fmt.Fprintf(os.Stderr, "  ✓ Success\n")
+			}
+			successCount++
+		}
+	}
+
+	// Print summary
+	fmt.Fprintf(os.Stderr, "\nBatch processing complete: %d succeeded, %d failed\n", successCount, failCount)
+
+	if failCount > 0 {
+		os.Exit(1)
 	}
 }
 

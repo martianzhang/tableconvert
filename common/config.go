@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -264,6 +265,12 @@ func ParseConfig(args []string) (Config, error) {
 			cfg.Result = v
 		case "verbose", "v":
 			cfg.Verbose = parseBool(v, true) // empty -> true, unknown -> false
+		case "batch", "b":
+			cfg.Batch = v
+		case "recursive", "r":
+			cfg.Recursive = parseBool(v, true)
+		case "output-dir", "dir":
+			cfg.OutputDir = v
 		case "h", "help":
 			Usage()
 			os.Exit(0)
@@ -293,6 +300,20 @@ func ParseConfig(args []string) (Config, error) {
 
 	// If MCP mode is enabled, skip from/to validation
 	if cfg.MCPMode {
+		return cfg, nil
+	}
+
+	// Batch mode handling
+	if cfg.Batch != "" {
+		// Batch mode: skip single file validation
+		// Validate that to format is provided
+		if cfg.To == "" {
+			return cfg, fmt.Errorf("batch mode requires --to format to be specified\n\nExample:\n  tableconvert --batch=\"*.csv\" --to=json")
+		}
+		if !FormatExists(cfg.To) {
+			return cfg, fmt.Errorf("unsupported output format: %s\n\nSupported formats: %v", cfg.To, getSupportedFormats())
+		}
+		// Batch mode doesn't use Reader/Writer for single file
 		return cfg, nil
 	}
 
@@ -470,6 +491,9 @@ type Config struct {
 	Result    string
 	Verbose   bool
 	MCPMode   bool
+	Batch     string // Batch mode pattern (e.g., "*.csv")
+	Recursive bool   // Recursive directory traversal
+	OutputDir string // Output directory for batch mode
 	Reader    io.Reader
 	Writer    io.Writer
 	Extension map[string]string
@@ -573,4 +597,307 @@ func (c *Config) ApplyTransformations(table *Table) {
 	} else if c.GetExtensionBool("capitalize", false) {
 		Capitalize(table)
 	}
+}
+
+// BatchFile represents a single file in batch processing
+type BatchFile struct {
+	InputPath  string
+	OutputPath string
+	FromFormat string
+	ToFormat   string
+}
+
+// GetBatchFiles expands the batch pattern and returns a list of files to process
+func (c *Config) GetBatchFiles() ([]BatchFile, error) {
+	var files []BatchFile
+
+	// Determine base directory and pattern
+	pattern := c.Batch
+	var baseDir string
+	var filePattern string
+
+	// Handle glob patterns properly - don't use filepath.Dir/Base for patterns with **
+	// because they treat ** as a literal directory name
+	if strings.Contains(pattern, "**") {
+		// For recursive patterns like "test_batch/**/*.csv"
+		// Find the position of ** and split there
+		idx := strings.Index(pattern, "**")
+		// Everything before ** is the base directory (up to the last /)
+		beforeStar := pattern[:idx]
+		if strings.Contains(beforeStar, "/") {
+			lastSlash := strings.LastIndex(beforeStar, "/")
+			baseDir = beforeStar[:lastSlash]
+			filePattern = pattern[lastSlash+1:]
+		} else {
+			baseDir = "."
+			filePattern = pattern
+		}
+		// Normalize baseDir
+		if baseDir == "" {
+			baseDir = "."
+		}
+	} else if strings.Contains(pattern, "/") || strings.Contains(pattern, "\\") {
+		// Simple path without ** - use standard filepath functions
+		baseDir = filepath.Dir(pattern)
+		filePattern = filepath.Base(pattern)
+	} else {
+		baseDir = "."
+		filePattern = pattern
+	}
+
+	// Handle recursive mode
+	var matches []string
+	var err error
+	if c.Recursive {
+		// Use Walk to find all matching files recursively
+		matches, err = c.walkPattern(baseDir, filePattern)
+	} else {
+		// Use Glob for single directory
+		fullPattern := filepath.Join(baseDir, filePattern)
+		matches, err = filepath.Glob(fullPattern)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("error expanding pattern: %w", err)
+	}
+
+	if len(matches) == 0 {
+		return nil, fmt.Errorf("no files found matching pattern: %s", pattern)
+	}
+
+	// Sort matches for consistent order
+	sort.Strings(matches)
+
+	// Build BatchFile list
+	for _, inputPath := range matches {
+		// Skip directories
+		info, err := os.Stat(inputPath)
+		if err != nil || info.IsDir() {
+			continue
+		}
+
+		// Determine output path
+		var outputPath string
+		if c.OutputDir != "" {
+			// Use specified output directory
+			outputPath = filepath.Join(c.OutputDir, filepath.Base(inputPath))
+		} else {
+			// Use same directory as input
+			outputPath = filepath.Join(filepath.Dir(inputPath), filepath.Base(inputPath))
+		}
+
+		// Change extension to match output format
+		outputPath = c.changeExtension(outputPath, c.To)
+
+		// Auto-detect input format from extension
+		fromFormat := detectFormatFromExtension(inputPath)
+		if fromFormat == "" {
+			// Try to use --from if specified
+			if c.From != "" {
+				fromFormat = c.From
+			} else {
+				return nil, fmt.Errorf("cannot detect format from input file: %s (use --from to specify)", inputPath)
+			}
+		}
+
+		files = append(files, BatchFile{
+			InputPath:  inputPath,
+			OutputPath: outputPath,
+			FromFormat: fromFormat,
+			ToFormat:   c.To,
+		})
+	}
+
+	return files, nil
+}
+
+// walkPattern recursively finds files matching the pattern
+// Supports ** for recursive directory matching
+func (c *Config) walkPattern(baseDir, pattern string) ([]string, error) {
+	var matches []string
+
+	// Handle ** in pattern by converting to recursive matching
+	// Pattern "**/*.csv" means "match all .csv files in all subdirectories (including base)"
+	err := filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			// Skip hidden directories unless explicitly in pattern
+			if strings.HasPrefix(info.Name(), ".") && info.Name() != "." {
+				// Check if pattern explicitly includes this
+				if !strings.Contains(pattern, info.Name()) {
+					return filepath.SkipDir
+				}
+			}
+			return nil
+		}
+
+		// Get relative path from baseDir
+		relPath, err := filepath.Rel(baseDir, path)
+		if err != nil {
+			return err
+		}
+
+		// Convert to forward slashes for consistent pattern matching
+		relPath = filepath.ToSlash(relPath)
+
+		// Check if path matches pattern
+		if strings.Contains(pattern, "**") {
+			// Handle ** pattern
+			// Split pattern by ** to get prefix and suffix
+			parts := strings.Split(pattern, "**")
+			if len(parts) != 2 {
+				return fmt.Errorf("pattern must contain exactly one **: %s", pattern)
+			}
+
+			prefix := parts[0]
+			suffix := parts[1]
+
+			// Normalize
+			prefix = strings.TrimPrefix(prefix, "/")
+			prefix = strings.TrimSuffix(prefix, "/")
+			suffix = strings.TrimPrefix(suffix, "/")
+			suffix = strings.TrimSuffix(suffix, "/")
+
+			// For pattern "dir/**/*.csv":
+			// - prefix = "dir"
+			// - suffix = "*.csv"
+			// - relPath examples: "a.csv", "sub/a.csv", "sub/sub/a.csv"
+			// - we want to match: "dir/a.csv", "dir/sub/a.csv", etc.
+
+			// For pattern "**/*.csv":
+			// - prefix = ""
+			// - suffix = "*.csv"
+			// - relPath examples: "a.csv", "sub/a.csv"
+			// - we want to match all
+
+			matched := true
+
+			// Check prefix
+			if prefix != "" {
+				// Must start with prefix/
+				if !strings.HasPrefix(relPath, prefix+"/") {
+					matched = false
+				}
+			}
+
+			// Check suffix
+			if matched && suffix != "" {
+				// suffix can be "file.txt" or "sub/file.txt"
+				// We need to check if relPath ends with something matching suffix
+
+				// Remove prefix from relPath for suffix checking
+				checkPath := relPath
+				if prefix != "" {
+					checkPath = strings.TrimPrefix(relPath, prefix+"/")
+				}
+
+				// Now check if checkPath matches suffix
+				// suffix might be "file.txt" or "sub/file.txt"
+				// For "file.txt": match if checkPath == "file.txt" or checkPath ends with "/file.txt"
+				// For "sub/file.txt": match if checkPath == "sub/file.txt" or ends with "/sub/file.txt"
+
+				// Simple approach: try matching suffix against the path and various suffixes
+				suffixMatched := false
+
+				// Try exact match first
+				if checkPath == suffix {
+					suffixMatched = true
+				}
+
+				// Try glob match
+				if !suffixMatched {
+					matchedByGlob, _ := filepath.Match(suffix, checkPath)
+					if matchedByGlob {
+						suffixMatched = true
+					}
+				}
+
+				// Try matching suffix against path suffixes
+				if !suffixMatched && strings.Contains(suffix, "/") {
+					// suffix has path components, check if checkPath ends with suffix
+					if strings.HasSuffix(checkPath, "/"+suffix) {
+						suffixMatched = true
+					}
+				}
+
+				// Try matching just the filename part
+				if !suffixMatched && !strings.Contains(suffix, "/") {
+					// suffix is just a filename pattern
+					if filepath.Base(checkPath) == suffix {
+						suffixMatched = true
+					}
+					// Try glob on filename
+					if !suffixMatched {
+						matchedByGlob, _ := filepath.Match(suffix, filepath.Base(checkPath))
+						if matchedByGlob {
+							suffixMatched = true
+						}
+					}
+				}
+
+				if !suffixMatched {
+					matched = false
+				}
+			}
+
+			if matched {
+				matches = append(matches, path)
+			}
+		} else {
+			// Standard glob pattern - use filepath.Match on the filename
+			matched, err := filepath.Match(pattern, filepath.Base(path))
+			if err != nil {
+				return err
+			}
+			if matched {
+				matches = append(matches, path)
+			}
+		}
+		return nil
+	})
+
+	return matches, err
+}
+
+// changeExtension changes the file extension to match the target format
+func (c *Config) changeExtension(path, format string) string {
+	ext := ""
+	switch format {
+	case "csv":
+		ext = ".csv"
+	case "json":
+		ext = ".json"
+	case "jsonl", "jsonlines":
+		ext = ".jsonl"
+	case "markdown", "md":
+		ext = ".md"
+	case "html":
+		ext = ".html"
+	case "xml":
+		ext = ".xml"
+	case "sql":
+		ext = ".sql"
+	case "latex":
+		ext = ".tex"
+	case "excel":
+		ext = ".xlsx"
+	case "mysql":
+		ext = ".txt"
+	case "mediawiki":
+		ext = ".wiki"
+	case "twiki":
+		ext = ".twiki"
+	case "tmpl", "template":
+		ext = ".tmpl"
+	case "ascii":
+		ext = ".txt"
+	default:
+		// Keep original extension
+		return path
+	}
+
+	// Replace extension
+	return strings.TrimSuffix(path, filepath.Ext(path)) + ext
 }

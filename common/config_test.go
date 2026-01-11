@@ -637,10 +637,166 @@ func TestParseConfigMixedAndEdgeCases(t *testing.T) {
 	assert.Equal(t, "users_data", cfg.Extension["table"])
 
 	// Test multiple unknown parameters
-	args = []string{"--from", "csv", "--to", "json", "--a", "1", "--b", "2", "--c", "3"}
+	args = []string{"--from", "csv", "--to", "json", "--param1", "1", "--param2", "2", "--param3", "3"}
 	cfg, err = ParseConfig(args)
 	assert.NoError(t, err)
-	assert.Equal(t, "1", cfg.Extension["a"])
-	assert.Equal(t, "2", cfg.Extension["b"])
-	assert.Equal(t, "3", cfg.Extension["c"])
+	assert.Equal(t, "1", cfg.Extension["param1"])
+	assert.Equal(t, "2", cfg.Extension["param2"])
+	assert.Equal(t, "3", cfg.Extension["param3"])
+}
+
+func TestParseConfigBatchMode(t *testing.T) {
+	// Test basic batch mode
+	args := []string{"--batch=*.csv", "--to=json"}
+	cfg, err := ParseConfig(args)
+	assert.NoError(t, err)
+	assert.Equal(t, "*.csv", cfg.Batch)
+	assert.Equal(t, "json", cfg.To)
+	assert.False(t, cfg.Recursive)
+	assert.Empty(t, cfg.OutputDir)
+
+	// Test batch mode with recursive
+	args = []string{"--batch=dir/**/*.csv", "--to=json", "--recursive"}
+	cfg, err = ParseConfig(args)
+	assert.NoError(t, err)
+	assert.Equal(t, "dir/**/*.csv", cfg.Batch)
+	assert.Equal(t, "json", cfg.To)
+	assert.True(t, cfg.Recursive)
+
+	// Test batch mode with output directory
+	args = []string{"--batch=*.csv", "--to=json", "--output-dir=output"}
+	cfg, err = ParseConfig(args)
+	assert.NoError(t, err)
+	assert.Equal(t, "*.csv", cfg.Batch)
+	assert.Equal(t, "json", cfg.To)
+	assert.Equal(t, "output", cfg.OutputDir)
+
+	// Test batch mode with short flags
+	args = []string{"-b", "*.csv", "-t", "json", "-r"}
+	cfg, err = ParseConfig(args)
+	assert.NoError(t, err)
+	assert.Equal(t, "*.csv", cfg.Batch)
+	assert.Equal(t, "json", cfg.To)
+	assert.True(t, cfg.Recursive)
+
+	// Test batch mode requires --to
+	args = []string{"--batch=*.csv"}
+	cfg, err = ParseConfig(args)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "batch mode requires --to")
+
+	// Test batch mode with invalid format
+	args = []string{"--batch=*.csv", "--to=invalid"}
+	cfg, err = ParseConfig(args)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported output format")
+}
+
+func TestGetBatchFiles(t *testing.T) {
+	// Create test directory structure
+	testDir := t.TempDir()
+
+	// Create test files
+	os.WriteFile(testDir+"/data1.csv", []byte("a,b\n1,2"), 0644)
+	os.WriteFile(testDir+"/data2.csv", []byte("c,d\n3,4"), 0644)
+	os.WriteFile(testDir+"/data3.txt", []byte("e,f\n5,6"), 0644)
+
+	// Create subdirectory
+	subDir := testDir + "/sub"
+	os.Mkdir(subDir, 0755)
+	os.WriteFile(subDir+"/nested.csv", []byte("g,h\n7,8"), 0644)
+
+	// Test basic pattern
+	t.Run("basic pattern", func(t *testing.T) {
+		cfg := &Config{
+			Batch: testDir + "/*.csv",
+			To:    "json",
+		}
+		files, err := cfg.GetBatchFiles()
+		assert.NoError(t, err)
+		assert.Len(t, files, 2)
+
+		// Check that files are sorted
+		assert.True(t, files[0].InputPath < files[1].InputPath)
+
+		// Check format detection
+		assert.Equal(t, "csv", files[0].FromFormat)
+		assert.Equal(t, "json", files[0].ToFormat)
+	})
+
+	// Test recursive pattern
+	t.Run("recursive pattern", func(t *testing.T) {
+		cfg := &Config{
+			Batch:     testDir + "/**/*.csv",
+			To:        "json",
+			Recursive: true,
+		}
+		files, err := cfg.GetBatchFiles()
+		assert.NoError(t, err)
+		assert.Len(t, files, 3) // data1.csv, data2.csv, sub/nested.csv
+
+		// Check that nested file is included
+		nestedFound := false
+		for _, f := range files {
+			if strings.Contains(f.InputPath, "nested.csv") {
+				nestedFound = true
+				assert.True(t, strings.Contains(f.OutputPath, "nested.json"))
+			}
+		}
+		assert.True(t, nestedFound, "nested.csv should be found in recursive mode")
+	})
+
+	// Test with output directory
+	t.Run("with output directory", func(t *testing.T) {
+		outputDir := t.TempDir()
+		cfg := &Config{
+			Batch:     testDir + "/*.csv",
+			To:        "json",
+			OutputDir: outputDir,
+		}
+		files, err := cfg.GetBatchFiles()
+		assert.NoError(t, err)
+		assert.Len(t, files, 2)
+
+		// All outputs should be in the output directory
+		for _, f := range files {
+			assert.True(t, strings.HasPrefix(f.OutputPath, outputDir))
+		}
+	})
+
+	// Test no files found
+	t.Run("no files found", func(t *testing.T) {
+		cfg := &Config{
+			Batch: testDir + "/*.xyz",
+			To:    "json",
+		}
+		_, err := cfg.GetBatchFiles()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no files found")
+	})
+
+	// Test format auto-detection fails for .txt
+	t.Run("format auto-detection fails for txt", func(t *testing.T) {
+		cfg := &Config{
+			Batch: testDir + "/*.txt",
+			To:    "csv",
+		}
+		_, err := cfg.GetBatchFiles()
+		// .txt files don't auto-detect, should return error
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "cannot detect format")
+	})
+
+	// Test with --from specified
+	t.Run("with explicit from format", func(t *testing.T) {
+		cfg := &Config{
+			Batch: testDir + "/*.txt",
+			From:  "csv",
+			To:    "json",
+		}
+		files, err := cfg.GetBatchFiles()
+		assert.NoError(t, err)
+		assert.Len(t, files, 1)
+		assert.Equal(t, "csv", files[0].FromFormat)
+	})
 }
