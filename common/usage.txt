@@ -1,86 +1,90 @@
 Usage: tableconvert [OPTIONS] [INPUT_FILE] [OUTPUT_FILE]
 
-Convert between different table formats (MySQL, Markdown, CSV, JSON, Excel, etc.)
+🚀 Convert between different table formats (MySQL, Markdown, CSV, JSON, Excel, etc.)
 
-Basic Options:
-  --from|-f={FORMAT}     Source format (e.g. mysql, csv, json, xlsx)
-  --to|-t={FORMAT}       Target format (e.g. mysql, csv, json, xlsx)
-  --file|--input|-i={PATH}  Input file path (or use stdin if not specified)
-  --result|--output|-o={PATH} Output file path (or use stdout if not specified)
+BASIC OPTIONS:
+  --from|-f={FORMAT}        Source format (e.g. mysql, csv, json, xlsx)
+  --to|-t={FORMAT}          Target format (e.g. mysql, csv, json, xlsx)
+  --file|--input|-i={PATH}  Input file path (or stdin if not specified)
+  --result|--output|-o={PATH} Output file path (or stdout if not specified)
 
-Quick Options:
-  -v, --verbose          Enable verbose output
-  --mcp                  Run as MCP (Model Context Protocol) server
-  -h, --help             Show this help message
-  --help-formats         Show all supported formats and their parameters
-  --help-format={FORMAT} Show parameters for a specific format (e.g. --help-format=markdown)
+QUICK OPTIONS:
+  -v, --verbose             Enable verbose output for debugging
+  -h, --help                Show this help message
+  --help-formats            Show all supported formats and their parameters
+  --help-format={FORMAT}    Show parameters for a specific format
+  --mcp                     Run as MCP (Model Context Protocol) server
 
-Data Transformation Options:
-  --transpose            Transpose the table (swap rows and columns)
-  --delete-empty         Remove empty rows from the table
-  --deduplicate          Remove duplicate rows
-  --uppercase            Convert all text to UPPERCASE
-  --lowercase            Convert all text to lowercase
-  --capitalize           Capitalize the first letter of each cell
+DATA TRANSFORMATIONS:
+  --transpose               Transpose the table (swap rows and columns)
+  --delete-empty            Remove empty rows from the table
+  --deduplicate             Remove duplicate rows
+  --uppercase               Convert all text to UPPERCASE
+  --lowercase               Convert all text to lowercase
+  --capitalize              Capitalize the first letter of each cell
 
-Batch Processing Options:
-  --batch|-b={PATTERN}   Process multiple files matching a pattern (e.g., *.csv, data/*.json)
-  --recursive|-r         Enable recursive directory traversal for batch mode
-  --output-dir|--dir={PATH} Specify output directory for batch results (default: same as input)
+BATCH PROCESSING:
+  --batch|-b={PATTERN}      Process multiple files matching a pattern
+                            Examples: "*.csv", "data/*.json", "**/*.xlsx"
+  --recursive|-r            Enable recursive directory traversal
+  --output-dir|--dir={PATH} Specify output directory (default: same as input)
 
-Format-Specific Options:
+FORMAT-SPECIFIC OPTIONS:
   Each format supports its own extension parameters. Examples:
-    --align=l,c,r         For markdown: column alignment
-    --style=box           For ascii: table style (box, plus, dot, bubble)
-    --delimiter=TAB       For csv: value delimiter
-    --format=object       For json: output format (object, 2d, column, keyed)
-    --minify=true         For html/json/xml: minify output
-    --table=mytable       For sql: table name
-    --template=file.tmpl  For tmpl: template file path
+    --align=l,c,r           For markdown: column alignment (left/center/right)
+    --style=box             For ascii: table style (box, plus, dot, bubble)
+    --delimiter=TAB         For csv: value delimiter (COMMA, TAB, SEMICOLON, etc.)
+    --format=object         For json: output format (object, 2d, column, keyed)
+    --minify=true           For html/json/xml: minify output
+    --table=mytable         For sql: table name for INSERT statements
+    --template=file.tmpl    For tmpl: template file path
+    --bold-header           For markdown/latex: make headers bold
+    --auto-width            For excel: auto-adjust column widths
 
-Examples:
-  # Basic conversion with flags
-  tableconvert --from=csv --to=json --file=input.csv --result=output.json
+EXAMPLES:
+  # Basic conversion with auto-detection
+  tableconvert input.csv output.json
+
+  # Explicit format specification
+  tableconvert --from=csv --to=markdown input.csv output.md
 
   # Short flags
   tableconvert -i input.csv -o output.json
 
-  # Auto-detect formats from file extensions
-  tableconvert input.csv output.json
+  # Stdin to stdout
+  echo "name,age\nAlice,30\nBob,25" | tableconvert --from=csv --to=json
 
   # With format-specific options
-  tableconvert input.csv output.md --bold-header --align=l,c,r
+  tableconvert data.csv report.md --bold-header --align=l,c,r
 
-  # Read from stdin and write to stdout
-  cat input.csv | tableconvert --from=csv --to=json
+  # Transform data
+  tableconvert data.csv output.md --transpose --capitalize
 
-  # Transpose and capitalize
-  tableconvert input.csv output.md --transpose --capitalize
+  # Batch processing
+  tableconvert --batch="data/*.csv" --to=json --output-dir=results
 
-  # Batch mode: convert all CSV files in a directory
-  tableconvert --batch="data/*.csv" --to=json
+  # Batch with recursion
+  tableconvert --batch="**/*.csv" --to=json --recursive --verbose
 
-  # Batch mode with recursive search
-  tableconvert --batch="data/**/*.csv" --to=json --recursive
+  # SQL generation
+  tableconvert data.csv data.sql --table=users --dialect=mysql --one-insert
 
-  # Batch mode with output directory
-  tableconvert --batch="input/*.csv" --to=json --output-dir=output
+  # LaTeX for papers
+  tableconvert data.csv table.tex --caption="Results" --text-align=c
 
-  # Batch mode with short flags
-  tableconvert -b "*.csv" -t json -r -v
-
-  # Show help for markdown format
+  # Show format help
   tableconvert --help-format=markdown
 
-  # Show all formats and their parameters
+  # Show all formats
   tableconvert --help-formats
 
-  # Run as MCP server for AI assistants
+  # Run as MCP server
   tableconvert --mcp
 
-Auto-Detection:
+AUTO-DETECTION:
   When --from or --to are not specified, tableconvert will attempt to detect
   the format from file extensions:
+
     .csv      -> csv
     .json     -> json
     .jsonl    -> jsonl
@@ -94,5 +98,8 @@ Auto-Detection:
     .tmpl, .template -> tmpl
     .txt      -> (not auto-detected, must specify)
 
-For complete parameter reference:
+  Note: .txt files require explicit format specification with --from
+
+COMPLETE DOCUMENTATION:
+  For detailed format-specific parameters and examples, see:
   https://github.com/martianzhang/tableconvert/blob/main/docs/arguments.md

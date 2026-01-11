@@ -1,202 +1,329 @@
 # tableconvert
 
-Offline table convert tool. **In progress, Not production ready.**
+🚀 **A powerful offline table format converter written in Go** - Convert between MySQL, Markdown, CSV, JSON, Excel, SQL, LaTeX, and more.
 
-`tableconvert` command line tool, which is writen in Go. It's designed for converting between different table formats, such as MySQL Query Output, Excel/CSV, SQL queries, and potentially other tabular data structures.
+`tableconvert` is a command-line tool designed for converting between different table formats. It's perfect for developers, data analysts, and anyone who needs to transform tabular data between different systems.
 
-## Key Features
+## ✨ Key Features
 
-- **Multi-format Conversion**: Easily transform data between different formats, such as MySQL Query Output, Markdown, Excel/CSV, SQL queries, and potentially other tabular data structures.
-- **Offline available**: No need to connect to the internet to convert between formats. Your data is safe and secure. 
-- **Template Support**: Support template output, which can be used to generate any other formats, like `PHP`, `Python` data structs, etc.
-- **Cross-platform**: Support Windows, Linux, and Mac OS.
+- **🔄 Multi-format Support**: 13+ formats including MySQL, Markdown, CSV, JSON, Excel, HTML, XML, SQL, LaTeX, MediaWiki, TWiki, and custom templates
+- **🔒 Offline & Secure**: All processing happens locally - your data never leaves your machine
+- **⚡ Batch Processing**: Convert multiple files at once with glob patterns
+- **🔧 Data Transformations**: Built-in support for transpose, deduplication, case conversion, and more
+- **🎨 Format-Specific Styling**: Fine-grained control over output formatting for each format
+- **🤖 MCP Server**: Built-in Model Context Protocol server for AI assistants
+- **🌍 Cross-Platform**: Works on Windows, Linux, and macOS
 
-## Usage Example
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
-# Basic conversion with flags
-tableconvert --from=csv --to=json --file=input.csv --result=output.json
+# Build from source (requires Go 1.18+)
+git clone https://github.com/martianzhang/tableconvert.git
+cd tableconvert
+make build
+
+# The binary will be available at:
+# - Linux/macOS: ./bin/tableconvert
+# - Windows: bin\tableconvert.exe
+```
+
+### Basic Usage
+
+```bash
+# Auto-detect formats from file extensions
+tableconvert input.csv output.json
+
+# Explicit format specification
+tableconvert --from=csv --to=markdown input.csv output.md
 
 # Short flags
 tableconvert -i input.csv -o output.json
 
-# Auto-detect formats from file extensions
-tableconvert input.csv output.json
+# Read from stdin, write to stdout
+echo "name,age\nAlice,30\nBob,25" | tableconvert --from=csv --to=json
+```
 
-# Read from stdin and write to stdout
-cat input.csv | tableconvert --from=csv --to=json
+### Common Scenarios
 
-# With format-specific options
-tableconvert input.csv output.md --bold-header --align=l,c,r
+```bash
+# Convert MySQL query results to Markdown (use -t for table format)
+mysql -t -e "SELECT * FROM users" | tableconvert --from=mysql --to=markdown > users_data.md
 
-# Transpose and capitalize
+# Convert MySQL table schema to Markdown
+mysql -t -e "DESCRIBE users" | tableconvert --from=mysql --to=markdown > users_schema.md
+
+# Convert CSV to Excel with styling
+tableconvert data.csv report.xlsx --auto-width --bold-header
+
+# Batch convert all CSV files to JSON
+tableconvert --batch="data/*.csv" --to=json --output-dir=json_output
+
+# Transform data: transpose and capitalize
 tableconvert input.csv output.md --transpose --capitalize
 
-# Convert from MySQL to Markdown using template
-tableconvert --from=mysql --to=template --file=input.csv --template=markdown.tmpl
+# Generate SQL INSERT statements from CSV
+tableconvert data.csv data.sql --table=users --dialect=mysql
 
-# Batch mode: convert all CSV files in a directory
-tableconvert --batch="data/*.csv" --to=json
-
-# Batch mode with recursive search
-tableconvert --batch="data/**/*.csv" --to=json --recursive
-
-# Batch mode with output directory
-tableconvert --batch="input/*.csv" --to=json --output-dir=output
-
-# Batch mode with short flags
-tableconvert -b "*.csv" -t json -r -v
+# Create LaTeX table for academic paper
+tableconvert data.csv table.tex --bold-header --text-align=c
 ```
 
-More usage info please refer to [Usage](https://github.com/martianzhang/tableconvert/blob/main/common/usage.txt).
+### Format-Specific Examples
 
-### Command Line Options
+```bash
+# Markdown with custom alignment and bold headers
+tableconvert data.csv output.md --align=l,c,r --bold-header
+
+# JSON with specific format (object, 2d array, column-oriented)
+tableconvert data.csv output.json --format=object --minify
+
+# HTML table with div wrapper and minification
+tableconvert data.csv output.html --div --minify --thead
+
+# SQL with multiple rows in one INSERT
+tableconvert data.csv output.sql --one-insert --table=products
+
+# Custom template output
+tableconvert data.csv output.php --template=php_array.tmpl
+```
+
+## 📖 Command Reference
 
 **Basic Options:**
-- `--from|-f={FORMAT}` - Source format (e.g. mysql, csv, json, xlsx)
-- `--to|-t={FORMAT}` - Target format (e.g. mysql, csv, json, xlsx)
-- `--file|--input|-i={PATH}` - Input file path (or use stdin if not specified)
-- `--result|--output|-o={PATH}` - Output file path (or use stdout if not specified)
+- `--from|-f={FORMAT}` - Source format (required if not auto-detected)
+- `--to|-t={FORMAT}` - Target format (required if not auto-detected)
+- `--file|--input|-i={PATH}` - Input file path (or stdin if omitted)
+- `--result|--output|-o={PATH}` - Output file path (or stdout if omitted)
 
 **Quick Options:**
-- `-v, --verbose` - Enable verbose output
-- `--mcp` - Run as MCP (Model Context Protocol) server
+- `-v, --verbose` - Show detailed processing information
 - `-h, --help` - Show help message
-- `--help-formats` - Show all supported formats and their parameters
-- `--help-format={FORMAT}` - Show parameters for a specific format
+- `--help-formats` - List all supported formats
+- `--help-format={FORMAT}` - Show format-specific parameters
+- `--mcp` - Run as MCP server for AI assistants
 
-**Batch Processing Options:**
-- `--batch|-b={PATTERN}` - Process multiple files matching a pattern (e.g., `*.csv`, `data/*.json`)
-- `--recursive|-r` - Enable recursive directory traversal for batch mode
-- `--output-dir|--dir={PATH}` - Specify output directory for batch results (default: same as input)
+**Batch Processing:**
+- `--batch|-b={PATTERN}` - Process multiple files (e.g., `*.csv`, `data/*.json`)
+- `--recursive|-r` - Enable recursive directory search
+- `--output-dir|--dir={PATH}` - Output directory (default: same as input)
 
-**Data Transformation Options:**
-- `--transpose` - Transpose the table (swap rows and columns)
-- `--delete-empty` - Remove empty rows from the table
+**Data Transformations:**
+- `--transpose` - Swap rows and columns
+- `--delete-empty` - Remove empty rows
 - `--deduplicate` - Remove duplicate rows
-- `--uppercase` - Convert all text to UPPERCASE
-- `--lowercase` - Convert all text to lowercase
-- `--capitalize` - Capitalize the first letter of each cell
+- `--uppercase` - Convert to UPPERCASE
+- `--lowercase` - Convert to lowercase
+- `--capitalize` - Capitalize first letter of each cell
 
 **Auto-Detection:**
-When `--from` or `--to` are not specified, tableconvert will attempt to detect the format from file extensions:
-- `.csv` → csv
-- `.json` → json
-- `.jsonl` → jsonl
-- `.md`, `.markdown` → markdown
-- `.xlsx`, `.xls` → excel
-- `.html`, `.htm` → html
-- `.xml` → xml
-- `.sql` → sql
-- `.tex`, `.latex` → latex
-- `.wiki` → mediawiki
+When `--from` or `--to` are omitted, formats are detected from file extensions:
+- `.csv` → csv, `.json` → json, `.jsonl` → jsonl
+- `.md`, `.markdown` → markdown, `.xlsx`, `.xls` → excel
+- `.html`, `.htm` → html, `.xml` → xml, `.sql` → sql
+- `.tex`, `.latex` → latex, `.wiki` → mediawiki
 - `.tmpl`, `.template` → tmpl
-- `.txt` → (not auto-detected, must specify)
 
-Each format or file type has its own arguments, please refer to the [arguments.md](https://github.com/martianzhang/tableconvert/blob/main/docs/arguments.md) for more details.
+**Format-Specific Parameters:**
+Each format supports custom styling options. See [arguments.md](docs/arguments.md) for complete reference or use `--help-format={format}`.
 
-## MCP (Model Context Protocol) Usage
+## 🤖 MCP (Model Context Protocol) Integration
 
-`tableconvert` provides MCP stdio tools for AI assistants like Claude Code.
+`tableconvert` includes a built-in MCP server for seamless integration with AI assistants like Claude Code.
 
-### Add to Claude Code
-
-Add this to your Claude Code settings:
+### Setup with Claude Code
 
 ```bash
+# Add to Claude Code (Unix/Linux/macOS)
 claude mcp add tableconvert -- /path/to/tableconvert --mcp
+
+# Windows
+claude mcp add tableconvert -- "C:\\path\\to\\tableconvert.exe" --mcp
 ```
 
-On Windows:
+### MCP Tools Available
+
+- **`convert_table`**: Convert table data between formats with full parameter support
+- **`get_formats`**: Discover supported formats and their parameters
+
+### Example MCP Usage
+
+Once configured, you can ask your AI assistant:
+- "Convert this CSV data to a Markdown table with bold headers"
+- "Transform my MySQL query results to JSON format"
+- "Create a LaTeX table from this data with centered alignment"
+
+## 📊 Supported Formats
+
+| Format | Extensions | Read | Write | Description |
+|--------|------------|------|-------|-------------|
+| **MySQL** | `mysql` | ✅ | ✅ | MySQL query output (box format) |
+| **CSV** | `.csv` | ✅ | ✅ | Comma-separated values |
+| **JSON** | `.json` | ✅ | ✅ | JavaScript Object Notation |
+| **JSONL** | `.jsonl`, `.jsonlines` | ✅ | ✅ | JSON Lines format |
+| **Markdown** | `.md`, `.markdown` | ✅ | ✅ | GitHub/Markdown tables |
+| **Excel** | `.xlsx`, `.xls` | ✅ | ✅ | Microsoft Excel files |
+| **HTML** | `.html`, `.htm` | ✅ | ✅ | HTML tables |
+| **XML** | `.xml` | ✅ | ✅ | XML data format |
+| **SQL** | `.sql` | ✅ | ✅ | SQL INSERT statements |
+| **LaTeX** | `.tex`, `.latex` | ✅ | ✅ | LaTeX table format |
+| **MediaWiki** | `.wiki` | ✅ | ✅ | MediaWiki tables |
+| **TWiki** | `.twiki` | ✅ | ✅ | TWiki/TracWiki format |
+| **ASCII** | - | ❌ | ✅ | ASCII art tables |
+| **Template** | `.tmpl`, `.template` | ❌ | ✅ | Custom templates |
+
+## 📚 Real-World Examples
+
+### Database Schema Documentation
 ```bash
-claude mcp add tableconvert -- "C:\path\to\tableconvert.exe" --mcp
+# Export table schema to Markdown
+mysql -t -e "DESCRIBE users" | tableconvert --from=mysql --to=markdown > schema.md
+
+# Generate HTML documentation
+mysql -t -e "SELECT * FROM users" | tableconvert --from=mysql --to=html > table.html
 ```
 
-Or add directly to your config file.
+**Note about MySQL format**: `tableconvert` only supports MySQL query output in **box format** (like `mysql -t` output). It does NOT support:
+- `mysqldump` output (SQL INSERT/CREATE statements)
+- Raw SQL queries without `-t` flag
+- Multi-statement SQL scripts
 
-```json
-{
-  "mcpServers": {
-    "tableconvert": {
-      "command": "/path/to/tableconvert",
-      "args": ["--mcp"]
-    }
-  }
-}
+For `mysqldump` or raw SQL, you'll need additional tools to convert to box format first, or use the `sql` format for INSERT statements.
+
+### Data Pipeline
+```bash
+# Convert CSV to JSON for API
+tableconvert data.csv data.json --format=object
+
+# Transform for analytics
+tableconvert sales.csv report.md --transpose --bold-header --align=l,c,r
 ```
 
-### Available Tools
+### Reporting
+```bash
+# Batch process daily reports
+tableconvert --batch="reports/*.csv" --to=excel --output-dir=excel_reports --bold-header
 
-- **`convert_table`**: Convert table data between formats
-- **`get_formats`**: Get information about supported formats and their parameters
-
-## Support Format
-
-- [x] Excel
-- [x] CSV
-- [x] XML
-- [x] HTML
-- [x] Markdown
-- [x] JSON
-- [x] JSONL
-- [x] SQL
-- [x] MySQL
-- [x] LaTeX
-- [x] MediaWiki
-- [x] TWiki/TracWiki
-- [x] User Define template Output
-
-### MySQL Query Output Example
-
-```txt
-+----------+--------------+------+-----+---------+----------------+
-| FIELD    | TYPE         | NULL | KEY | DEFAULT | EXTRA          |
-+----------+--------------+------+-----+---------+----------------+
-| user_id  | smallint(5)  | NO   | PRI | NULL    | auto_increment |
-| username | varchar(10)  | NO   |     | NULL    |                |
-| password | varchar(100) | NO   |     |         |                |
-+----------+--------------+------+-----+---------+----------------+
+# Generate LaTeX for papers
+tableconvert results.csv table.tex --caption="Experiment Results" --table-align=centering
 ```
 
-## CSV Format Table Example
+## 🔧 Development
 
-```csv
-FIELD,TYPE,NULL,KEY,DEFAULT,EXTRA
-user_id,smallint(5),NO,PRI,NULL,auto_increment
-username,varchar(10),NO,,NULL,
-password,varchar(100),NO,,,
+### Building from Source
+
+```bash
+# Clone repository
+git clone https://github.com/martianzhang/tableconvert.git
+cd tableconvert
+
+# Build
+make build
+
+# Run tests
+make test
+
+# Run specific tests
+go test ./markdown/
+go test ./mysql/
 ```
 
-## Markdown Format Table Example
+### Adding New Formats
 
-```md
-| FIELD    | TYPE         | NULL | KEY | DEFAULT | EXTRA          |
-|----------|--------------|------|-----|---------|----------------|
-| user_id  | smallint(5)  | NO   | PRI | NULL    | auto_increment |
-| username | varchar(10)  | NO   |     | NULL    |                |
-| password | varchar(100) | NO   |     |         |                |
+1. Create package: `mkdir newformat && touch newformat/newformat.go`
+2. Implement `Unmarshal(*common.Config, *common.Table) error`
+3. Implement `Marshal(*common.Config, *common.Table) error`
+4. Register in `cmd/tableconvert/main.go`
+5. Add tests in `newformat/newformat_test.go`
+
+See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation.
+
+## 📖 Documentation
+
+### User Documentation
+- **[Quick Reference](docs/quick-reference.md)** - Fast lookup for common commands
+- **[Complete Parameter Reference](docs/arguments.md)** - All format-specific options
+- **[Practical Examples](docs/examples.md)** - Real-world usage scenarios
+- **[Troubleshooting Guide](docs/troubleshooting.md)** - Solve common issues
+
+### Format Guides
+- **[LaTeX Guide](docs/latex.md)** - LaTeX table syntax explained
+- **[Wiki Formats](docs/wiki.md)** - TWiki, MediaWiki, Confluence syntax
+
+### Developer Documentation
+- **[Architecture Guide](CLAUDE.md)** - Code structure and development
+- **[Contributing](#-contributing)** - How to contribute
+
+### Quick Help
+```bash
+# Show all available commands
+tableconvert --help
+
+# Show all supported formats
+tableconvert --help-formats
+
+# Show format-specific parameters
+tableconvert --help-format=markdown
 ```
 
-## INSERT SQL Example
+## 🆘 Troubleshooting
 
-```sql
-INSERT INTO `{table_name}` (`FIELD`, `TYPE`, `NULL`, `KEY`, `DEFAULT`, `EXTRA`) VALUES ('user_id', 'smallint(5)', 'NO', 'PRI', NULL, 'auto_increment');
-INSERT INTO `{table_name}` (`FIELD`, `TYPE`, `NULL`, `KEY`, `DEFAULT`, `EXTRA`) VALUES ('username', 'varchar(10)', 'NO', '', NULL, '');
-INSERT INTO `{table_name}` (`FIELD`, `TYPE`, `NULL`, `KEY`, `DEFAULT`, `EXTRA`) VALUES ('password', 'varchar(100)', 'NO', '', '', '');
+### Common Issues
+
+**"Format not detected"**
+- Ensure file extensions are correct
+- Use `--from` and `--to` to specify formats explicitly
+- Run `--help-formats` to see all supported formats
+
+**"Invalid table format"**
+- Check if input follows expected format
+- Use `--verbose` to see detailed parsing information
+- For MySQL format, ensure box borders are complete
+
+**"Batch mode not working"**
+- Verify glob patterns are quoted properly
+- Use `--recursive` for subdirectories
+- Check file permissions
+
+### Getting Help
+
+```bash
+# Show all available commands
+tableconvert --help
+
+# Show format-specific parameters
+tableconvert --help-format=markdown
+
+# List all supported formats
+tableconvert --help-formats
+
+# Verbose mode for debugging
+tableconvert input.csv output.json --verbose
 ```
 
-## Reference
+## 🤝 Contributing
 
-* [online tableconvert](https://tableconvert.com/)
+Contributions are welcome! Please ensure:
+- All tests pass: `make test`
+- Code follows existing patterns
+- Add tests for new features
+- Update documentation
+
+## 📄 License
+
+[Apache License 2.0](LICENSE)
+
+## 🔗 References
+
+* [Online tableconvert](https://tableconvert.com/)
 * [ascii-tables](https://github.com/ozh/ascii-tables)
 * [tablewriter](https://github.com/olekukonko/tablewriter)
 * [csvq](https://github.com/mithrandie/csvq)
 
-## Dependency
+---
 
-* [excelize](https://github.com/xuri/excelize)
-* [sqlparser](https://vitess.io/vitess)
-
-## License
-
-[Apache License 2.0](https://github.com/martianzhang/tableconvert/blob/main/LICENSE)
+## Note
+* This tool is not production ready.
+* When you will overwrite exists file, please check first. 
+* All data processing happens locally on your machine.
