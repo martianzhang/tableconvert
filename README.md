@@ -14,15 +14,67 @@ Offline table convert tool. **In progress, Not production ready.**
 ## Usage Example
 
 ```bash
-# Convert from CSV to JSON
+# Basic conversion with flags
 tableconvert --from=csv --to=json --file=input.csv --result=output.json
+
+# Short flags
+tableconvert -i input.csv -o output.json
+
+# Auto-detect formats from file extensions
+tableconvert input.csv output.json
+
 # Read from stdin and write to stdout
 cat input.csv | tableconvert --from=csv --to=json
+
+# With format-specific options
+tableconvert input.csv output.md --bold-header --align=l,c,r
+
+# Transpose and capitalize
+tableconvert input.csv output.md --transpose --capitalize
+
 # Convert from MySQL to Markdown using template
-tableconvert --from=mysql --to=template --file=input.csv --tempalte=markdown.tmpl
+tableconvert --from=mysql --to=template --file=input.csv --template=markdown.tmpl
 ```
 
 More usage info please refer to [Usage](https://github.com/martianzhang/tableconvert/blob/main/common/usage.txt).
+
+### Command Line Options
+
+**Basic Options:**
+- `--from|-f={FORMAT}` - Source format (e.g. mysql, csv, json, xlsx)
+- `--to|-t={FORMAT}` - Target format (e.g. mysql, csv, json, xlsx)
+- `--file|--input|-i={PATH}` - Input file path (or use stdin if not specified)
+- `--result|--output|-o={PATH}` - Output file path (or use stdout if not specified)
+
+**Quick Options:**
+- `-v, --verbose` - Enable verbose output
+- `--mcp` - Run as MCP (Model Context Protocol) server
+- `-h, --help` - Show help message
+- `--help-formats` - Show all supported formats and their parameters
+- `--help-format={FORMAT}` - Show parameters for a specific format
+
+**Data Transformation Options:**
+- `--transpose` - Transpose the table (swap rows and columns)
+- `--delete-empty` - Remove empty rows from the table
+- `--deduplicate` - Remove duplicate rows
+- `--uppercase` - Convert all text to UPPERCASE
+- `--lowercase` - Convert all text to lowercase
+- `--capitalize` - Capitalize the first letter of each cell
+
+**Auto-Detection:**
+When `--from` or `--to` are not specified, tableconvert will attempt to detect the format from file extensions:
+- `.csv` → csv
+- `.json` → json
+- `.jsonl` → jsonl
+- `.md`, `.markdown` → markdown
+- `.xlsx`, `.xls` → excel
+- `.html`, `.htm` → html
+- `.xml` → xml
+- `.sql` → sql
+- `.tex`, `.latex` → latex
+- `.wiki` → mediawiki
+- `.tmpl`, `.template` → tmpl
+- `.txt` → (not auto-detected, must specify)
 
 Each format or file type has its own arguments, please refer to the [arguments.md](https://github.com/martianzhang/tableconvert/blob/main/docs/arguments.md) for more details.
 

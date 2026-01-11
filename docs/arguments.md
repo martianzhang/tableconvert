@@ -1,6 +1,14 @@
-# extended arguments
+# Format-Specific Arguments
 
-Each format may has its own extended arguments, for its own style. Following are the arguments for each file type.
+Each format has its own extension parameters for custom styling. Following are the parameters for each format.
+
+**Note:** Global transformation parameters work with all formats:
+- `--transpose` - Transpose the table (swap rows and columns)
+- `--delete-empty` - Remove empty rows from the table
+- `--deduplicate` - Remove duplicate rows
+- `--uppercase` - Convert all text to UPPERCASE
+- `--lowercase` - Convert all text to lowercase
+- `--capitalize` - Capitalize the first letter of each cell
 
 ## ascii
 
@@ -14,16 +22,14 @@ Each format may has its own extended arguments, for its own style. Following are
 | Argument            | Default | Allowed Values              | Description                  |
 |---------------------|---------|-----------------------------|------------------------------|
 | first-column-header | false   | true, false                 | Use first column as headers  |
-| transpose           | false   | true, false            | Transpose table columns with rows |
 | bom                 | false   |                             | Add Byte Order Mark          |
-| delimiter           | ,(COMMA)| COMMA, TAB, SEMICOLON, PIPE, SLASH, HASH | Value Delimiter |
+| delimiter           | ,       | COMMA, TAB, SEMICOLON, PIPE, SLASH, HASH | Value Delimiter |
 
-## excel
+## excel (or xlsx)
 
 | Argument          | Default | Allowed Values | Description               |
 |-------------------|---------|----------------|---------------------------|
 | first-column-header | false | true, false  | Use first column as headers |
-| transpose    | false   | true, false | Transpose table columns with rows |
 | sheet-name        | Sheet1  |                | Excel Sheet Name          |
 | auto-width        | false   | true, false    | Auto Width                |
 | text-format       | true    | true, false    | force text format         |
@@ -33,7 +39,6 @@ Each format may has its own extended arguments, for its own style. Following are
 | Argument            | Default | Allowed Values | Description                 |
 |---------------------|---------|----------------|-----------------------------|
 | first-column-header | false   | true, false    | Use first column as headers |
-| transpose           | false   | true, false    | Transpose table columns with rows |
 | div                 | false   | true, false    | Convert into div table      |
 | minify              | false   | true, false    | Minify HTML table           |
 | thead               | false   | true, false    | Include thead and tbody tags|
@@ -46,7 +51,7 @@ Each format may has its own extended arguments, for its own style. Following are
 | minify            | false   | true, false    | Minify JSON               |
 | parsing-json      | false   | true, false    | Parsing JSON              |
 
-## jsonlines
+## jsonl (or jsonlines)
 
 | Argument          | Default | Allowed Values | Description               |
 | ------------------|---------|----------------|---------------------------|
@@ -68,14 +73,14 @@ Each format may has its own extended arguments, for its own style. Following are
 | table-align       | centering | centering, raggedleft, raggedright  | Table Alignment |
 | text-align        | l       | l, c, r        | Text Alignment            |
 
-## markdown
+## markdown (or md)
 
 | Argument          | Default | Allowed Values | Description               |
 |-------------------|---------|----------------|---------------------------|
 | align             | l       | l, c, r        | Text Alignment, columns seperate by comma |
 | bold-header       | false   | true, false    | Table Header Bold         |
 | bold-first-column | false   | true, false    | Bold first column         |
-| escape            | false   | true, false    | Escape Markdown table     |
+| escape            | true    | true, false    | Escape Markdown table     |
 | pretty            | true    | true, false    | Pretty-print Markdown     |
 
 ## mediawiki
@@ -86,7 +91,13 @@ Each format may has its own extended arguments, for its own style. Following are
 | minify            | false   | true, false    | Minify MediaWiki table    |
 | sort              | false   | true, false    | Make table sortable in Wikipedia |
 
-## tmpl
+## mysql
+
+| Argument          | Default | Allowed Values | Description               |
+|-------------------|---------|----------------|---------------------------|
+| style             | box     | box            | MySQL table style (box format) |
+
+## tmpl (or template)
 
 | Argument          | Default | Allowed Values | Description               |
 |-------------------|---------|----------------|---------------------------|
@@ -100,6 +111,12 @@ Each format may has its own extended arguments, for its own style. Following are
 | replace           | false   | true, false    | Use REPLACE instead of INSERT   |
 | dialect           | mysql   | none, mysql, oracle, mssql, postgresql | identity escape SQL Dialect, none for no escape |
 | table             |         |                | Table Name                      |
+
+## twiki (or tracwiki)
+
+| Argument          | Default | Allowed Values | Description               |
+|-------------------|---------|----------------|---------------------------|
+| first-row-header  | false   | true, false    | Use first row as headers  |
 
 ## xml
 

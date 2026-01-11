@@ -23,8 +23,8 @@ func ShowFormatsHelp() {
 	fmt.Fprintln(os.Stderr, "========================================")
 	fmt.Fprintln(os.Stderr, "")
 
-	// Get all formats in a consistent order
-	formats := []string{"ascii", "csv", "excel", "html", "json", "jsonl", "latex", "markdown", "mediawiki", "sql", "tmpl", "xml"}
+	// Get all formats in a consistent order (including aliases)
+	formats := []string{"ascii", "csv", "excel", "xlsx", "html", "json", "jsonl", "jsonlines", "latex", "markdown", "md", "mediawiki", "mysql", "sql", "tmpl", "template", "twiki", "tracwiki", "xml"}
 
 	for _, format := range formats {
 		params := GetFormatParams(format)
@@ -218,10 +218,14 @@ func ShowFormatHelp(format string) {
 // ParseConfig parses arguments in format "--key=value" or "--key value" and returns a key-value map
 func ParseConfig(args []string) (Config, error) {
 	configs := make(map[string]string)
-	for i, arg := range args {
-		// Only process arguments starting with "--"
+	var positionalArgs []string
+
+	// Use traditional for loop to allow skipping elements with i++
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		// Check if argument is a flag (starts with -)
 		if strings.HasPrefix(arg, "-") {
-			// Remove prefix "--"
+			// Remove prefix "--" or "-"
 			trimmed := strings.TrimLeft(arg, "-")
 			var key, value string
 			// If contains "=", parse directly
@@ -229,14 +233,20 @@ func ParseConfig(args []string) (Config, error) {
 				key = trimmed[:idx]
 				value = trimmed[idx+1:]
 			} else {
-				// Otherwise, check if next argument exists and doesn't start with "-", use as value if true
+				// Flag-style: check if it's a boolean flag
 				key = trimmed
+				// Check if next argument exists and doesn't start with "-", use as value if true
 				if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
 					value = args[i+1]
-					i++ // This will skip one element in next iteration
+					i++ // Skip the next element since we consumed it as the value
+				} else {
+					value = "" // No value = boolean flag
 				}
 			}
 			configs[key] = value
+		} else {
+			// Positional argument (file path)
+			positionalArgs = append(positionalArgs, arg)
 		}
 	}
 
@@ -248,9 +258,9 @@ func ParseConfig(args []string) (Config, error) {
 			cfg.From = v
 		case "to", "t":
 			cfg.To = v
-		case "file":
+		case "file", "input", "i":
 			cfg.File = v
-		case "result", "r":
+		case "result", "output", "o":
 			cfg.Result = v
 		case "verbose", "v":
 			cfg.Verbose = parseBool(v, true) // empty -> true, unknown -> false
@@ -270,14 +280,47 @@ func ParseConfig(args []string) (Config, error) {
 		}
 	}
 
+	// Handle positional arguments (auto-detect input/output files)
+	// Pattern: tableconvert input output
+	if len(positionalArgs) > 0 {
+		if cfg.File == "" {
+			cfg.File = positionalArgs[0]
+		}
+		if len(positionalArgs) > 1 && cfg.Result == "" {
+			cfg.Result = positionalArgs[1]
+		}
+	}
+
 	// If MCP mode is enabled, skip from/to validation
 	if cfg.MCPMode {
 		return cfg, nil
 	}
 
+	// Auto-detect formats from file extensions if not specified
+	if cfg.From == "" && cfg.File != "" {
+		cfg.From = detectFormatFromExtension(cfg.File)
+		if cfg.From != "" && cfg.Verbose {
+			fmt.Fprintf(os.Stderr, "# Auto-detected input format: %s\n", cfg.From)
+		}
+	}
+	if cfg.To == "" && cfg.Result != "" {
+		cfg.To = detectFormatFromExtension(cfg.Result)
+		if cfg.To != "" && cfg.Verbose {
+			fmt.Fprintf(os.Stderr, "# Auto-detected output format: %s\n", cfg.To)
+		}
+	}
+
 	// Check if required parameters are provided
 	if cfg.From == "" || cfg.To == "" {
-		return cfg, fmt.Errorf("must provide -f|--from and -t|--to parameters")
+		return cfg, newParseError(cfg.From, cfg.To, cfg.File, cfg.Result)
+	}
+
+	// Validate formats are supported
+	if !FormatExists(cfg.From) {
+		return cfg, fmt.Errorf("unsupported input format: %s\n\nSupported formats: %v", cfg.From, getSupportedFormats())
+	}
+	if !FormatExists(cfg.To) {
+		return cfg, fmt.Errorf("unsupported output format: %s\n\nSupported formats: %v", cfg.To, getSupportedFormats())
 	}
 
 	// Determine input target (Reader)
@@ -309,6 +352,97 @@ func ParseConfig(args []string) (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// detectFormatFromExtension detects format from file extension
+// Returns empty string if extension is not recognized
+func detectFormatFromExtension(filename string) string {
+	ext := strings.TrimPrefix(filepath.Ext(filename), ".")
+	ext = strings.ToLower(ext)
+
+	switch ext {
+	case "csv":
+		return "csv"
+	case "json":
+		return "json"
+	case "jsonl", "jsonlines":
+		return "jsonl"
+	case "md", "markdown":
+		return "markdown"
+	case "xlsx", "xls":
+		return "excel"
+	case "html", "htm":
+		return "html"
+	case "xml":
+		return "xml"
+	case "sql":
+		return "sql"
+	case "tex", "latex":
+		return "latex"
+	case "wiki":
+		return "mediawiki"
+	case "tmpl", "template":
+		return "tmpl"
+	case "txt":
+		// txt is too common, don't auto-detect
+		return ""
+	default:
+		return ""
+	}
+}
+
+// getSupportedFormats returns a sorted list of supported formats
+func getSupportedFormats() []string {
+	formats := []string{"ascii", "csv", "excel", "html", "json", "jsonl", "latex", "markdown", "mediawiki", "mysql", "sql", "tmpl", "twiki", "xml", "xlsx", "jsonlines", "md", "template", "tracwiki"}
+	return formats
+}
+
+// newParseError creates a helpful error message for missing required parameters
+func newParseError(from, to, file, result string) error {
+	var msg strings.Builder
+
+	msg.WriteString("Missing required parameters: --from and --to\n\n")
+
+	// Show what was provided
+	if from == "" && to == "" {
+		msg.WriteString("You need to specify both input and output formats.\n\n")
+	} else if from == "" {
+		msg.WriteString("Input format (--from) is missing.\n\n")
+	} else if to == "" {
+		msg.WriteString("Output format (--to) is missing.\n\n")
+	}
+
+	// Show auto-detection status
+	if file != "" && from == "" {
+		detected := detectFormatFromExtension(file)
+		if detected != "" {
+			msg.WriteString(fmt.Sprintf("Tip: Input file '%s' could auto-detect format: %s\n", file, detected))
+			msg.WriteString("     Use: --from=" + detected + " or just rename your file\n\n")
+		}
+	}
+	if result != "" && to == "" {
+		detected := detectFormatFromExtension(result)
+		if detected != "" {
+			msg.WriteString(fmt.Sprintf("Tip: Output file '%s' could auto-detect format: %s\n", result, detected))
+			msg.WriteString("     Use: --to=" + detected + " or just rename your file\n\n")
+		}
+	}
+
+	// Show usage examples
+	msg.WriteString("Usage examples:\n")
+	msg.WriteString("  # Basic conversion with flags\n")
+	msg.WriteString("  tableconvert --from=csv --to=json --file=input.csv --result=output.json\n\n")
+	msg.WriteString("  # Short flags\n")
+	msg.WriteString("  tableconvert -i input.csv -o output.json\n\n")
+	msg.WriteString("  # Auto-detect formats from extensions\n")
+	msg.WriteString("  tableconvert input.csv output.json\n\n")
+	msg.WriteString("  # Pipe mode\n")
+	msg.WriteString("  cat data.csv | tableconvert --from=csv --to=json\n\n")
+	msg.WriteString("  # Get format-specific help\n")
+	msg.WriteString("  tableconvert --help-format=markdown\n\n")
+	msg.WriteString(fmt.Sprintf("Supported formats: %v\n", getSupportedFormats()))
+
+	return fmt.Errorf("%s", msg.String())
 }
 
 // parseBool parses a string value to boolean, with a default for empty string

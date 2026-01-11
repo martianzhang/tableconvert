@@ -1,16 +1,17 @@
-Usage: tableconvert [OPTIONS]
+Usage: tableconvert [OPTIONS] [INPUT_FILE] [OUTPUT_FILE]
 
 Convert between different table formats (MySQL, Markdown, CSV, JSON, Excel, etc.)
 
-Options:
+Basic Options:
   --from|-f={FORMAT}     Source format (e.g. mysql, csv, json, xlsx)
   --to|-t={FORMAT}       Target format (e.g. mysql, csv, json, xlsx)
-  --file={PATH}          Input file path (or use stdin if not specified)
-  --result|-r={PATH}     Output file path (or use stdout if not specified)
-  --template={PATH}      Template file path
-  --verbose|-v           Enable verbose output
+  --file|--input|-i={PATH}  Input file path (or use stdin if not specified)
+  --result|--output|-o={PATH} Output file path (or use stdout if not specified)
+
+Quick Options:
+  -v, --verbose          Enable verbose output
   --mcp                  Run as MCP (Model Context Protocol) server
-  -h|--help              Show this help message
+  -h, --help             Show this help message
   --help-formats         Show all supported formats and their parameters
   --help-format={FORMAT} Show parameters for a specific format (e.g. --help-format=markdown)
 
@@ -33,20 +34,48 @@ Format-Specific Options:
     --template=file.tmpl  For tmpl: template file path
 
 Examples:
-  # Convert from CSV to JSON
+  # Basic conversion with flags
   tableconvert --from=csv --to=json --file=input.csv --result=output.json
+
+  # Short flags
+  tableconvert -i input.csv -o output.json
+
+  # Auto-detect formats from file extensions
+  tableconvert input.csv output.json
+
+  # With format-specific options
+  tableconvert input.csv output.md --bold-header --align=l,c,r
+
   # Read from stdin and write to stdout
   cat input.csv | tableconvert --from=csv --to=json
-  # Convert from MySQL to Markdown with options
-  tableconvert --from=mysql --to=markdown --file=input.csv --bold-header --align=l,c,r
+
   # Transpose and capitalize
-  tableconvert --from=csv --to=markdown --file=input.csv --transpose --capitalize
+  tableconvert input.csv output.md --transpose --capitalize
+
   # Show help for markdown format
   tableconvert --help-format=markdown
+
   # Show all formats and their parameters
   tableconvert --help-formats
+
   # Run as MCP server for AI assistants
   tableconvert --mcp
+
+Auto-Detection:
+  When --from or --to are not specified, tableconvert will attempt to detect
+  the format from file extensions:
+    .csv      -> csv
+    .json     -> json
+    .jsonl    -> jsonl
+    .md, .markdown -> markdown
+    .xlsx, .xls -> excel
+    .html, .htm -> html
+    .xml      -> xml
+    .sql      -> sql
+    .tex, .latex -> latex
+    .wiki     -> mediawiki
+    .tmpl, .template -> tmpl
+    .txt      -> (not auto-detected, must specify)
 
 For complete parameter reference:
   https://github.com/martianzhang/tableconvert/blob/main/docs/arguments.md

@@ -9,29 +9,57 @@ Convert table data between different formats using the tableconvert command line
 
 ## Quick Start
 
-Use `tableconvert` to transform table data. **Format is determined by file extension:**
+**Multiple ways to use tableconvert:**
 
+### 1. Auto-detect formats from file extensions (simplest):
+```
+tableconvert input.csv output.json
+```
+
+### 2. Short flags:
+```
+tableconvert -i input.csv -o output.json
+```
+
+### 3. Space-separated format values:
+```
+tableconvert --from csv --to json --file input.csv
+```
+
+### 4. Traditional with equals signs:
 ```
 tableconvert --from=markdown --to=csv --file=input.md --result=output.csv
 ```
 
-Or with stdin/stdout:
+### 5. stdin/stdout:
 ```
 cat input.md | tableconvert --from=markdown --to=csv
 ```
 
+### 6. With format-specific options:
+```
+tableconvert input.csv output.md --bold-header --align=l,c,r
+```
+
+### 7. With transformations:
+```
+tableconvert input.csv output.json --transpose --capitalize
+```
+
 **Common file extensions:**
-- `.md` = markdown
+- `.md`, `.markdown` = markdown
 - `.csv` = csv
 - `.json` = json
+- `.jsonl`, `.jsonlines` = jsonl
 - `.sql` = sql
-- `.html` = html
+- `.html`, `.htm` = html
 - `.xml` = xml
-- `.xlsx` = excel
-- `.latex` = latex
-- `.tmpl` = template
-- `.mediawiki` = mediawiki
+- `.xlsx`, `.xls` = excel
+- `.tex`, `.latex` = latex
+- `.tmpl`, `.template` = template
+- `.wiki` = mediawiki
 - `.twiki` = twiki
+- `.txt` = **must specify format explicitly**
 
 ## Commands
 
@@ -39,12 +67,18 @@ cat input.md | tableconvert --from=markdown --to=csv
 
 Convert table data from one format to another.
 
-**Parameters:**
-- `--from={FORMAT}` or `-f={FORMAT}`: Source format (required)
-- `--to={FORMAT}` or `-t={FORMAT}`: Target format (required)
-- `--file={PATH}`: Input file path (optional, uses stdin if omitted)
-- `--result={PATH}` or `-r={PATH}`: Output file path (optional, uses stdout if omitted)
+**Basic Options:**
+- `--from={FORMAT}` or `-f={FORMAT}`: Source format (auto-detected from file if omitted)
+- `--to={FORMAT}` or `-t={FORMAT}`: Target format (auto-detected from file if omitted)
+- `--file={PATH}` or `--input={PATH}` or `-i={PATH}`: Input file path (optional, uses stdin if omitted)
+- `--result={PATH}` or `--output={PATH}` or `-o={PATH}`: Output file path (optional, uses stdout if omitted)
 - `--verbose` or `-v`: Enable verbose output
+
+**Quick Options:**
+- `-h, --help`: Show help message
+- `--help-formats`: Show all supported formats and their parameters
+- `--help-format={FORMAT}`: Show parameters for a specific format
+- `--mcp`: Run as MCP (Model Context Protocol) server
 
 **Global Transformations:**
 - `--transpose`: Swap rows and columns
@@ -54,9 +88,22 @@ Convert table data from one format to another.
 - `--lowercase`: Convert all text to lowercase
 - `--capitalize`: Capitalize first letter of each cell
 
-**Example:**
+**Examples:**
 ```
+# Auto-detect (simplest)
+tableconvert input.csv output.json
+
+# Short flags
+tableconvert -i input.csv -o output.json
+
+# Space-separated
+tableconvert --from csv --to json --file input.csv
+
+# With options
 tableconvert --from=csv --to=markdown --file=input.csv --align=l,c,r --bold-header
+
+# With transformations
+tableconvert input.csv output.json --transpose --capitalize
 ```
 
 ### `tableconvert --help-formats`
@@ -104,7 +151,6 @@ Format-specific options are passed as flags without values (true) or with values
 
 ### CSV
 - `--first-column-header`: Use first column as headers
-- `--transpose`: Swap rows and columns
 - `--bom`: Add Byte Order Mark
 - `--delimiter=TAB`: Value delimiter (COMMA, TAB, SEMICOLON, PIPE, SLASH, HASH)
 
@@ -121,14 +167,12 @@ Format-specific options are passed as flags without values (true) or with values
 
 ### HTML
 - `--first-column-header`: Use first column as headers
-- `--transpose`: Swap rows and columns
 - `--div`: Use div instead of table
 - `--minify`: Minify HTML
 - `--thead`: Include thead/tbody tags
 
 ### Excel
 - `--first-column-header`: Use first column as headers
-- `--transpose`: Swap rows and columns
 - `--sheet-name=Sheet1`: Excel sheet name
 - `--auto-width`: Auto-adjust column widths
 - `--text-format`: Force text format (default: true)
@@ -181,19 +225,19 @@ tableconvert --from=csv --to=json --file=input.csv --uppercase --deduplicate
 
 ## Usage Examples
 
-### MySQL to Markdown
+### MySQL to Markdown (auto-detect)
 ```
-tableconvert --from=mysql --to=markdown --file=mysql.txt --bold-header
+tableconvert mysql.txt output.md --bold-header
 ```
 
 ### CSV to JSON with options
 ```
-tableconvert --from=csv --to=json --file=input.csv --minify --format=object
+tableconvert input.csv output.json --minify --format=object
 ```
 
 ### SQL to CSV with transformation
 ```
-tableconvert --from=sql --to=csv --file=input.sql --table=users --capitalize
+tableconvert input.sql output.csv --table=users --capitalize
 ```
 
 ### Get format info
@@ -201,9 +245,15 @@ tableconvert --from=sql --to=csv --file=input.sql --table=users --capitalize
 tableconvert --help-format=markdown
 ```
 
+### Using short flags
+```
+tableconvert -i data.csv -o data.json -v
+```
+
 ## Notes
 
-- **Format selection**: Use the format name that matches your file extension (e.g., `--from=markdown` for `.md` files, `--from=mysql` for MySQL query output format)
+- **Format selection**: Auto-detected from file extensions, or specify with `--from`/`--to`
+- **.txt files**: Must specify format explicitly (not auto-detected)
 - Input data must be properly formatted for the source format
 - Special characters are automatically escaped where needed
 - UTF-8 characters are handled correctly
@@ -212,22 +262,27 @@ tableconvert --help-format=markdown
 
 ## Common Patterns
 
-**Converting database schema:**
+**Converting database schema (auto-detect):**
 ```
-tableconvert --from=mysql --to=markdown --file=schema.txt --bold-header --escape
+tableconvert schema.txt output.md --bold-header --escape
 ```
 
 **Creating SQL inserts from data:**
 ```
-tableconvert --from=csv --to=sql --file=data.csv --table=users --one-insert --dialect=mysql
+tableconvert data.csv output.sql --table=users --one-insert --dialect=mysql
 ```
 
 **Generating HTML tables:**
 ```
-tableconvert --from=json --to=html --file=data.json --thead --minify=false
+tableconvert data.json output.html --thead --minify=false
 ```
 
 **Excel to Markdown for docs:**
 ```
-tableconvert --from=excel --to=markdown --file=data.xlsx --bold-header --align=l,c,r
+tableconvert data.xlsx output.md --bold-header --align=l,c,r
+```
+
+**Quick pipe conversion:**
+```
+cat data.csv | tableconvert --from csv --to json --uppercase
 ```

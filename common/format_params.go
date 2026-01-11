@@ -24,6 +24,12 @@ var FormatParamsRegistry = map[string][]FormatParam{
 		{Name: "auto-width", DefaultValue: "false", AllowedValues: "true, false", Description: "Auto Width"},
 		{Name: "text-format", DefaultValue: "true", AllowedValues: "true, false", Description: "force text format"},
 	},
+	"xlsx": {
+		{Name: "first-column-header", DefaultValue: "false", AllowedValues: "true, false", Description: "Use first column as headers"},
+		{Name: "sheet-name", DefaultValue: "Sheet1", AllowedValues: "", Description: "Excel Sheet Name"},
+		{Name: "auto-width", DefaultValue: "false", AllowedValues: "true, false", Description: "Auto Width"},
+		{Name: "text-format", DefaultValue: "true", AllowedValues: "true, false", Description: "force text format"},
+	},
 	"html": {
 		{Name: "first-column-header", DefaultValue: "false", AllowedValues: "true, false", Description: "Use first column as headers"},
 		{Name: "div", DefaultValue: "false", AllowedValues: "true, false", Description: "Convert into div table"},
@@ -36,6 +42,9 @@ var FormatParamsRegistry = map[string][]FormatParam{
 		{Name: "parsing-json", DefaultValue: "false", AllowedValues: "true, false", Description: "Parsing JSON"},
 	},
 	"jsonl": {
+		{Name: "parsing-json", DefaultValue: "false", AllowedValues: "true, false", Description: "Parsing JSON"},
+	},
+	"jsonlines": {
 		{Name: "parsing-json", DefaultValue: "false", AllowedValues: "true, false", Description: "Parsing JSON"},
 	},
 	"latex": {
@@ -58,12 +67,31 @@ var FormatParamsRegistry = map[string][]FormatParam{
 		{Name: "escape", DefaultValue: "true", AllowedValues: "true, false", Description: "Escape Markdown table"},
 		{Name: "pretty", DefaultValue: "true", AllowedValues: "true, false", Description: "Pretty-print Markdown"},
 	},
+	"md": {
+		{Name: "align", DefaultValue: "l", AllowedValues: "l, c, r", Description: "Text Alignment, columns seperate by comma"},
+		{Name: "bold-header", DefaultValue: "false", AllowedValues: "true, false", Description: "Table Header Bold"},
+		{Name: "bold-first-column", DefaultValue: "false", AllowedValues: "true, false", Description: "Bold first column"},
+		{Name: "escape", DefaultValue: "true", AllowedValues: "true, false", Description: "Escape Markdown table"},
+		{Name: "pretty", DefaultValue: "true", AllowedValues: "true, false", Description: "Pretty-print Markdown"},
+	},
 	"mediawiki": {
 		{Name: "first-row-header", DefaultValue: "false", AllowedValues: "true, false", Description: "Use first row as headers"},
 		{Name: "minify", DefaultValue: "false", AllowedValues: "true, false", Description: "Minify MediaWiki table"},
 		{Name: "sort", DefaultValue: "false", AllowedValues: "true, false", Description: "Make table sortable in Wikipedia"},
 	},
+	"mysql": {
+		{Name: "style", DefaultValue: "box", AllowedValues: "box", Description: "MySQL table style (box format)"},
+	},
+	"twiki": {
+		{Name: "first-row-header", DefaultValue: "false", AllowedValues: "true, false", Description: "Use first row as headers"},
+	},
+	"tracwiki": {
+		{Name: "first-row-header", DefaultValue: "false", AllowedValues: "true, false", Description: "Use first row as headers"},
+	},
 	"tmpl": {
+		{Name: "template", DefaultValue: "", AllowedValues: "", Description: "Template file path"},
+	},
+	"template": {
 		{Name: "template", DefaultValue: "", AllowedValues: "", Description: "Template file path"},
 	},
 	"sql": {

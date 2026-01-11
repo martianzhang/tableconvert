@@ -305,7 +305,7 @@ func TestMainFunctionErrorHandling(t *testing.T) {
 	// But we can test the config parsing error
 	_, err := common.ParseConfig(os.Args[1:])
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "must provide")
+	assert.Contains(t, err.Error(), "Missing required parameters")
 }
 
 // TestMainVerboseOutput tests verbose mode

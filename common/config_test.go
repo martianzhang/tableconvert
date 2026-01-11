@@ -24,15 +24,15 @@ func TestParseConfigMissingRequiredParameters(t *testing.T) {
 
 func TestParseConfigWithEqualSign(t *testing.T) {
 	// Arrange
-	args := []string{"--from=en", "--to=zh"}
+	args := []string{"--from=csv", "--to=json"}
 
 	// Act
 	cfg, err := ParseConfig(args)
 
 	// Assert
 	assert.NoError(t, err)
-	assert.Equal(t, "en", cfg.From)
-	assert.Equal(t, "zh", cfg.To)
+	assert.Equal(t, "csv", cfg.From)
+	assert.Equal(t, "json", cfg.To)
 	assert.False(t, cfg.Verbose)
 	assert.Empty(t, cfg.File)
 	assert.Empty(t, cfg.Result)
@@ -43,15 +43,15 @@ func TestParseConfigWithEqualSign(t *testing.T) {
 
 func TestParseConfigWithSpaceFormat(t *testing.T) {
 	// Arrange
-	args := []string{"--from", "en", "--to", "zh"}
+	args := []string{"--from", "csv", "--to", "json"}
 
 	// Act
 	cfg, err := ParseConfig(args)
 
 	// Assert
 	assert.NoError(t, err)
-	assert.Equal(t, "en", cfg.From)
-	assert.Equal(t, "zh", cfg.To)
+	assert.Equal(t, "csv", cfg.From)
+	assert.Equal(t, "json", cfg.To)
 	assert.False(t, cfg.Verbose)
 	assert.Empty(t, cfg.File)
 	assert.Empty(t, cfg.Result)
@@ -62,15 +62,15 @@ func TestParseConfigWithSpaceFormat(t *testing.T) {
 
 func TestParseConfigShortFormParameters(t *testing.T) {
 	// Arrange
-	args := []string{"-f", "en", "-t", "zh"}
+	args := []string{"-f", "csv", "-t", "json"}
 
 	// Act
 	config, err := ParseConfig(args)
 
 	// Assert
 	assert.NoError(t, err, "Should not return an error")
-	assert.Equal(t, "en", config.From, "From parameter should be 'en'")
-	assert.Equal(t, "zh", config.To, "To parameter should be 'zh'")
+	assert.Equal(t, "csv", config.From, "From parameter should be 'csv'")
+	assert.Equal(t, "json", config.To, "To parameter should be 'json'")
 	assert.Empty(t, config.File, "File parameter should be empty")
 	assert.Empty(t, config.Result, "Result parameter should be empty")
 	assert.False(t, config.Verbose, "Verbose should be false by default")
@@ -81,28 +81,28 @@ func TestParseConfigShortFormParameters(t *testing.T) {
 
 func TestParseConfigDuplicateParameters(t *testing.T) {
 	// Arrange
-	args := []string{"--from", "en", "--from", "es", "--to", "zh"}
+	args := []string{"--from", "csv", "--from", "json", "--to", "markdown"}
 
 	// Act
 	config, err := ParseConfig(args)
 
 	// Assert
 	assert.NoError(t, err)
-	assert.Equal(t, "es", config.From, "Expected last 'from' value to be used")
-	assert.Equal(t, "zh", config.To, "Expected 'to' parameter to be set correctly")
+	assert.Equal(t, "json", config.From, "Expected last 'from' value to be used")
+	assert.Equal(t, "markdown", config.To, "Expected 'to' parameter to be set correctly")
 }
 
 func TestParseConfigMultipleUnknownParameters(t *testing.T) {
 	// Arrange
-	args := []string{"--from", "en", "--to", "zh", "--param1", "val1", "--param2", "val2"}
+	args := []string{"--from", "csv", "--to", "json", "--param1", "val1", "--param2", "val2"}
 
 	// Act
 	config, err := ParseConfig(args)
 
 	// Assert
 	assert.NoError(t, err)
-	assert.Equal(t, "en", config.From)
-	assert.Equal(t, "zh", config.To)
+	assert.Equal(t, "csv", config.From)
+	assert.Equal(t, "json", config.To)
 	assert.Equal(t, 2, len(config.Extension))
 	assert.Equal(t, "val1", config.Extension["param1"])
 	assert.Equal(t, "val2", config.Extension["param2"])
@@ -117,7 +117,7 @@ func TestParseConfigWithEmptyInput(t *testing.T) {
 
 	// Assert
 	assert.NotNil(t, err, "Expected error for empty input")
-	assert.Equal(t, "must provide -f|--from and -t|--to parameters", err.Error(), "Expected error message about missing required parameters")
+	assert.Contains(t, err.Error(), "Missing required parameters", "Error should mention missing parameters")
 
 	// Verify default values in config
 	assert.Empty(t, cfg.From, "From should be empty")
@@ -131,30 +131,30 @@ func TestParseConfigWithEmptyInput(t *testing.T) {
 
 func TestParseConfigUnknownParameters(t *testing.T) {
 	// Arrange
-	args := []string{"--from", "en", "--to", "zh", "--unknown", "value"}
+	args := []string{"--from", "csv", "--to", "json", "--unknown", "value"}
 
 	// Act
 	config, err := ParseConfig(args)
 
 	// Assert
 	assert.NoError(t, err)
-	assert.Equal(t, "en", config.From)
-	assert.Equal(t, "zh", config.To)
+	assert.Equal(t, "csv", config.From)
+	assert.Equal(t, "json", config.To)
 	assert.Contains(t, config.Extension, "unknown")
 	assert.Equal(t, "value", config.Extension["unknown"])
 }
 
 func TestParseConfigMixedParameterFormats(t *testing.T) {
 	// Arrange
-	args := []string{"--from=en", "-t", "zh", "--verbose"}
+	args := []string{"--from=csv", "-t", "json", "--verbose"}
 
 	// Act
 	cfg, err := ParseConfig(args)
 
 	// Assert
 	assert.NoError(t, err)
-	assert.Equal(t, "en", cfg.From, "From parameter should be 'en'")
-	assert.Equal(t, "zh", cfg.To, "To parameter should be 'zh'")
+	assert.Equal(t, "csv", cfg.From, "From parameter should be 'csv'")
+	assert.Equal(t, "json", cfg.To, "To parameter should be 'json'")
 	assert.True(t, cfg.Verbose, "Verbose should be true")
 
 	// Verify default values
@@ -166,7 +166,7 @@ func TestParseConfigMixedParameterFormats(t *testing.T) {
 
 func TestParseConfigEmptyVerboseFlag(t *testing.T) {
 	// Arrange
-	args := []string{"--from", "en", "--to", "zh", "--verbose"}
+	args := []string{"--from", "csv", "--to", "json", "--verbose"}
 
 	// Act
 	config, err := ParseConfig(args)
@@ -174,13 +174,13 @@ func TestParseConfigEmptyVerboseFlag(t *testing.T) {
 	// Assert
 	assert.NoError(t, err)
 	assert.True(t, config.Verbose)
-	assert.Equal(t, "en", config.From)
-	assert.Equal(t, "zh", config.To)
+	assert.Equal(t, "csv", config.From)
+	assert.Equal(t, "json", config.To)
 }
 
 func TestParseConfigVerboseFlagFalse(t *testing.T) {
 	// Arrange
-	args := []string{"--from", "en", "--to", "zh", "--verbose=false"}
+	args := []string{"--from", "csv", "--to", "json", "--verbose=false"}
 
 	// Act
 	config, err := ParseConfig(args)
@@ -188,14 +188,14 @@ func TestParseConfigVerboseFlagFalse(t *testing.T) {
 	// Assert
 	assert.NoError(t, err)
 	assert.NotNil(t, config)
-	assert.Equal(t, "en", config.From)
-	assert.Equal(t, "zh", config.To)
+	assert.Equal(t, "csv", config.From)
+	assert.Equal(t, "json", config.To)
 	assert.False(t, config.Verbose)
 }
 
 func TestParseConfigVerboseFlagTrue(t *testing.T) {
 	// Arrange
-	args := []string{"--from", "en", "--to", "zh", "--verbose=true"}
+	args := []string{"--from", "csv", "--to", "json", "--verbose=true"}
 
 	// Act
 	config, err := ParseConfig(args)
@@ -203,13 +203,13 @@ func TestParseConfigVerboseFlagTrue(t *testing.T) {
 	// Assert
 	assert.NoError(t, err)
 	assert.True(t, config.Verbose)
-	assert.Equal(t, "en", config.From)
-	assert.Equal(t, "zh", config.To)
+	assert.Equal(t, "csv", config.From)
+	assert.Equal(t, "json", config.To)
 }
 
 func TestParseConfigWithResultFileOutput(t *testing.T) {
 	// Setup
-	testArgs := []string{"--from", "en", "--to", "zh", "--result", "output.txt"}
+	testArgs := []string{"--from", "csv", "--to", "json", "--result", "output.txt"}
 
 	// Clean up any existing test file before and after the test
 	defer os.Remove("output.txt")
@@ -219,8 +219,8 @@ func TestParseConfigWithResultFileOutput(t *testing.T) {
 
 	// Assert
 	assert.NoError(t, err)
-	assert.Equal(t, "en", cfg.From)
-	assert.Equal(t, "zh", cfg.To)
+	assert.Equal(t, "csv", cfg.From)
+	assert.Equal(t, "json", cfg.To)
 	assert.Equal(t, "output.txt", cfg.Result)
 
 	// Verify that Writer is not nil and is a *os.File
@@ -236,7 +236,7 @@ func TestParseConfigWithResultFileOutput(t *testing.T) {
 
 func TestParseConfigWithNonExistentFile(t *testing.T) {
 	// Arrange
-	args := []string{"--from", "en", "--to", "zh", "--file", "nonexistent.txt"}
+	args := []string{"--from", "csv", "--to", "json", "--file", "nonexistent.txt"}
 
 	// Act
 	cfg, err := ParseConfig(args)
@@ -245,8 +245,8 @@ func TestParseConfigWithNonExistentFile(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "file does not exist")
 	assert.Equal(t, "nonexistent.txt", cfg.File)
-	assert.Equal(t, "en", cfg.From)
-	assert.Equal(t, "zh", cfg.To)
+	assert.Equal(t, "csv", cfg.From)
+	assert.Equal(t, "json", cfg.To)
 }
 
 func TestParseConfigWithValidFileInput(t *testing.T) {
@@ -259,15 +259,15 @@ func TestParseConfigWithValidFileInput(t *testing.T) {
 	defer tmpFile.Close()
 
 	// Test input
-	args := []string{"--from", "en", "--to", "zh", "--file", tmpFile.Name()}
+	args := []string{"--from", "csv", "--to", "json", "--file", tmpFile.Name()}
 
 	// Execute
 	cfg, err := ParseConfig(args)
 
 	// Assert
 	assert.NoError(t, err)
-	assert.Equal(t, "en", cfg.From)
-	assert.Equal(t, "zh", cfg.To)
+	assert.Equal(t, "csv", cfg.From)
+	assert.Equal(t, "json", cfg.To)
 	assert.Equal(t, tmpFile.Name(), cfg.File)
 	assert.NotNil(t, cfg.Reader)
 
@@ -536,11 +536,13 @@ func TestParseConfigMCPMode(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, cfg.MCPMode)
 
-	// Test MCP mode disabled - should still validate from/to
-	args = []string{"--mcp=false"}
+	// Test MCP mode disabled - normal validation applies
+	args = []string{"--mcp=false", "--from", "csv", "--to", "json"}
 	cfg, err = ParseConfig(args)
-	assert.Error(t, err)
+	assert.NoError(t, err) // Valid formats provided, should succeed
 	assert.False(t, cfg.MCPMode)
+	assert.Equal(t, "csv", cfg.From)
+	assert.Equal(t, "json", cfg.To)
 
 	// Test MCP mode skips validation
 	args = []string{"--mcp", "--from", "csv"}
