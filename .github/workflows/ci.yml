@@ -41,10 +41,11 @@ jobs:
         run: go build -o tableconvert ./cmd/tableconvert
 
       - name: Test binary
+        shell: bash
         run: |
           ./tableconvert --help > /dev/null
           ./tableconvert --help-formats > /dev/null
-          echo "name,age\nAlice,30\nBob,25" | ./tableconvert --from=csv --to=json > /dev/null
+          echo -e "name,age\nAlice,30\nBob,25" | ./tableconvert --from=csv --to=json > /dev/null
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest' && matrix.go == '1.25'
@@ -69,6 +70,7 @@ jobs:
           cache: true
 
       - name: Generate coverage report
+        shell: bash
         run: |
           go test ./... -coverprofile=coverage.out -covermode=atomic
           go tool cover -func=coverage.out > coverage.txt
@@ -76,6 +78,7 @@ jobs:
           cat coverage.txt | tail -1
 
       - name: Check coverage threshold
+        shell: bash
         run: |
           COVERAGE=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | sed 's/%//')
           echo "Total Coverage: ${COVERAGE}%"
@@ -99,6 +102,7 @@ jobs:
           cache: true
 
       - name: Run go fmt
+        shell: bash
         run: |
           FMT_OUTPUT=$(go fmt ./...)
           if [ -n "$FMT_OUTPUT" ]; then
