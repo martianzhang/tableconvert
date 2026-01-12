@@ -57,7 +57,7 @@ else
 	COVER_SUMMARY_CMD = powershell -NoProfile -Command "$$line = (Get-Content test/coverage.txt | Select-Object -Last 1); if ($$line -match '(\d+(\.\d+)?)%') { $$p=[double]$$Matches[1]; if($$p -lt 80){ Write-Host $$line -ForegroundColor Red } elseif($$p -ge 90){ Write-Host $$line -ForegroundColor Green } else { Write-Host $$line -ForegroundColor Yellow } } else { Write-Host $$line }"
 endif
 
-.PHONY: all build fmt clean test cover test-cli
+.PHONY: all build fmt clean test cover test-cli release release-clean release-checksums release-zip release-notes
 
 all: build
 
@@ -66,6 +66,93 @@ build: fmt
 	$(call ECHO_GREEN,Building ...)
 	@$(BUILD_CMD)
 	@echo "build success!"
+
+# Release management - builds all platform binaries and creates checksums
+release: release-clean
+	$(call ECHO_GREEN,Starting release build...)
+	@echo "Building binaries for all platforms..."
+
+	@# Linux
+	$(call ECHO_YELLOW,Building Linux amd64...)
+	@GOOS=linux GOARCH=amd64 go build -trimpath -o release/tableconvert-linux-amd64 ./cmd/tableconvert
+	$(call ECHO_YELLOW,Building Linux arm64...)
+	@GOOS=linux GOARCH=arm64 go build -trimpath -o release/tableconvert-linux-arm64 ./cmd/tableconvert
+
+	@# macOS (Darwin)
+	$(call ECHO_YELLOW,Building macOS amd64...)
+	@GOOS=darwin GOARCH=amd64 go build -trimpath -o release/tableconvert-darwin-amd64 ./cmd/tableconvert
+	$(call ECHO_YELLOW,Building macOS arm64...)
+	@GOOS=darwin GOARCH=arm64 go build -trimpath -o release/tableconvert-darwin-arm64 ./cmd/tableconvert
+
+	@# Windows
+	$(call ECHO_YELLOW,Building Windows amd64...)
+	@GOOS=windows GOARCH=amd64 go build -trimpath -o release/tableconvert-windows-amd64.exe ./cmd/tableconvert
+
+	@# Generate checksums
+	$(call ECHO_GREEN,Generating checksums...)
+	@cd release && sha256sum tableconvert-* > checksums.txt
+
+	@# Create release info
+	$(call ECHO_GREEN,Creating release info...)
+	@echo "Version: $(shell git describe --tags --always 2>/dev/null || echo 'dev')" > release/RELEASE_INFO.txt
+	@echo "Built: $(shell date -u +'%Y-%m-%d %H:%M:%S UTC')" >> release/RELEASE_INFO.txt
+	@echo "Go: $(shell go version)" >> release/RELEASE_INFO.txt
+
+	@$(call ECHO_GREEN,Release build complete!)
+	@echo ""
+	@echo "Release artifacts in ./release/:"
+	@ls -lh release/
+	@echo ""
+	@echo "Checksums:"
+	@cat release/checksums.txt
+
+# Clean release directory
+release-clean:
+	@echo "Cleaning release directory..."
+	@rm -rf release/
+
+# Just generate checksums for existing binaries
+release-checksums:
+	$(call ECHO_GREEN,Generating checksums for existing binaries...)
+	@cd release && sha256sum tableconvert-* > checksums.txt
+	@cat release/checksums.txt
+
+# Create zip archives for each platform (requires zip command)
+release-zip: release
+	$(call ECHO_GREEN,Creating zip archives...)
+	@if ! command -v zip &> /dev/null; then \
+		$(call ECHO_RED,Error: 'zip' command not found. Please install zip to create archives.); \
+		echo "On Ubuntu/Debian: sudo apt-get install zip"; \
+		echo "On macOS: brew install zip"; \
+		echo "On Windows: Use WSL or install zip via Chocolatey"; \
+		exit 1; \
+	fi
+	@cd release && \
+		for platform in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64; do \
+			if [ -f "tableconvert-$${platform}" ] || [ -f "tableconvert-$${platform}.exe" ]; then \
+				echo "Zipping $${platform}..."; \
+				zip -q tableconvert-$${platform}.zip tableconvert-$${platform}* checksums.txt RELEASE_INFO.txt 2>/dev/null || true; \
+			fi; \
+		done
+	@$(call ECHO_GREEN,Zip archives created in release/)
+
+# Generate release notes from git history
+release-notes:
+	$(call ECHO_GREEN,Generating release notes...)
+	@echo "# Release Notes" > release/RELEASE_NOTES.md
+	@echo "" >> release/RELEASE_NOTES.md
+	@echo "## Changes since last tag" >> release/RELEASE_NOTES.md
+	@git log --oneline --decorate --no-merges -n 20 2>/dev/null || echo "No git history available" >> release/RELEASE_NOTES.md
+	@echo "" >> release/RELEASE_NOTES.md
+	@echo "## Build Info" >> release/RELEASE_NOTES.md
+	@echo "- Built: $(shell date -u +'%Y-%m-%d %H:%M:%S UTC')" >> release/RELEASE_NOTES.md
+	@echo "- Go: $(shell go version | cut -d' ' -f3)" >> release/RELEASE_NOTES.md
+	@echo "" >> release/RELEASE_NOTES.md
+	@echo "## Platform Support" >> release/RELEASE_NOTES.md
+	@echo "- Linux (x64, ARM64)" >> release/RELEASE_NOTES.md
+	@echo "- macOS (x64, ARM64)" >> release/RELEASE_NOTES.md
+	@echo "- Windows (x64)" >> release/RELEASE_NOTES.md
+	@cat release/RELEASE_NOTES.md
 
 # Code format
 fmt:

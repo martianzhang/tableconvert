@@ -121,36 +121,138 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for changelog
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.25'
+          cache: true
+
+      - name: Extract version and create release info
+        id: release_info
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_date=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
+          echo "go_version=$(go version)" >> $GITHUB_OUTPUT
 
       - name: Build binaries for release
         run: |
-          # Linux
-          GOOS=linux GOARCH=amd64 go build -o tableconvert-linux-amd64 ./cmd/tableconvert
-          GOOS=linux GOARCH=arm64 go build -o tableconvert-linux-arm64 ./cmd/tableconvert
-          # macOS
-          GOOS=darwin GOARCH=amd64 go build -o tableconvert-darwin-amd64 ./cmd/tableconvert
-          GOOS=darwin GOARCH=arm64 go build -o tableconvert-darwin-arm64 ./cmd/tableconvert
-          # Windows
-          GOOS=windows GOARCH=amd64 go build -o tableconvert-windows-amd64.exe ./cmd/tableconvert
+          mkdir -p release
 
-          # Create checksums
-          sha256sum tableconvert-* > checksums.txt
+          # Linux
+          echo "Building Linux amd64..."
+          GOOS=linux GOARCH=amd64 go build -trimpath -o release/tableconvert-linux-amd64 ./cmd/tableconvert
+          echo "Building Linux arm64..."
+          GOOS=linux GOARCH=arm64 go build -trimpath -o release/tableconvert-linux-arm64 ./cmd/tableconvert
+
+          # macOS
+          echo "Building macOS amd64..."
+          GOOS=darwin GOARCH=amd64 go build -trimpath -o release/tableconvert-darwin-amd64 ./cmd/tableconvert
+          echo "Building macOS arm64..."
+          GOOS=darwin GOARCH=arm64 go build -trimpath -o release/tableconvert-darwin-arm64 ./cmd/tableconvert
+
+          # Windows
+          echo "Building Windows amd64..."
+          GOOS=windows GOARCH=amd64 go build -trimpath -o release/tableconvert-windows-amd64.exe ./cmd/tableconvert
+
+          # Generate checksums
+          echo "Generating checksums..."
+          cd release && sha256sum tableconvert-* > checksums.txt
+
+          # Create release info file
+          cat > release/RELEASE_INFO.txt << EOF
+          tableconvert Release Info
+          ========================
+
+          Version: ${{ steps.release_info.outputs.version }}
+          Built: ${{ steps.release_info.outputs.build_date }}
+          ${{ steps.release_info.outputs.go_version }}
+
+          Platform Support:
+          - Linux (x64, ARM64)
+          - macOS (x64, ARM64)
+          - Windows (x64)
+
+          Installation:
+          # Linux/macOS
+          chmod +x tableconvert-linux-*
+          ./tableconvert-linux-amd64 --help
+
+          # Windows
+          .\tableconvert-windows-amd64.exe --help
+
+          SHA256 Checksums:
+          $(cat release/checksums.txt)
+          EOF
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get commits since last tag
+          echo "## Changes in this release" > release/CHANGELOG.md
+          echo "" >> release/CHANGELOG.md
+          git log --oneline --decorate --no-merges $(git describe --tags --abbrev=0 2>/dev/null || echo HEAD~5)..HEAD 2>/dev/null | head -20 >> release/CHANGELOG.md || echo "No git history available" >> release/CHANGELOG.md
+
+          # Add full changelog link
+          echo "" >> release/CHANGELOG.md
+          echo "## Full Changelog" >> release/CHANGELOG.md
+          echo "https://github.com/${{ github.repository }}/compare/$(git describe --tags --abbrev=0 2>/dev/null || echo 'HEAD~5')...${{ github.ref_name }}" >> release/CHANGELOG.md
+
+          # Set output
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat release/CHANGELOG.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          name: "Release v${{ steps.release_info.outputs.version }}"
+          body: |
+            ## tableconvert v${{ steps.release_info.outputs.version }}
+
+            ${{ steps.changelog.outputs.changelog }}
+
+            ## Installation
+
+            ### Linux
+            ```bash
+            chmod +x tableconvert-linux-amd64
+            ./tableconvert-linux-amd64 --help
+            ```
+
+            ### macOS
+            ```bash
+            chmod +x tableconvert-darwin-amd64
+            ./tableconvert-darwin-amd64 --help
+            ```
+
+            ### Windows
+            ```powershell
+            .\tableconvert-windows-amd64.exe --help
+            ```
+
+            ## Verification
+
+            Verify checksums:
+            ```bash
+            sha256sum -c checksums.txt
+            ```
+
+            ## Build Info
+            - Built: ${{ steps.release_info.outputs.build_date }}
+            - ${{ steps.release_info.outputs.go_version }}
           files: |
-            tableconvert-linux-amd64
-            tableconvert-linux-arm64
-            tableconvert-darwin-amd64
-            tableconvert-darwin-arm64
-            tableconvert-windows-amd64.exe
-            checksums.txt
-          generate_release_notes: true
+            release/tableconvert-linux-amd64
+            release/tableconvert-linux-arm64
+            release/tableconvert-darwin-amd64
+            release/tableconvert-darwin-arm64
+            release/tableconvert-windows-amd64.exe
+            release/checksums.txt
+            release/RELEASE_INFO.txt
+            release/CHANGELOG.md
           draft: false
           prerelease: false
+          generate_release_notes: false

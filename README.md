@@ -19,14 +19,24 @@
 ### Installation
 
 ```bash
-# Build from source (requires Go 1.18+)
+# Option 1: Download pre-built binaries (recommended)
+# Visit: https://github.com/martianzhang/tableconvert/releases
+# Or use wget (Linux/macOS):
+wget https://github.com/martianzhang/tableconvert/releases/latest/download/tableconvert-linux-amd64
+chmod +x tableconvert-linux-amd64
+sudo mv tableconvert-linux-amd64 /usr/local/bin/tableconvert
+
+# Option 2: Build from source (requires Go 1.23+)
 git clone https://github.com/martianzhang/tableconvert.git
 cd tableconvert
 make build
 
-# The binary will be available at:
+# Binary will be available at:
 # - Linux/macOS: ./bin/tableconvert
 # - Windows: bin\tableconvert.exe
+
+# Option 3: Go install
+go install github.com/martianzhang/tableconvert@latest
 ```
 
 ### Basic Usage
@@ -208,6 +218,43 @@ tableconvert --batch="reports/*.csv" --to=excel --output-dir=excel_reports --bol
 # Generate LaTeX for papers
 tableconvert results.csv table.tex --caption="Experiment Results" --table-align=centering
 ```
+
+## 📦 Releases
+
+Pre-built binaries are available for Linux, macOS, and Windows on the [GitHub Releases page](https://github.com/martianzhang/tableconvert/releases).
+
+### Release Assets
+
+Each release includes:
+- **Binaries** for all platforms (x64 and ARM64)
+- **SHA256 checksums** for verification
+- **Release notes** with changes and build info
+
+### Verification
+
+Always verify downloaded binaries:
+
+```bash
+# Download binary and checksums.txt
+sha256sum -c checksums.txt
+
+# Should output: tableconvert-linux-amd64: OK
+```
+
+### Building Releases Locally
+
+```bash
+# Build all platform binaries
+make release
+
+# Create zip archives (requires zip)
+make release-zip
+
+# Generate release notes
+make release-notes
+```
+
+See [docs/release-guide.md](docs/release-guide.md) for complete release documentation.
 
 ## 🔧 Development
 
