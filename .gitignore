@@ -33,3 +33,5 @@ release/
 
 # ignore coverage files
 coverage.*
+
+PLAN.md

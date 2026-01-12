@@ -56,12 +56,6 @@ func main() {
 		return
 	}
 
-	if cfg.Verbose {
-		fmt.Fprintf(os.Stderr, "# From: %s\n", cfg.From)
-		fmt.Fprintf(os.Stderr, "# To: %s\n", cfg.To)
-		fmt.Fprintf(os.Stderr, "# Extra Configs: %v\n", cfg.Extension)
-	}
-
 	// Perform conversion
 	err = performConversion(&cfg)
 	if err != nil {
@@ -213,6 +207,12 @@ func registerFormats() {
 
 // performConversion performs the core table conversion logic
 func performConversion(cfg *common.Config) error {
+	// Print verbose output
+	if cfg.Verbose {
+		fmt.Fprintf(os.Stderr, "# From: %s\n", cfg.From)
+		fmt.Fprintf(os.Stderr, "# To: %s\n", cfg.To)
+		fmt.Fprintf(os.Stderr, "# Extra Configs: %v\n", cfg.Extension)
+	}
 	// Use the registry-based conversion
 	return common.PerformConversionWithRegistry(formatRegistry, cfg)
 }

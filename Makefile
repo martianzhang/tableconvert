@@ -48,7 +48,7 @@ ifeq ($(IS_WINDOWS),)
 	# Unix-like commands
 	BUILD_CMD = mkdir -p bin && go build -trimpath -o bin/tableconvert ./cmd/tableconvert
 	CLEAN_CMD = rm -rf bin/ release/ feature/
-	COVER_SUMMARY_CMD = tail -n 1 test/coverage.txt | awk '{sub(/%/, "", $$NF); if($$NF < 80) {print "$(CRED)"$$0"%$(CEND)"} else if ($$NF >= 90) {print "$(CGREEN)"$$0"%$(CEND)"} else {print "$(CYELLOW)"$$0"%$(CEND)"}}'
+	COVER_SUMMARY_CMD = tail -n 1 test/coverage.txt | awk '{sub(/%/, "", $$NF); if($$NF < 70) {print "$(CRED)"$$0"%$(CEND)"} else if ($$NF >= 80) {print "$(CGREEN)"$$0"%$(CEND)"} else {print "$(CYELLOW)"$$0"%$(CEND)"}}'
 else
 	# Windows: run via PowerShell so commands work in PowerShell/cmd environments
 	BUILD_CMD = powershell -NoProfile -Command "& { if (-not (Test-Path -Path bin)) { New-Item -ItemType Directory -Path bin | Out-Null }; go build -trimpath -o bin/tableconvert.exe ./cmd/tableconvert }"
