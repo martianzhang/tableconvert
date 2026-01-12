@@ -19,24 +19,37 @@
 ### Installation
 
 ```bash
-# Option 1: Download pre-built binaries (recommended)
+# Option 1: Homebrew (macOS/Linux - recommended)
+brew install tableconvert
+
+# Option 2: Go install
+go install github.com/martianzhang/tableconvert@latest
+
+# Option 3: Download pre-built binaries
 # Visit: https://github.com/martianzhang/tableconvert/releases
 # Or use wget (Linux/macOS):
 wget https://github.com/martianzhang/tableconvert/releases/latest/download/tableconvert-linux-amd64
 chmod +x tableconvert-linux-amd64
 sudo mv tableconvert-linux-amd64 /usr/local/bin/tableconvert
 
-# Option 2: Build from source (requires Go 1.23+)
+# Option 4: Build from source (requires Go 1.23+)
 git clone https://github.com/martianzhang/tableconvert.git
 cd tableconvert
 make build
 
 # Binary will be available at:
 # - Linux/macOS: ./bin/tableconvert
-# - Windows: bin\tableconvert.exe
+# - Windows: bin\\tableconvert.exe
+```
 
-# Option 3: Go install
-go install github.com/martianzhang/tableconvert@latest
+### Verify Installation
+
+```bash
+# Check version
+tableconvert --version
+
+# Show help
+tableconvert --help
 ```
 
 ### Basic Usage
@@ -110,6 +123,7 @@ tableconvert data.csv output.php --template=php_array.tmpl
 **Quick Options:**
 - `-v, --verbose` - Show detailed processing information
 - `-h, --help` - Show help message
+- `--version` - Show version information
 - `--help-formats` - List all supported formats
 - `--help-format={FORMAT}` - Show format-specific parameters
 - `--mcp` - Run as MCP server for AI assistants
@@ -149,7 +163,7 @@ Each format supports custom styling options. See [arguments.md](docs/arguments.m
 claude mcp add tableconvert -- /path/to/tableconvert --mcp
 
 # Windows
-claude mcp add tableconvert -- "C:\\path\\to\\tableconvert.exe" --mcp
+claude mcp add tableconvert -- "C:\\\\path\\\\to\\\\tableconvert.exe" --mcp
 ```
 
 ### MCP Tools Available
@@ -372,5 +386,5 @@ Contributions are welcome! Please ensure:
 
 ## Note
 * This tool is not production ready.
-* When you will overwrite exists file, please check first. 
+* When you will overwrite exists file, please check first.
 * All data processing happens locally on your machine.
