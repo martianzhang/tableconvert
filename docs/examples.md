@@ -465,6 +465,391 @@ tableconvert data.csv out.xml --minify
 tableconvert data.csv out.wiki --sort
 ```
 
+## 🤖 AI Assistant Integration (MCP Mode)
+
+### Using tableconvert with Claude Code
+
+tableconvert can run as an MCP server for AI assistants:
+
+```bash
+# Start MCP server (stdio transport)
+tableconvert --mcp
+
+# Add to Claude Code (Linux/macOS)
+claude mcp add tableconvert -- /path/to/tableconvert --mcp
+
+# Add to Claude Code (Windows)
+claude mcp add tableconvert -- "C:\\path\\to\\tableconvert.exe" --mcp
+```
+
+### MCP Tool Usage Examples
+
+Once configured, AI assistants can use these tools:
+
+**Convert data with natural language:**
+```
+"Convert this CSV to JSON: name,age\nAlice,30\nBob,25"
+```
+
+**Get format information:**
+```
+"What options does the markdown format support?"
+```
+
+**Complex transformations:**
+```
+"Convert my Excel file to markdown with bold headers and center alignment"
+```
+
+### Programmatic MCP Usage
+
+```bash
+# Start server for external clients
+tableconvert --mcp --verbose
+
+# Test MCP server
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"convert_table","arguments":{"from":"csv","to":"markdown","input":"name,age\\nAlice,30\\nBob,25"}}}' | tableconvert --mcp
+```
+
+## 🔧 Debugging & Troubleshooting
+
+### Verbose Mode for Debugging
+
+**Basic verbose output:**
+```bash
+tableconvert input.csv output.json --verbose
+```
+
+**Verbose with batch processing:**
+```bash
+tableconvert --batch="data/*.csv" --to=json --verbose
+```
+
+**Verbose to log file:**
+```bash
+tableconvert --batch="data/*.csv" --to=json --verbose 2>&1 | tee conversion.log
+```
+
+**Verbose output shows:**
+- Format auto-detection results
+- Parsing progress
+- Extension parameters being used
+- Error details with line numbers
+- File processing status
+
+### Common Error Scenarios
+
+**Parse errors with verbose:**
+```bash
+# MySQL format issues
+tableconvert --from=mysql --to=markdown --verbose < bad_mysql.txt
+
+# CSV with malformed quotes
+tableconvert --from=csv --to=json --verbose < messy.csv
+```
+
+**What verbose reveals:**
+```
+Processing: stdin -> stdout
+Detected format: mysql
+Parsing line 1: +----------+--------------+
+Parsing line 2: | Field    | Type         |
+...
+Error at line 15: Expected closing border, got: "| id | int(11) |"
+```
+
+### Testing Conversions
+
+**Test with stdin/stdout first:**
+```bash
+echo "name,age\nAlice,30\nBob,25" | tableconvert --from=csv --to=json --verbose
+```
+
+**Test format detection:**
+```bash
+# Let tableconvert auto-detect
+echo "name,age\nAlice,30" | tableconvert --to=json --verbose
+```
+
+**Test specific format parameters:**
+```bash
+# Check what parameters are available
+tableconvert --help-format=markdown
+
+# Test with parameters
+echo "a,b,c\n1,2,3" | tableconvert --to=markdown --bold-header --align=l,c,r --verbose
+```
+
+## 🚀 Performance & Large Files
+
+### Batch Processing with Progress
+
+**Verbose batch with summary:**
+```bash
+tableconvert --batch="data/*.csv" --to=json --output-dir=results --verbose
+```
+
+**Expected verbose output:**
+```
+Processing: data/sales.csv -> results/sales.json
+  ✓ Success
+Processing: data/users.csv -> results/users.json
+  ✓ Success
+Processed: 2 files, 2 succeeded, 0 failed
+```
+
+### Recursive Directory Processing
+
+**Deep batch conversion:**
+```bash
+# Process all CSV files in directory tree
+tableconvert --batch="**/*.csv" --to=json --recursive --verbose
+
+# With output structure preserved
+tableconvert --batch="**/data/*.csv" --to=json --recursive --output-dir=converted
+```
+
+### Error Handling in Batch
+
+**Partial failure handling:**
+```bash
+# Some files may fail, but others continue
+tableconvert --batch="*.csv" --to=json --verbose
+# Output shows which files succeeded/failed
+```
+
+**Clean up failed outputs:**
+```bash
+# tableconvert automatically removes failed output files
+# Use verbose to see cleanup actions
+tableconvert --batch="*.csv" --to=json --verbose
+```
+
+## 💡 Advanced Real-World Patterns
+
+### CI/CD Integration
+
+**GitHub Actions:**
+```yaml
+- name: Convert CSV to JSON
+  run: tableconvert data.csv data.json --verbose
+
+- name: Batch convert reports
+  run: tableconvert --batch="reports/*.csv" --to=json --output-dir=dist
+```
+
+**Pre-commit hook:**
+```bash
+#!/bin/bash
+# Verify all CSV files can be converted to JSON
+for file in $(find . -name "*.csv"); do
+  echo "Checking $file..."
+  if ! tableconvert "$file" /tmp/test.json --verbose; then
+    echo "Failed to convert $file"
+    exit 1
+  fi
+done
+```
+
+### Data Pipeline Script
+
+**Robust conversion script:**
+```bash
+#!/bin/bash
+set -e
+
+INPUT_DIR="raw_data"
+OUTPUT_DIR="processed"
+LOG_FILE="conversion.log"
+
+echo "Starting batch conversion..." | tee $LOG_FILE
+
+tableconvert --batch="$INPUT_DIR/*.csv" \
+  --to=json \
+  --output-dir=$OUTPUT_DIR \
+  --verbose 2>&1 | tee -a $LOG_FILE
+
+# Check exit code
+if [ $? -eq 0 ]; then
+  echo "✅ All conversions successful" | tee -a $LOG_FILE
+else
+  echo "❌ Some conversions failed - check $LOG_FILE" >&2
+  exit 1
+fi
+```
+
+### Data Cleaning Pipeline
+
+**Multi-step transformation:**
+```bash
+# Clean, deduplicate, then convert
+tableconvert raw.csv cleaned.csv \
+  --delete-empty \
+  --deduplicate \
+  --uppercase \
+  --verbose
+
+tableconvert cleaned.csv final.json \
+  --format=object \
+  --verbose
+```
+
+**One-liner pipeline:**
+```bash
+tableconvert raw.csv cleaned.json \
+  --delete-empty --deduplicate --uppercase \
+  --format=object --verbose
+```
+
+### Database Documentation
+
+**Generate docs from multiple tables:**
+```bash
+#!/bin/bash
+DB="mydb"
+OUTPUT="docs"
+
+mkdir -p $OUTPUT
+
+# Get all tables
+TABLES=$(mysql -NBe "SHOW TABLES" $DB)
+
+for table in $TABLES; do
+  echo "Documenting $table..."
+  mysql -t -e "DESCRIBE $table" $DB | \
+    tableconvert --from=mysql --to=markdown \
+      --bold-header --align=l,c,c,c,c,c \
+      > "$OUTPUT/${table}_schema.md"
+
+  mysql -t -e "SELECT * FROM $table LIMIT 10" $DB | \
+    tableconvert --from=mysql --to=markdown \
+      --bold-header --align=l,c,r \
+      > "$OUTPUT/${table}_sample.md"
+done
+
+echo "Documentation generated in $OUTPUT/"
+```
+
+### Performance Monitoring
+
+**Time large conversions:**
+```bash
+# Time a batch operation
+time tableconvert --batch="large_data/*.csv" --to=json --output-dir=results --verbose
+```
+
+**Monitor memory usage:**
+```bash
+# Use /usr/bin/time if available
+/usr/bin/time -v tableconvert --batch="*.csv" --to=json 2>&1 | grep -E "(User|System|Elapsed|Maximum resident)"
+```
+
+## 🎯 Quick Reference: Debugging Commands
+
+### Format Detection Issues
+```bash
+# See what format is detected
+echo "name,age\nAlice,30" | tableconvert --to=json --verbose
+
+# Force specific format
+tableconvert --from=csv --to=json --verbose < data.txt
+```
+
+### Parsing Errors
+```bash
+# MySQL box format issues
+tableconvert --from=mysql --to=markdown --verbose < bad_output.txt
+
+# CSV quote issues
+tableconvert --from=csv --to=json --verbose < messy.csv
+```
+
+### Batch Failures
+```bash
+# Process with verbose to see individual file status
+tableconvert --batch="*.csv" --to=json --verbose
+
+# Check which files failed
+tableconvert --batch="*.csv" --to=json --verbose 2>&1 | grep "Failed"
+```
+
+### MCP Server Issues
+```bash
+# Test MCP server directly
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | tableconvert --mcp
+
+# Run with verbose to see communication
+tableconvert --mcp --verbose
+```
+
+## 📊 Performance Tips
+
+1. **Use verbose mode to identify bottlenecks**
+   ```bash
+   tableconvert --batch="*.csv" --to=json --verbose
+   ```
+
+2. **Process in chunks for very large datasets**
+   ```bash
+   # Split then batch
+   split -l 10000 large.csv chunk_
+   tableconvert --batch="chunk_*" --to=json --output-dir=results
+   ```
+
+3. **Use appropriate JSON format for your use case**
+   ```bash
+   # object (default) - best for APIs
+   # 2d - best for spreadsheets
+   # column - best for analytics
+   # keyed - best for lookups
+   tableconvert data.csv data.json --format=object --verbose
+   ```
+
+4. **Monitor conversion progress**
+   ```bash
+   # Count files first
+   ls -1 data/*.csv | wc -l
+
+   # Then process with verbose
+   tableconvert --batch="data/*.csv" --to=json --verbose
+   ```
+
+## 🛡️ Safety Best Practices
+
+### Always Test First
+```bash
+# Test single file
+tableconvert test.csv test.json --verbose
+
+# Test with sample
+head -5 data.csv | tableconvert --from=csv --to=json --verbose
+```
+
+### Backup Before Batch
+```bash
+# Create backup
+cp -r data data_backup
+
+# Process backup
+tableconvert --batch="data_backup/*.csv" --to=json --output-dir=results --verbose
+```
+
+### Verify Output
+```bash
+# Check conversion worked
+tableconvert results/file.json results_check.csv --verbose
+
+# Compare row counts
+wc -l data_backup/*.csv
+wc -l results/*.json
+```
+
+### Use Dry-Run Concept (via verbose)
+```bash
+# See what would be processed without actually converting
+tableconvert --batch="*.csv" --to=json --verbose 2>&1 | grep "Processing:"
+```
+
 ## 📝 Tips and Best Practices
 
 1. **Always use quotes for file paths with spaces**
@@ -507,3 +892,15 @@ tableconvert data.csv out.wiki --sort
    cp -r data data_backup
    tableconvert --batch="data_backup/*.csv" --to=json
    ```
+
+9. **Use MCP mode for AI-assisted conversions**
+   ```bash
+  tableconvert --mcp
+   # Then ask your AI: "Convert CSV to JSON with type inference"
+   ```
+
+10. **Debug with verbose when things go wrong**
+    ```bash
+    tableconvert input.csv output.json --verbose
+    # Look for: format detection, parsing progress, error details
+    ```

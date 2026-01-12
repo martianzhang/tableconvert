@@ -1,0 +1,22 @@
+# Ensure consistent line endings across platforms
+* text=auto eol=lf
+
+# Explicitly set text files
+*.go text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.sh text eol=lf
+*.rb text eol=lf
+Makefile text eol=lf
+go.mod text eol=lf
+go.sum text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.tmpl text eol=lf
+
+# Binary files
+*.xlsx binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary

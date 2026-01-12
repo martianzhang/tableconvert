@@ -24,6 +24,10 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// version is set at build time via ldflags
+// Example: go build -ldflags "-X main.version=v1.0.0" ./cmd/tableconvert
+var version = "dev"
+
 var formatRegistry *common.FormatRegistry
 
 func init() {
@@ -35,8 +39,16 @@ func init() {
 }
 
 func main() {
-	// Parse config
+	// Check for version flag early (before ParseConfig)
 	args := os.Args[1:]
+	for _, arg := range args {
+		if arg == "--version" {
+			fmt.Printf("tableconvert version %s\n", version)
+			os.Exit(0)
+		}
+	}
+
+	// Parse config
 	cfg, err := common.ParseConfig(args)
 	if err != nil {
 		// Show concise error message with helpful tips

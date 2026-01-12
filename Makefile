@@ -44,14 +44,15 @@ define ECHO_RED
 endef
 endif
 
+VERSION := $(shell git describe --tags --always 2>/dev/null || echo "dev")
 ifeq ($(IS_WINDOWS),)
 	# Unix-like commands
-	BUILD_CMD = mkdir -p bin && go build -trimpath -o bin/tableconvert ./cmd/tableconvert
+	BUILD_CMD = mkdir -p bin && go build -trimpath -ldflags "-X main.version=$(VERSION)" -o bin/tableconvert ./cmd/tableconvert
 	CLEAN_CMD = rm -rf bin/ release/ feature/
 	COVER_SUMMARY_CMD = tail -n 1 test/coverage.txt | awk '{sub(/%/, "", $$NF); if($$NF < 70) {print "$(CRED)"$$0"%$(CEND)"} else if ($$NF >= 80) {print "$(CGREEN)"$$0"%$(CEND)"} else {print "$(CYELLOW)"$$0"%$(CEND)"}}'
 else
 	# Windows: run via PowerShell so commands work in PowerShell/cmd environments
-	BUILD_CMD = powershell -NoProfile -Command "& { if (-not (Test-Path -Path bin)) { New-Item -ItemType Directory -Path bin | Out-Null }; go build -trimpath -o bin/tableconvert.exe ./cmd/tableconvert }"
+	BUILD_CMD = powershell -NoProfile -Command "& { if (-not (Test-Path -Path bin)) { New-Item -ItemType Directory -Path bin | Out-Null }; go build -trimpath -ldflags "-X main.version=$(VERSION)" -o bin/tableconvert.exe ./cmd/tableconvert }"
 	CLEAN_CMD = powershell -NoProfile -Command "Remove-Item -Recurse -Force bin,release,feature -ErrorAction SilentlyContinue"
 	# Use Write-Host -ForegroundColor for colored coverage output
 	COVER_SUMMARY_CMD = powershell -NoProfile -Command "$$line = (Get-Content test/coverage.txt | Select-Object -Last 1); if ($$line -match '(\d+(\.\d+)?)%') { $$p=[double]$$Matches[1]; if($$p -lt 80){ Write-Host $$line -ForegroundColor Red } elseif($$p -ge 90){ Write-Host $$line -ForegroundColor Green } else { Write-Host $$line -ForegroundColor Yellow } } else { Write-Host $$line }"
@@ -74,19 +75,19 @@ release: release-clean
 
 	@# Linux
 	$(call ECHO_YELLOW,Building Linux amd64...)
-	@GOOS=linux GOARCH=amd64 go build -trimpath -o release/tableconvert-linux-amd64 ./cmd/tableconvert
+	@GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "-X main.version=$(VERSION)" -o release/tableconvert-linux-amd64 ./cmd/tableconvert
 	$(call ECHO_YELLOW,Building Linux arm64...)
-	@GOOS=linux GOARCH=arm64 go build -trimpath -o release/tableconvert-linux-arm64 ./cmd/tableconvert
+	@GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "-X main.version=$(VERSION)" -o release/tableconvert-linux-arm64 ./cmd/tableconvert
 
 	@# macOS (Darwin)
 	$(call ECHO_YELLOW,Building macOS amd64...)
-	@GOOS=darwin GOARCH=amd64 go build -trimpath -o release/tableconvert-darwin-amd64 ./cmd/tableconvert
+	@GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "-X main.version=$(VERSION)" -o release/tableconvert-darwin-amd64 ./cmd/tableconvert
 	$(call ECHO_YELLOW,Building macOS arm64...)
-	@GOOS=darwin GOARCH=arm64 go build -trimpath -o release/tableconvert-darwin-arm64 ./cmd/tableconvert
+	@GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-X main.version=$(VERSION)" -o release/tableconvert-darwin-arm64 ./cmd/tableconvert
 
 	@# Windows
 	$(call ECHO_YELLOW,Building Windows amd64...)
-	@GOOS=windows GOARCH=amd64 go build -trimpath -o release/tableconvert-windows-amd64.exe ./cmd/tableconvert
+	@GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-X main.version=$(VERSION)" -o release/tableconvert-windows-amd64.exe ./cmd/tableconvert
 
 	@# Generate checksums
 	$(call ECHO_GREEN,Generating checksums...)

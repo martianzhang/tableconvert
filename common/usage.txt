@@ -11,6 +11,7 @@ BASIC OPTIONS:
 QUICK OPTIONS:
   -v, --verbose             Enable verbose output for debugging
   -h, --help                Show this help message
+  --version                 Show version information
   --help-formats            Show all supported formats and their parameters
   --help-format={FORMAT}    Show parameters for a specific format
   --mcp                     Run as MCP (Model Context Protocol) server
