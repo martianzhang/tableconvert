@@ -271,6 +271,8 @@ func ParseConfig(args []string) (Config, error) {
 			cfg.Recursive = parseBool(v, true)
 		case "output-dir", "dir":
 			cfg.OutputDir = v
+		case "dry-run", "dryrun", "preview":
+			cfg.DryRun = parseBool(v, true) // empty -> true, unknown -> false
 		case "h", "help":
 			Usage()
 			os.Exit(0)
@@ -362,12 +364,18 @@ func ParseConfig(args []string) (Config, error) {
 	}
 
 	// Determine output destination (Writer)
+	// Skip file creation in dry-run mode
 	if cfg.Result != "" {
-		file, err := os.Create(cfg.Result)
-		if err != nil {
-			return cfg, err
+		if cfg.DryRun {
+			// In dry-run mode, use a discard writer since we won't write output
+			cfg.Writer = io.Discard
+		} else {
+			file, err := os.Create(cfg.Result)
+			if err != nil {
+				return cfg, err
+			}
+			cfg.Writer = file
 		}
-		cfg.Writer = file
 	} else {
 		cfg.Writer = os.Stdout
 	}
@@ -488,6 +496,7 @@ type Config struct {
 	Batch     string // Batch mode pattern (e.g., "*.csv")
 	Recursive bool   // Recursive directory traversal
 	OutputDir string // Output directory for batch mode
+	DryRun    bool   // Dry run mode - preview without writing
 	Reader    io.Reader
 	Writer    io.Writer
 	Extension map[string]string

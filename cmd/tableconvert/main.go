@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 
@@ -95,6 +96,17 @@ func runBatchMode(cfg *common.Config) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
+	}
+
+	// Dry-run mode for batch
+	if cfg.DryRun {
+		fmt.Fprintf(os.Stderr, "=== DRY RUN MODE (Batch) ===\n")
+		fmt.Fprintf(os.Stderr, "Found %d files to process\n", len(files))
+		for i, file := range files {
+			fmt.Fprintf(os.Stderr, "  %d. %s -> %s\n", i+1, file.InputPath, file.OutputPath)
+		}
+		fmt.Fprintf(os.Stderr, "\n✓ Batch would process %d files (no output written)\n", len(files))
+		return
 	}
 
 	// Create output directory if specified and doesn't exist
@@ -225,6 +237,76 @@ func performConversion(cfg *common.Config) error {
 		fmt.Fprintf(os.Stderr, "# To: %s\n", cfg.To)
 		fmt.Fprintf(os.Stderr, "# Extra Configs: %v\n", cfg.Extension)
 	}
+
+	// Handle dry-run mode
+	if cfg.DryRun {
+		return performDryRun(cfg)
+	}
+
 	// Use the registry-based conversion
 	return common.PerformConversionWithRegistry(formatRegistry, cfg)
+}
+
+// performDryRun performs a dry-run conversion, showing preview without writing
+func performDryRun(cfg *common.Config) error {
+	// Parse input
+	var table common.Table
+
+	unmarshalFn, ok := formatRegistry.GetUnmarshalFunc(cfg.From)
+	if !ok {
+		return fmt.Errorf("unsupported `--from` format: %s", cfg.From)
+	}
+
+	if unmarshalFn == nil {
+		return fmt.Errorf("format %s does not support reading (unmarshal)", cfg.From)
+	}
+
+	if err := unmarshalFn(cfg, &table); err != nil {
+		return fmt.Errorf("error parsing input: %w", err)
+	}
+
+	// Apply transformations
+	cfg.ApplyTransformations(&table)
+
+	// Show dry-run summary
+	fmt.Fprintf(os.Stderr, "=== DRY RUN MODE ===\n")
+	fmt.Fprintf(os.Stderr, "Input format:  %s\n", cfg.From)
+	fmt.Fprintf(os.Stderr, "Output format: %s\n", cfg.To)
+	fmt.Fprintf(os.Stderr, "Rows: %d\n", len(table.Rows))
+	fmt.Fprintf(os.Stderr, "Columns: %d\n", len(table.Headers))
+	if len(table.Headers) > 0 {
+		fmt.Fprintf(os.Stderr, "Headers: %v\n", table.Headers)
+	}
+	if cfg.Verbose && len(table.Rows) > 0 {
+		fmt.Fprintf(os.Stderr, "First row: %v\n", table.Rows[0])
+		if len(table.Rows) > 1 {
+			fmt.Fprintf(os.Stderr, "Last row: %v\n", table.Rows[len(table.Rows)-1])
+		}
+	}
+
+	// Try to generate output to validate it would work
+	// Use a discard writer since we don't want actual output
+	marshalFn, ok := formatRegistry.GetMarshalFunc(cfg.To)
+	if !ok {
+		return fmt.Errorf("unsupported `--to` format: %s", cfg.To)
+	}
+
+	if marshalFn == nil {
+		return fmt.Errorf("format %s does not support writing (marshal)", cfg.To)
+	}
+
+	// Create a discard writer to test marshaling
+	// We need to temporarily replace the writer
+	originalWriter := cfg.Writer
+	cfg.Writer = io.Discard
+
+	err := marshalFn(cfg, &table)
+	cfg.Writer = originalWriter
+
+	if err != nil {
+		return fmt.Errorf("error generating output: %w", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "\n✓ Conversion would succeed (no output written)\n")
+	return nil
 }

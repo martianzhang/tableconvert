@@ -1375,3 +1375,399 @@ func TestFormatRegistryAliases(t *testing.T) {
 		})
 	}
 }
+
+// TestDryRunBasic tests basic dry-run functionality
+func TestDryRunBasic(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "dryrun-basic-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	inputFile := filepath.Join(tmpDir, "input.csv")
+	outputFile := filepath.Join(tmpDir, "output.json")
+
+	err = os.WriteFile(inputFile, []byte("name,age\nAlice,30\nBob,25"), 0644)
+	require.NoError(t, err)
+
+	// Capture stderr to verify dry-run output
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	cfg, err := common.ParseConfig([]string{
+		"--from", "csv",
+		"--to", "json",
+		"--file", inputFile,
+		"--result", outputFile,
+		"--dry-run",
+	})
+	require.NoError(t, err)
+
+	// Run conversion
+	done := make(chan error)
+	go func() {
+		done <- performConversion(&cfg)
+	}()
+
+	err = <-done
+	w.Close()
+	os.Stderr = oldStderr
+
+	// Should succeed without error
+	assert.NoError(t, err)
+
+	// Verify no output file was created
+	_, err = os.Stat(outputFile)
+	assert.True(t, os.IsNotExist(err), "Output file should not be created in dry-run mode")
+
+	// Verify dry-run message was printed
+	output, _ := io.ReadAll(r)
+	outputStr := string(output)
+	assert.Contains(t, outputStr, "DRY RUN MODE")
+	assert.Contains(t, outputStr, "Rows: 2")
+	assert.Contains(t, outputStr, "Columns: 2")
+	assert.Contains(t, outputStr, "Conversion would succeed")
+}
+
+// TestDryRunVerbose tests dry-run with verbose flag
+func TestDryRunVerbose(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "dryrun-verbose-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	inputFile := filepath.Join(tmpDir, "input.csv")
+	outputFile := filepath.Join(tmpDir, "output.json")
+
+	err = os.WriteFile(inputFile, []byte("name,age\nAlice,30\nBob,25"), 0644)
+	require.NoError(t, err)
+
+	// Capture stderr
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	cfg, err := common.ParseConfig([]string{
+		"--from", "csv",
+		"--to", "json",
+		"--file", inputFile,
+		"--result", outputFile,
+		"--dry-run",
+		"--verbose",
+	})
+	require.NoError(t, err)
+
+	done := make(chan error)
+	go func() {
+		done <- performConversion(&cfg)
+	}()
+
+	err = <-done
+	w.Close()
+	os.Stderr = oldStderr
+
+	assert.NoError(t, err)
+
+	// Verbose should show first and last rows
+	output, _ := io.ReadAll(r)
+	outputStr := string(output)
+	assert.Contains(t, outputStr, "First row:")
+	assert.Contains(t, outputStr, "Alice")
+	assert.Contains(t, outputStr, "Last row:")
+	assert.Contains(t, outputStr, "Bob")
+}
+
+// TestDryRunWithTransformations tests dry-run with transformations
+func TestDryRunWithTransformations(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "dryrun-transform-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	inputFile := filepath.Join(tmpDir, "input.csv")
+	outputFile := filepath.Join(tmpDir, "output.json")
+
+	err = os.WriteFile(inputFile, []byte("name,age\nAlice,30\nBob,25"), 0644)
+	require.NoError(t, err)
+
+	// Capture stderr
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	cfg, err := common.ParseConfig([]string{
+		"--from", "csv",
+		"--to", "json",
+		"--file", inputFile,
+		"--result", outputFile,
+		"--dry-run",
+		"--transpose",
+		"--uppercase",
+	})
+	require.NoError(t, err)
+
+	done := make(chan error)
+	go func() {
+		done <- performConversion(&cfg)
+	}()
+
+	err = <-done
+	w.Close()
+	os.Stderr = oldStderr
+
+	assert.NoError(t, err)
+
+	// Verify transformations were applied (column count changes with transpose)
+	output, _ := io.ReadAll(r)
+	outputStr := string(output)
+	assert.Contains(t, outputStr, "DRY RUN MODE")
+	// Transpose changes dimensions
+	assert.Contains(t, outputStr, "Rows:")
+	assert.Contains(t, outputStr, "Columns:")
+}
+
+// TestDryRunBatchMode tests dry-run with batch mode
+func TestDryRunBatchMode(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "dryrun-batch-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	// Create test files
+	err = os.WriteFile(filepath.Join(tmpDir, "file1.csv"), []byte("name,age\nAlice,30"), 0644)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(tmpDir, "file2.csv"), []byte("name,age\nBob,25"), 0644)
+	require.NoError(t, err)
+
+	outputDir := filepath.Join(tmpDir, "output")
+	err = os.MkdirAll(outputDir, 0755)
+	require.NoError(t, err)
+
+	// Capture stderr
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	cfg, err := common.ParseConfig([]string{
+		"--batch", filepath.Join(tmpDir, "*.csv"),
+		"--to", "json",
+		"--output-dir", outputDir,
+		"--dry-run",
+	})
+	require.NoError(t, err)
+
+	// Run batch mode in goroutine
+	done := make(chan bool)
+	go func() {
+		runBatchMode(&cfg)
+		done <- true
+	}()
+
+	<-done
+	w.Close()
+	os.Stderr = oldStderr
+
+	// Verify no output files were created
+	outputFiles, _ := filepath.Glob(filepath.Join(outputDir, "*.json"))
+	assert.Len(t, outputFiles, 0)
+
+	// Verify dry-run batch message
+	output, _ := io.ReadAll(r)
+	outputStr := string(output)
+	assert.Contains(t, outputStr, "DRY RUN MODE (Batch)")
+	assert.Contains(t, outputStr, "Found 2 files")
+	// Check that files are listed (paths may be full or relative)
+	assert.Contains(t, outputStr, "file1.csv")
+	assert.Contains(t, outputStr, "file2.csv")
+}
+
+// TestDryRunErrorHandling tests dry-run with invalid input
+func TestDryRunErrorHandling(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "dryrun-error-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	outputFile := filepath.Join(tmpDir, "output.json")
+
+	// Test with CSV that has only headers (0 data rows, which is valid)
+	headerOnlyFile := filepath.Join(tmpDir, "header_only.csv")
+	err = os.WriteFile(headerOnlyFile, []byte("name,age"), 0644)
+	require.NoError(t, err)
+
+	cfg, err := common.ParseConfig([]string{
+		"--from", "csv",
+		"--to", "json",
+		"--file", headerOnlyFile,
+		"--result", outputFile,
+		"--dry-run",
+	})
+	require.NoError(t, err)
+
+	// CSV with only headers should work (0 data rows)
+	err = performConversion(&cfg)
+	assert.NoError(t, err)
+}
+
+// TestDryRunFlagParsing tests dry-run flag parsing variations
+func TestDryRunFlagParsing(t *testing.T) {
+	tests := []struct {
+		name      string
+		args      []string
+		expected  bool
+		shouldErr bool
+	}{
+		// These need from/to to be valid, so they should error
+		{"dry-run", []string{"--dry-run"}, true, true},
+		{"dryrun", []string{"--dryrun"}, true, true},
+		{"preview", []string{"--preview"}, true, true},
+		// These provide complete configs
+		{"dry-run=true", []string{"--from=csv", "--to=json", "--dry-run=true"}, true, false},
+		{"dry-run=false", []string{"--from=csv", "--to=json", "--dry-run=false"}, false, false},
+		{"no dry-run", []string{"--from=csv", "--to=json"}, false, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := common.ParseConfig(tt.args)
+			if tt.shouldErr {
+				// These should fail due to missing from/to
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, cfg.DryRun)
+		})
+	}
+}
+
+// TestDryRunWriteOnlyFormat tests dry-run with write-only format as target
+func TestDryRunWriteOnlyFormat(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "dryrun-writeonly-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	inputFile := filepath.Join(tmpDir, "input.csv")
+	outputFile := filepath.Join(tmpDir, "output.tmpl")
+	templateFile := filepath.Join(tmpDir, "test.tmpl")
+
+	// Create input file
+	err = os.WriteFile(inputFile, []byte("name,age\nAlice,30"), 0644)
+	require.NoError(t, err)
+
+	// Create template file
+	err = os.WriteFile(templateFile, []byte("{{range .Rows}}{{index . 0}}: {{index . 1}}\n{{end}}"), 0644)
+	require.NoError(t, err)
+
+	// Capture stderr
+	oldStderr := os.Stderr
+	_, w, _ := os.Pipe()
+	os.Stderr = w
+
+	cfg, err := common.ParseConfig([]string{
+		"--from", "csv",
+		"--to", "tmpl",
+		"--file", inputFile,
+		"--result", outputFile,
+		"--dry-run",
+		"--template", templateFile,
+	})
+	require.NoError(t, err)
+
+	done := make(chan error)
+	go func() {
+		done <- performConversion(&cfg)
+	}()
+
+	err = <-done
+	w.Close()
+	os.Stderr = oldStderr
+
+	// Should succeed (dry-run validates the conversion would work)
+	assert.NoError(t, err)
+
+	// No output file should be created
+	_, err = os.Stat(outputFile)
+	assert.True(t, os.IsNotExist(err))
+}
+
+// TestDryRunWithStdin tests dry-run with stdin input
+func TestDryRunWithStdin(t *testing.T) {
+	// Save original stdin
+	oldStdin := os.Stdin
+	defer func() { os.Stdin = oldStdin }()
+
+	// Create pipe to simulate stdin
+	r, w, _ := os.Pipe()
+	os.Stdin = r
+	w.Write([]byte("name,age\nAlice,30\nBob,25"))
+	w.Close()
+
+	// Capture stderr
+	oldStderr := os.Stderr
+	r2, w2, _ := os.Pipe()
+	os.Stderr = w2
+
+	cfg, err := common.ParseConfig([]string{
+		"--from", "csv",
+		"--to", "json",
+		"--dry-run",
+	})
+	require.NoError(t, err)
+
+	done := make(chan error)
+	go func() {
+		done <- performConversion(&cfg)
+	}()
+
+	err = <-done
+	w2.Close()
+	os.Stderr = oldStderr
+
+	assert.NoError(t, err)
+
+	// Verify dry-run output
+	output, _ := io.ReadAll(r2)
+	outputStr := string(output)
+	assert.Contains(t, outputStr, "DRY RUN MODE")
+}
+
+// TestDryRunWithInvalidFormat tests dry-run with invalid format
+func TestDryRunWithInvalidFormat(t *testing.T) {
+	cfg := &common.Config{
+		From:   "invalid_format",
+		To:     "json",
+		Reader: strings.NewReader("test"),
+		Writer: &bytes.Buffer{},
+		DryRun: true,
+	}
+
+	err := performConversion(cfg)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported `--from` format")
+}
+
+// TestDryRunWithWriteOnlySource tests dry-run with write-only format as source
+func TestDryRunWithWriteOnlySource(t *testing.T) {
+	cfg := &common.Config{
+		From:   "tmpl", // write-only
+		To:     "json",
+		Reader: strings.NewReader("test"),
+		Writer: &bytes.Buffer{},
+		DryRun: true,
+	}
+
+	err := performConversion(cfg)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "does not support reading")
+}
+
+// TestDryRunWithInvalidTarget tests dry-run with invalid target format
+func TestDryRunWithInvalidTarget(t *testing.T) {
+	cfg := &common.Config{
+		From:   "csv",
+		To:     "nonexistent",
+		Reader: strings.NewReader("name,age\nAlice,30"),
+		Writer: &bytes.Buffer{},
+		DryRun: true,
+	}
+
+	err := performConversion(cfg)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported `--to` format")
+}

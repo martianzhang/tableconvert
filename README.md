@@ -66,6 +66,9 @@ tableconvert -i input.csv -o output.json
 
 # Read from stdin, write to stdout
 echo "name,age\nAlice,30\nBob,25" | tableconvert --from=csv --to=json
+
+# Preview conversion without writing (dry-run)
+echo "name,age\nAlice,30\nBob,25" | tableconvert --from=csv --to=json --dry-run
 ```
 
 ### Common Scenarios
@@ -91,6 +94,9 @@ tableconvert data.csv data.sql --table=users --dialect=mysql
 
 # Create LaTeX table for academic paper
 tableconvert data.csv table.tex --bold-header --text-align=c
+
+# Preview conversion before writing
+tableconvert data.csv output.json --dry-run --verbose
 ```
 
 ### Format-Specific Examples
@@ -124,6 +130,7 @@ tableconvert data.csv output.php --template=php_array.tmpl
 - `-v, --verbose` - Show detailed processing information
 - `-h, --help` - Show help message
 - `--version` - Show version information
+- `--dry-run|--preview` - Preview conversion without writing output
 - `--help-formats` - List all supported formats
 - `--help-format={FORMAT}` - Show format-specific parameters
 - `--mcp` - Run as MCP server for AI assistants
@@ -253,6 +260,18 @@ Always verify downloaded binaries:
 sha256sum -c checksums.txt
 
 # Should output: tableconvert-linux-amd64: OK
+```
+
+### Homebrew (macOS/Linux)
+
+The formula is available in the repository and can be installed:
+
+```bash
+# Install from the repository
+brew install --HEAD github.com/martianzhang/tableconvert/.github/homebrew/tableconvert.rb
+
+# Or after the formula is submitted to Homebrew core:
+brew install tableconvert
 ```
 
 ### Building Releases Locally

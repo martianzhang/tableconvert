@@ -12,6 +12,7 @@ QUICK OPTIONS:
   -v, --verbose             Enable verbose output for debugging
   -h, --help                Show this help message
   --version                 Show version information
+  --dry-run|--preview       Preview conversion without writing output
   --help-formats            Show all supported formats and their parameters
   --help-format={FORMAT}    Show parameters for a specific format
   --mcp                     Run as MCP (Model Context Protocol) server
@@ -66,6 +67,9 @@ EXAMPLES:
 
   # Batch with recursion
   tableconvert --batch="**/*.csv" --to=json --recursive --verbose
+
+  # Preview conversion without writing
+  tableconvert --from=csv --to=json input.csv --dry-run
 
   # SQL generation
   tableconvert data.csv data.sql --table=users --dialect=mysql --one-insert
