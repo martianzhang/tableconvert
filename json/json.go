@@ -1,6 +1,7 @@
 package json
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,6 +9,22 @@ import (
 
 	"github.com/martianzhang/tableconvert/common"
 )
+
+func decodeJSON(data []byte, v interface{}) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	if err := decoder.Decode(v); err != nil {
+		return err
+	}
+	var extra interface{}
+	if err := decoder.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return fmt.Errorf("unexpected trailing JSON data")
+		}
+		return err
+	}
+	return nil
+}
 
 func Unmarshal(cfg *common.Config, table *common.Table) error {
 	format := cfg.GetExtensionString("format", "")
@@ -21,7 +38,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	switch format {
 	case "2d":
 		var input [][]interface{}
-		if err := json.Unmarshal(data, &input); err != nil {
+		if err := decodeJSON(data, &input); err != nil {
 			return err
 		}
 		if len(input) == 0 {
@@ -56,7 +73,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 
 	case "column":
 		var input []map[string]interface{}
-		if err := json.Unmarshal(data, &input); err != nil {
+		if err := decodeJSON(data, &input); err != nil {
 			return err
 		}
 
@@ -100,7 +117,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 
 	case "keyed":
 		var input map[string]map[string]interface{}
-		if err := json.Unmarshal(data, &input); err != nil {
+		if err := decodeJSON(data, &input); err != nil {
 			return err
 		}
 		if len(input) == 0 {
@@ -142,7 +159,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 
 	default: // Array of Object
 		var input []map[string]interface{}
-		if err := json.Unmarshal(data, &input); err != nil {
+		if err := decodeJSON(data, &input); err != nil {
 			return err
 		}
 

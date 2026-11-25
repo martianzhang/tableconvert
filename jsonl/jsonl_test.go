@@ -67,6 +67,15 @@ func TestUnmarshalWithBOM(t *testing.T) {
 	assert.Equal(t, [][]string{{"1"}}, table.Rows)
 }
 
+func TestUnmarshalPreservesNumberPrecision(t *testing.T) {
+	input := `{"id":1234567,"big":9007199254740993}` + "\n"
+	table := &common.Table{}
+	err := Unmarshal(&common.Config{Reader: bytes.NewReader([]byte(input))}, table)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"big", "id"}, table.Headers)
+	assert.Equal(t, [][]string{{"9007199254740993", "1234567"}}, table.Rows)
+}
+
 // TestUnmarshalDeterministicHeaders tests that headers are in sorted order
 func TestUnmarshalDeterministicHeaders(t *testing.T) {
 	// Prepare test input with fields in different orders

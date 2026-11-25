@@ -2,6 +2,7 @@ package jsonl
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -22,7 +23,9 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 		}
 
 		var record map[string]interface{}
-		if err := json.Unmarshal([]byte(line), &record); err != nil {
+		decoder := json.NewDecoder(bytes.NewReader([]byte(line)))
+		decoder.UseNumber()
+		if err := decoder.Decode(&record); err != nil {
 			return &common.ParseError{
 				LineNumber: lineNumber,
 				Message:    fmt.Sprintf("invalid JSON: %v", err),

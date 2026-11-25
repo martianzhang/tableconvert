@@ -268,6 +268,15 @@ func TestColumnFormatRoundTrip(t *testing.T) {
 	assert.True(t, hasCol1 && hasCol2, "Should have both col1 and col2")
 }
 
+func TestUnmarshalPreservesNumberPrecision(t *testing.T) {
+	input := `[{"id":1234567,"big":9007199254740993}]`
+	table := &common.Table{}
+	err := Unmarshal(&common.Config{Reader: strings.NewReader(input)}, table)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"big", "id"}, table.Headers)
+	assert.Equal(t, [][]string{{"9007199254740993", "1234567"}}, table.Rows)
+}
+
 func TestKeyedFormat(t *testing.T) {
 	table := &common.Table{
 		Headers: []string{"id", "name", "age"},
