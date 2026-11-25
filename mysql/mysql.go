@@ -186,6 +186,12 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 					}
 				}
 				rows = append(rows, rowData)
+				for _, cell := range rowData {
+					if strings.EqualFold(cell, "NULL") {
+						cfg.SQLNull = true
+						break
+					}
+				}
 				// Stay in 'data' state
 			} else if isBorderLine(line) {
 				parsingState = "end" // Found the bottom border

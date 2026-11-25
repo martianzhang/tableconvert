@@ -54,6 +54,12 @@ func TestSQLValueEscapeDialect(t *testing.T) {
 	}
 }
 
+func TestSQLValueEscapeDialectWithNull(t *testing.T) {
+	assert.Equal(t, "NULL", SQLValueEscapeDialectWithNull("NULL", "mysql", true))
+	assert.Equal(t, "'NULL'", SQLValueEscapeDialectWithNull("NULL", "mysql", false))
+	assert.Equal(t, "'null'", SQLValueEscapeDialectWithNull("null", "postgres", false))
+}
+
 func TestCSVForceQuote(t *testing.T) {
 	tests := []struct {
 		name     string

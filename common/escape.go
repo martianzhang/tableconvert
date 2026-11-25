@@ -169,10 +169,16 @@ func SQLValueEscape(s string) string {
 }
 
 // SQLValueEscapeDialect escapes a SQL string value using the requested
-// dialect. MySQL uses backslash escapes; the other dialects use standard SQL
-// single-quote doubling.
+// dialect. It treats the text "NULL" as SQL NULL for backwards compatibility.
 func SQLValueEscapeDialect(s, dialect string) string {
-	if strings.EqualFold(s, "NULL") {
+	return SQLValueEscapeDialectWithNull(s, dialect, true)
+}
+
+// SQLValueEscapeDialectWithNull escapes a SQL string value using the requested
+// dialect. When nullSentinel is true, the text "NULL" is emitted as SQL NULL;
+// otherwise it is quoted as an ordinary string.
+func SQLValueEscapeDialectWithNull(s, dialect string, nullSentinel bool) string {
+	if nullSentinel && strings.EqualFold(s, "NULL") {
 		return "NULL"
 	}
 

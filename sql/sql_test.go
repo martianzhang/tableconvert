@@ -398,6 +398,34 @@ func TestMarshalDialectValueEscaping(t *testing.T) {
 	}
 }
 
+func TestMarshalNullSentinel(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"v"},
+		Rows:    [][]string{{"NULL"}},
+	}
+
+	t.Run("literal NULL by default", func(t *testing.T) {
+		var buf bytes.Buffer
+		cfg := &common.Config{
+			Writer:    &buf,
+			Extension: map[string]string{"table": "t"},
+		}
+		require.NoError(t, Marshal(cfg, table))
+		assert.Contains(t, buf.String(), "VALUES ('NULL')")
+	})
+
+	t.Run("SQL NULL from SQL/MySQL source", func(t *testing.T) {
+		var buf bytes.Buffer
+		cfg := &common.Config{
+			Writer:    &buf,
+			Extension: map[string]string{"table": "t"},
+			SQLNull:   true,
+		}
+		require.NoError(t, Marshal(cfg, table))
+		assert.Contains(t, buf.String(), "VALUES (NULL)")
+	})
+}
+
 // TestMarshalWithOneInsert tests all-in-one INSERT mode
 func TestMarshalWithOneInsert(t *testing.T) {
 	table := &common.Table{

@@ -513,6 +513,7 @@ type Config struct {
 	Writer     io.Writer
 	Extension  map[string]string
 	TempResult string // Temporary output path used until CommitOutput
+	SQLNull    bool   // Source represents SQL NULL as the string "NULL"
 }
 
 // CommitOutput closes the temporary output file and atomically moves it to the

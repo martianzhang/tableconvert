@@ -40,7 +40,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	for _, stmt := range stmts {
 		switch stmt := stmt.(type) {
 		case *sqlparser.Insert:
-			if err := handleInsert(stmt, table); err != nil {
+			if err := handleInsert(stmt, table, cfg); err != nil {
 				return err
 			}
 		default:
@@ -53,7 +53,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 
 // handleInsert converts INSERT statement to table rows
 // This is a helper function and should only be called by Unmarshal
-func handleInsert(insert *sqlparser.Insert, table *common.Table) error {
+func handleInsert(insert *sqlparser.Insert, table *common.Table, cfg *common.Config) error {
 	// Check for column order mismatch
 	if len(table.Headers) > 0 {
 		// Verify current INSERT columns match existing headers
@@ -96,6 +96,7 @@ func handleInsert(insert *sqlparser.Insert, table *common.Table) error {
 					values = append(values, litStr)
 				}
 			case *sqlparser.NullVal:
+				cfg.SQLNull = true
 				values = append(values, "NULL")
 			default:
 				values = append(values, sqlparser.String(val)) // fallback: stringify everything else
@@ -167,7 +168,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	for j, row := range table.Rows {
 		values := make([]string, columnCount)
 		for i, cell := range row {
-			values[i] = common.SQLValueEscapeDialect(cell, dialect)
+			values[i] = common.SQLValueEscapeDialectWithNull(cell, dialect, cfg.SQLNull)
 		}
 		if allInOne {
 			if j == 0 {
