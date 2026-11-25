@@ -104,7 +104,7 @@ var FormatParamsRegistry = map[string][]FormatParam{
 		{Name: "minify", DefaultValue: "false", AllowedValues: "true, false", Description: "Minify XML"},
 		{Name: "root-element", DefaultValue: "dataset", AllowedValues: "string", Description: "Root Element Tag"},
 		{Name: "row-element", DefaultValue: "record", AllowedValues: "string", Description: "Row Element Tag"},
-		{Name: "declaration", DefaultValue: "true", AllowedValues: "true, false", Description: "Include XML Declaration"},
+		{Name: "declaration", DefaultValue: "false", AllowedValues: "true, false", Description: "Include XML Declaration"},
 	},
 }
 

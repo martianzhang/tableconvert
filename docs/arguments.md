@@ -358,7 +358,7 @@ tableconvert data.csv output.twiki --first-row-header
 | `minify` | `false` | `true`, `false` | Minify XML output |
 | `root-element` | `dataset` | Any string | Root element tag |
 | `row-element` | `record` | Any string | Row element tag |
-| `declaration` | `true` | `true`, `false` | Include XML declaration |
+| `declaration` | `false` | `true`, `false` | Include XML declaration |
 
 **Example:**
 ```bash
