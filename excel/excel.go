@@ -33,10 +33,20 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	}
 	defer f.Close()
 
-	// Get the first sheet name
-	sheetName := f.GetSheetName(0)
+	// Get the requested sheet, defaulting to the first one.
+	sheetName := cfg.GetExtensionString("sheet-name", "")
+	if sheetName == "" {
+		sheetName = f.GetSheetName(0)
+	}
 	if sheetName == "" {
 		return fmt.Errorf("empty Excel file: no sheets found")
+	}
+	sheetIndex, err := f.GetSheetIndex(sheetName)
+	if err != nil {
+		return err
+	}
+	if sheetIndex < 0 {
+		return fmt.Errorf("Excel sheet %q not found", sheetName)
 	}
 
 	// Get all rows
@@ -96,13 +106,19 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 func Marshal(cfg *common.Config, table *common.Table) error {
 	f := excelize.NewFile()
 
-	// Sheet Name
+	// Sheet Name: reuse/rename the default sheet so we do not leave an empty
+	// "Sheet1" behind when a custom name is requested.
 	sheetName := cfg.GetExtensionString("sheet-name", "Sheet1")
-	index, err := f.NewSheet(sheetName)
-	if err != nil {
-		return err
+	defaultSheet := f.GetSheetName(0)
+	if defaultSheet == "" {
+		return fmt.Errorf("failed to create default Excel sheet")
 	}
-	f.SetActiveSheet(index)
+	if sheetName != defaultSheet {
+		if err := f.SetSheetName(defaultSheet, sheetName); err != nil {
+			return err
+		}
+	}
+	f.SetActiveSheet(0)
 
 	// Auto-width configuration
 	autoWidth := cfg.GetExtensionBool("auto-width", false)

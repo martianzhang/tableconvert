@@ -228,6 +228,67 @@ func TestMarshalWriterAndUnmarshalReader(t *testing.T) {
 	assert.Equal(t, table.Rows, got.Rows)
 }
 
+func TestSheetNameWriteAndRead(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"name", "age"},
+		Rows:    [][]string{{"Alice", "30"}},
+	}
+
+	var buf bytes.Buffer
+	cfg := &common.Config{
+		Writer:    &buf,
+		Extension: map[string]string{"sheet-name": "Data"},
+	}
+	require.NoError(t, Marshal(cfg, table))
+
+	f, err := excelize.OpenReader(bytes.NewReader(buf.Bytes()))
+	require.NoError(t, err)
+	assert.Equal(t, []string{"Data"}, f.GetSheetList())
+	require.NoError(t, f.Close())
+
+	got := &common.Table{}
+	require.NoError(t, Unmarshal(&common.Config{Reader: bytes.NewReader(buf.Bytes())}, got))
+	assert.Equal(t, table.Headers, got.Headers)
+	assert.Equal(t, table.Rows, got.Rows)
+}
+
+func TestUnmarshalSelectedSheet(t *testing.T) {
+	f := excelize.NewFile()
+	_, err := f.NewSheet("Data")
+	require.NoError(t, err)
+	require.NoError(t, f.SetCellValue("Sheet1", "A1", "wrong"))
+	require.NoError(t, f.SetCellValue("Data", "A1", "name"))
+	require.NoError(t, f.SetCellValue("Data", "A2", "Alice"))
+
+	var buf bytes.Buffer
+	require.NoError(t, f.Write(&buf))
+	require.NoError(t, f.Close())
+
+	got := &common.Table{}
+	err = Unmarshal(&common.Config{
+		Reader:    bytes.NewReader(buf.Bytes()),
+		Extension: map[string]string{"sheet-name": "Data"},
+	}, got)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"name"}, got.Headers)
+	assert.Equal(t, [][]string{{"Alice"}}, got.Rows)
+}
+
+func TestSheetNameNotFound(t *testing.T) {
+	var buf bytes.Buffer
+	require.NoError(t, Marshal(&common.Config{Writer: &buf}, &common.Table{
+		Headers: []string{"a"},
+		Rows:    [][]string{{"1"}},
+	}))
+
+	err := Unmarshal(&common.Config{
+		Reader:    bytes.NewReader(buf.Bytes()),
+		Extension: map[string]string{"sheet-name": "Missing"},
+	}, &common.Table{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+}
+
 func TestMarshalWithTextFormat(t *testing.T) {
 	testFile := "test_text_format.xlsx"
 	defer os.Remove(testFile)
