@@ -121,6 +121,9 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	findTable(doc)
 
 	if tableNode == nil {
+		if divTable := findDivTable(doc); divTable != nil {
+			return parseDivTable(divTable, table)
+		}
 		return fmt.Errorf("Unmarshal: no table found in HTML content")
 	}
 
@@ -134,6 +137,102 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 		return parseFirstColumnAsHeader(tableNode, table)
 	}
 	return parseFirstRowAsHeader(tableNode, table)
+}
+
+func nodeClass(n *html.Node) string {
+	for _, attr := range n.Attr {
+		if attr.Key == "class" {
+			return attr.Val
+		}
+	}
+	return ""
+}
+
+func findDivTable(root *html.Node) *html.Node {
+	var found *html.Node
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if found != nil {
+			return
+		}
+		if n.Type == html.ElementNode && n.Data == "div" && strings.Contains(nodeClass(n), "table") {
+			found = n
+			return
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			walk(c)
+		}
+	}
+	walk(root)
+	return found
+}
+
+func parseDivTable(tableNode *html.Node, table *common.Table) error {
+	var rows [][]string
+	var headers []string
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			if c.Type == html.ElementNode && c.Data == "div" && strings.Contains(nodeClass(c), "tr") {
+				var row []string
+				hasHeader := false
+				for cell := c.FirstChild; cell != nil; cell = cell.NextSibling {
+					if cell.Type != html.ElementNode || cell.Data != "div" {
+						continue
+					}
+					class := nodeClass(cell)
+					if strings.Contains(class, "th") {
+						hasHeader = true
+						row = append(row, strings.TrimSpace(nodeText(cell)))
+					} else if strings.Contains(class, "td") {
+						row = append(row, strings.TrimSpace(nodeText(cell)))
+					}
+				}
+				if len(row) > 0 {
+					if hasHeader && len(headers) == 0 {
+						headers = row
+					} else {
+						rows = append(rows, row)
+					}
+				}
+				continue
+			}
+			if c.Type == html.ElementNode && c.Data == "div" && strings.Contains(nodeClass(c), "table") {
+				continue
+			}
+			walk(c)
+		}
+	}
+	walk(tableNode)
+
+	if len(headers) == 0 {
+		if len(rows) == 0 {
+			return fmt.Errorf("Unmarshal: no rows found in div table")
+		}
+		headers = rows[0]
+		rows = rows[1:]
+	}
+	return setRectangularTable(table, headers, rows)
+}
+
+func setRectangularTable(table *common.Table, headers []string, rows [][]string) error {
+	maxCols := len(headers)
+	for _, row := range rows {
+		if len(row) > maxCols {
+			maxCols = len(row)
+		}
+	}
+	for len(headers) < maxCols {
+		headers = append(headers, "")
+	}
+	outRows := make([][]string, len(rows))
+	for i, row := range rows {
+		outRows[i] = make([]string, maxCols)
+		copy(outRows[i], row)
+	}
+	table.Headers = headers
+	table.Rows = outRows
+	return nil
 }
 
 // isFirstColumnHeader detects if the table uses first column as header.

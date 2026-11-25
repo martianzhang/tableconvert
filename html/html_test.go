@@ -8,6 +8,7 @@ import (
 
 	"github.com/martianzhang/tableconvert/common"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/html"
 )
 
@@ -500,6 +501,23 @@ func TestUnmarshalFirstColumnHeader(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDivTableRoundTrip(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"Name", "Age"},
+		Rows:    [][]string{{"Alice", "30"}, {"Bob", "25"}},
+	}
+	var buf bytes.Buffer
+	require.NoError(t, Marshal(&common.Config{
+		Writer:    &buf,
+		Extension: map[string]string{"div": "true"},
+	}, table))
+
+	got := &common.Table{}
+	require.NoError(t, Unmarshal(&common.Config{Reader: bytes.NewReader(buf.Bytes())}, got))
+	assert.Equal(t, table.Headers, got.Headers)
+	assert.Equal(t, table.Rows, got.Rows)
 }
 
 func TestUnmarshalNestedTextAndRowHeaders(t *testing.T) {
