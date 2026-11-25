@@ -246,6 +246,7 @@ func TestPerformConversion(t *testing.T) {
 
 	err = performConversion(&cfg)
 	assert.NoError(t, err)
+	assert.Nil(t, cfg.InputFile, "input file should be closed after conversion")
 
 	// Verify file was created
 	_, err = os.Stat(resultFile)

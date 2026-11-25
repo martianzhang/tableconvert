@@ -247,6 +247,10 @@ func registerFormats() {
 
 // performConversion performs the core table conversion logic
 func performConversion(cfg *common.Config) (err error) {
+	defer func() {
+		_ = cfg.CloseInput()
+	}()
+
 	// Print verbose output
 	if cfg.Verbose {
 		fmt.Fprintf(os.Stderr, "# From: %s\n", cfg.From)

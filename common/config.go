@@ -419,6 +419,7 @@ func ParseConfig(args []string) (Config, error) {
 			return cfg, fmt.Errorf("failed to open file: %w", err)
 		}
 		cfg.Reader = file
+		cfg.InputFile = file
 	} else {
 		// Use stdin
 		cfg.Reader = os.Stdin
@@ -438,11 +439,13 @@ func ParseConfig(args []string) (Config, error) {
 			base := filepath.Base(cfg.Result)
 			tmp, err := os.CreateTemp(dir, "."+base+".tmp-*")
 			if err != nil {
+				_ = cfg.CloseInput()
 				return cfg, err
 			}
 			if err := tmp.Chmod(0644); err != nil {
 				tmp.Close()
 				os.Remove(tmp.Name())
+				_ = cfg.CloseInput()
 				return cfg, err
 			}
 			cfg.Writer = tmp
@@ -573,9 +576,20 @@ type Config struct {
 	DryRun     bool   // Dry run mode - preview without writing
 	Reader     io.Reader
 	Writer     io.Writer
+	InputFile  *os.File
 	Extension  map[string]string
 	TempResult string // Temporary output path used until CommitOutput
 	SQLNull    bool   // Source represents SQL NULL as the string "NULL"
+}
+
+// CloseInput closes the input file opened by ParseConfig, if any.
+func (c *Config) CloseInput() error {
+	if c.InputFile == nil {
+		return nil
+	}
+	err := c.InputFile.Close()
+	c.InputFile = nil
+	return err
 }
 
 // CommitOutput closes the temporary output file and atomically moves it to the
