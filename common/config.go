@@ -727,10 +727,11 @@ func (c *Config) GetBatchFiles() ([]BatchFile, error) {
 		filePattern = pattern
 	}
 
-	// Handle recursive mode
+	// Handle recursive mode. A ** pattern is inherently recursive even when
+	// --recursive is omitted.
 	var matches []string
 	var err error
-	if c.Recursive {
+	if c.Recursive || strings.Contains(pattern, "**") {
 		// Use Walk to find all matching files recursively
 		matches, err = c.walkPattern(baseDir, filePattern)
 	} else {
@@ -853,123 +854,47 @@ func (c *Config) walkPattern(baseDir, pattern string) ([]string, error) {
 		// Convert to forward slashes for consistent pattern matching
 		relPath = filepath.ToSlash(relPath)
 
-		// Check if path matches pattern
-		if strings.Contains(pattern, "**") {
-			// Handle ** pattern
-			// Split pattern by ** to get prefix and suffix
-			parts := strings.Split(pattern, "**")
-			if len(parts) != 2 {
-				return fmt.Errorf("pattern must contain exactly one **: %s", pattern)
-			}
-
-			prefix := parts[0]
-			suffix := parts[1]
-
-			// Normalize
-			prefix = strings.TrimPrefix(prefix, "/")
-			prefix = strings.TrimSuffix(prefix, "/")
-			suffix = strings.TrimPrefix(suffix, "/")
-			suffix = strings.TrimSuffix(suffix, "/")
-
-			// For pattern "dir/**/*.csv":
-			// - prefix = "dir"
-			// - suffix = "*.csv"
-			// - relPath examples: "a.csv", "sub/a.csv", "sub/sub/a.csv"
-			// - we want to match: "dir/a.csv", "dir/sub/a.csv", etc.
-
-			// For pattern "**/*.csv":
-			// - prefix = ""
-			// - suffix = "*.csv"
-			// - relPath examples: "a.csv", "sub/a.csv"
-			// - we want to match all
-
-			matched := true
-
-			// Check prefix
-			if prefix != "" {
-				// Must start with prefix/
-				if !strings.HasPrefix(relPath, prefix+"/") {
-					matched = false
-				}
-			}
-
-			// Check suffix
-			if matched && suffix != "" {
-				// suffix can be "file.txt" or "sub/file.txt"
-				// We need to check if relPath ends with something matching suffix
-
-				// Remove prefix from relPath for suffix checking
-				checkPath := relPath
-				if prefix != "" {
-					checkPath = strings.TrimPrefix(relPath, prefix+"/")
-				}
-
-				// Now check if checkPath matches suffix
-				// suffix might be "file.txt" or "sub/file.txt"
-				// For "file.txt": match if checkPath == "file.txt" or checkPath ends with "/file.txt"
-				// For "sub/file.txt": match if checkPath == "sub/file.txt" or ends with "/sub/file.txt"
-
-				// Simple approach: try matching suffix against the path and various suffixes
-				suffixMatched := false
-
-				// Try exact match first
-				if checkPath == suffix {
-					suffixMatched = true
-				}
-
-				// Try glob match
-				if !suffixMatched {
-					matchedByGlob, _ := filepath.Match(suffix, checkPath)
-					if matchedByGlob {
-						suffixMatched = true
-					}
-				}
-
-				// Try matching suffix against path suffixes
-				if !suffixMatched && strings.Contains(suffix, "/") {
-					// suffix has path components, check if checkPath ends with suffix
-					if strings.HasSuffix(checkPath, "/"+suffix) {
-						suffixMatched = true
-					}
-				}
-
-				// Try matching just the filename part
-				if !suffixMatched && !strings.Contains(suffix, "/") {
-					// suffix is just a filename pattern
-					if filepath.Base(checkPath) == suffix {
-						suffixMatched = true
-					}
-					// Try glob on filename
-					if !suffixMatched {
-						matchedByGlob, _ := filepath.Match(suffix, filepath.Base(checkPath))
-						if matchedByGlob {
-							suffixMatched = true
-						}
-					}
-				}
-
-				if !suffixMatched {
-					matched = false
-				}
-			}
-
-			if matched {
-				matches = append(matches, path)
-			}
-		} else {
-			// Standard glob pattern - use filepath.Match on the filename
-			matched, err := filepath.Match(pattern, filepath.Base(path))
-			if err != nil {
-				return err
-			}
-			if matched {
-				matches = append(matches, path)
-			}
+		// Check if path matches pattern. ** matches zero or more path segments.
+		if matchRecursivePattern(filepath.ToSlash(pattern), relPath) {
+			matches = append(matches, path)
 		}
 		return nil
 	})
 
 	return matches, err
+}
+
+func matchRecursivePattern(pattern, relPath string) bool {
+	if !strings.Contains(pattern, "/") {
+		matched, err := filepath.Match(pattern, filepath.Base(relPath))
+		return err == nil && matched
+	}
+
+	patternSegments := strings.Split(strings.Trim(pattern, "/"), "/")
+	pathSegments := strings.Split(strings.Trim(relPath, "/"), "/")
+	return matchPathSegments(patternSegments, pathSegments)
+}
+
+func matchPathSegments(pattern, path []string) bool {
+	if len(pattern) == 0 {
+		return len(path) == 0
+	}
+	if pattern[0] == "**" {
+		for i := 0; i <= len(path); i++ {
+			if matchPathSegments(pattern[1:], path[i:]) {
+				return true
+			}
+		}
+		return false
+	}
+	if len(path) == 0 {
+		return false
+	}
+	matched, err := filepath.Match(pattern[0], path[0])
+	if err != nil || !matched {
+		return false
+	}
+	return matchPathSegments(pattern[1:], path[1:])
 }
 
 // changeExtension changes the file extension to match the target format

@@ -1,8 +1,10 @@
 package common
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -795,6 +797,39 @@ func TestConfigCommitAndAbortOutput(t *testing.T) {
 	got, err = os.ReadFile(final)
 	require.NoError(t, err)
 	assert.Equal(t, "data", string(got))
+}
+
+func TestGetBatchFilesRecursiveMultiSegmentPattern(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "reports", "data"), 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "data"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "reports", "data", "a.csv"), []byte("a\n1\n"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "data", "b.csv"), []byte("a\n2\n"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "reports", "other.csv"), []byte("a\n3\n"), 0644))
+
+	for _, recursive := range []bool{true, false} {
+		t.Run(fmt.Sprintf("recursive=%v", recursive), func(t *testing.T) {
+			cfg := &Config{
+				Batch:     filepath.Join(dir, "**", "data", "*.csv"),
+				To:        "json",
+				Recursive: recursive,
+			}
+			files, err := cfg.GetBatchFiles()
+			require.NoError(t, err)
+			require.Len(t, files, 2)
+			names := []string{filepath.Base(filepath.Dir(files[0].InputPath)), filepath.Base(filepath.Dir(files[1].InputPath))}
+			sort.Strings(names)
+			assert.Equal(t, []string{"data", "data"}, names)
+			// Ensure the nested reports/data file is included.
+			found := false
+			for _, file := range files {
+				if strings.Contains(file.InputPath, filepath.Join("reports", "data", "a.csv")) {
+					found = true
+				}
+			}
+			assert.True(t, found)
+		})
+	}
 }
 
 func TestGetBatchFiles(t *testing.T) {
