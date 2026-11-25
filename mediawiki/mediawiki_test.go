@@ -151,6 +151,28 @@ func TestUnmarshalEmptyCells(t *testing.T) {
 	assert.Equal(t, []string{"1", "", "3"}, table.Rows[0])
 }
 
+func TestUnmarshalMultilineCellsAndCaption(t *testing.T) {
+	input := `{| class="wikitable"
+|+ My caption
+! A
+! B
+|-
+| 1
+| 2
+|-
+| 3
+| 4
+|}`
+
+	cfg := &common.Config{Reader: bytes.NewBufferString(input)}
+	var table common.Table
+	err := Unmarshal(cfg, &table)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"A", "B"}, table.Headers)
+	assert.Equal(t, [][]string{{"1", "2"}, {"3", "4"}}, table.Rows)
+}
+
 func TestUnmarshalUTF8(t *testing.T) {
 	// Test UTF-8 characters
 	input := `{| class="wikitable"

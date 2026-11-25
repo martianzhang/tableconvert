@@ -24,9 +24,35 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	table.Rows = [][]string{}
 
 	var currentRow []string
+	var currentHeader []string
 	inTable := false
 	headerCount := 0
+	headerDone := false
 	lineNumber := 0
+
+	flushRow := func(lineNo int) error {
+		if len(currentRow) == 0 {
+			return nil
+		}
+		if len(currentRow) != headerCount {
+			return fmt.Errorf("parse error on line %d: row has %d columns, but header has %d (line: %q)",
+				lineNo, len(currentRow), headerCount, "")
+		}
+		table.Rows = append(table.Rows, currentRow)
+		currentRow = nil
+		return nil
+	}
+
+	finishHeader := func() {
+		if headerDone {
+			return
+		}
+		headerDone = true
+		if len(currentHeader) > 0 {
+			table.Headers = currentHeader
+			headerCount = len(currentHeader)
+		}
+	}
 
 	for _, line := range lines {
 		lineNumber++
@@ -37,17 +63,13 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 			inTable = true
 			continue
 		} else if line == "|}" {
-			inTable = false
-			// Add the last row if exists
-			if len(currentRow) > 0 {
-				// Validate column count
-				if len(currentRow) != headerCount {
-					return fmt.Errorf("parse error on line %d: row has %d columns, but header has %d (line: %q)",
-						lineNumber, len(currentRow), headerCount, line)
+			if inTable {
+				finishHeader()
+				if err := flushRow(lineNumber); err != nil {
+					return err
 				}
-				table.Rows = append(table.Rows, currentRow)
-				currentRow = nil
 			}
+			inTable = false
 			continue
 		}
 
@@ -55,51 +77,75 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 			continue
 		}
 
-		// Process table content
-		if strings.HasPrefix(line, "|-") {
-			// Row separator - commit current row
-			if len(currentRow) > 0 {
-				// Validate column count
-				if len(currentRow) != headerCount {
-					return fmt.Errorf("parse error on line %d: row has %d columns, but header has %d (line: %q)",
-						lineNumber, len(currentRow), headerCount, line)
-				}
-				table.Rows = append(table.Rows, currentRow)
-				currentRow = nil
+		// Captions are not part of the table data.
+		if strings.HasPrefix(line, "|+") {
+			continue
+		}
+
+		switch {
+		case strings.HasPrefix(line, "|-"):
+			// A row separator commits the previous row and ends the header
+			// section if we were still reading it.
+			finishHeader()
+			if err := flushRow(lineNumber); err != nil {
+				return err
 			}
-		} else if strings.HasPrefix(line, "!") {
-			// Header row - handle both !! and | separators
-			headerLine := strings.TrimPrefix(line, "!")
-			headerCells := strings.Split(headerLine, "!!")
-			if len(headerCells) == 1 {
-				headerCells = strings.Split(headerLine, "|")
+		case strings.HasPrefix(line, "!"):
+			// MediaWiki allows each header cell on its own line. Before the
+			// first data row, append to the header row; afterwards treat it as
+			// a regular cell in the current row.
+			cells := parseMediaWikiCells(line, true)
+			if !headerDone {
+				currentHeader = append(currentHeader, cells...)
+			} else {
+				currentRow = append(currentRow, cells...)
 			}
-			for i, cell := range headerCells {
-				cell = strings.TrimSpace(cell)
-				// Handle {{!}} template
-				cell = strings.ReplaceAll(cell, "{{!}}", "|")
-				headerCells[i] = cell
-			}
-			table.Headers = headerCells
-			headerCount = len(headerCells)
-		} else if strings.HasPrefix(line, "|") {
-			// Data row - handle both || and | separators
-			dataLine := strings.TrimPrefix(line, "|")
-			cells := strings.Split(dataLine, "||")
-			if len(cells) == 1 {
-				cells = strings.Split(dataLine, "|")
-			}
-			for i, cell := range cells {
-				cell = strings.TrimSpace(cell)
-				// Handle {{!}} template
-				cell = strings.ReplaceAll(cell, "{{!}}", "|")
-				cells[i] = cell
-			}
-			currentRow = cells
+		case strings.HasPrefix(line, "|"):
+			cells := parseMediaWikiCells(line, false)
+			currentRow = append(currentRow, cells...)
+		}
+	}
+
+	if inTable {
+		finishHeader()
+		if err := flushRow(lineNumber); err != nil {
+			return err
 		}
 	}
 
 	return nil
+}
+
+// parseMediaWikiCells parses one MediaWiki header/data line. Cells on the
+// same line use "!!" (headers) or "||" (data); otherwise each "|" starts a
+// cell, which is how MediaWiki writes one cell per line.
+func parseMediaWikiCells(line string, header bool) []string {
+	content := line
+	if header {
+		content = strings.TrimPrefix(content, "!")
+	} else {
+		content = strings.TrimPrefix(content, "|")
+	}
+	separator := "||"
+	if header {
+		separator = "!!"
+	}
+	parts := strings.Split(content, separator)
+	if len(parts) == 1 {
+		parts = strings.Split(content, "|")
+		// The leading marker was already removed for headers, but data lines
+		// start with "|" and the first split element is empty.
+		if !header && len(parts) > 0 && parts[0] == "" {
+			parts = parts[1:]
+		}
+	}
+	cells := make([]string, 0, len(parts))
+	for _, cell := range parts {
+		cell = strings.TrimSpace(cell)
+		cell = strings.ReplaceAll(cell, "{{!}}", "|")
+		cells = append(cells, cell)
+	}
+	return cells
 }
 
 func Marshal(cfg *common.Config, table *common.Table) error {
