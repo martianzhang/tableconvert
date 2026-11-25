@@ -22,8 +22,16 @@ func Transpose(table *Table) {
 	// - Headers: ["", "Row_1", "Row_2", ..., "Row_n"]
 	// - Rows: Each original column becomes one row
 	//   Row i: [originalHeader[i], originalRow[0][i], originalRow[1][i], ...]
-
+	//
+	// Rows may be ragged (for example CSV accepts variable field counts), so
+	// transpose over the widest row and pad missing cells with empty strings.
+	// This keeps the transformation total instead of panicking on a short row.
 	newRowCount := len(originalHeaders)
+	for _, row := range originalRows {
+		if len(row) > newRowCount {
+			newRowCount = len(row)
+		}
+	}
 	newColumnCount := 1 + len(originalRows)
 
 	// Build new headers
@@ -37,9 +45,13 @@ func Transpose(table *Table) {
 	newRows := make([][]string, newRowCount)
 	for i := 0; i < newRowCount; i++ {
 		newRows[i] = make([]string, newColumnCount)
-		newRows[i][0] = originalHeaders[i] // First column is original header names
+		if i < len(originalHeaders) {
+			newRows[i][0] = originalHeaders[i] // First column is original header names
+		}
 		for j := 0; j < len(originalRows); j++ {
-			newRows[i][j+1] = originalRows[j][i]
+			if i < len(originalRows[j]) {
+				newRows[i][j+1] = originalRows[j][i]
+			}
 		}
 	}
 

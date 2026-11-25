@@ -47,6 +47,42 @@ func TestTranspose(t *testing.T) {
 			},
 		},
 		{
+			name: "ragged rows are padded",
+			input: &Table{
+				Headers: []string{"A", "B", "C"},
+				Rows: [][]string{
+					{"1"},
+					{"2", "3"},
+					{"4", "5", "6", "7"},
+				},
+			},
+			expected: &Table{
+				Headers: []string{"", "Row_1", "Row_2", "Row_3"},
+				Rows: [][]string{
+					{"A", "1", "2", "4"},
+					{"B", "", "3", "5"},
+					{"C", "", "", "6"},
+					{"", "", "", "7"},
+				},
+			},
+		},
+		{
+			name: "shorter header than rows",
+			input: &Table{
+				Headers: []string{"A"},
+				Rows: [][]string{
+					{"1", "2"},
+				},
+			},
+			expected: &Table{
+				Headers: []string{"", "Row_1"},
+				Rows: [][]string{
+					{"A", "1"},
+					{"", "2"},
+				},
+			},
+		},
+		{
 			name: "empty rows",
 			input: &Table{
 				Headers: []string{"A", "B"},
