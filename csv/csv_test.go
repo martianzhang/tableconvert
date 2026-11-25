@@ -355,6 +355,15 @@ func TestMarshalWithBOM(t *testing.T) {
 	assert.Equal(t, expectedCSV, csvContent)
 }
 
+func TestUnmarshalWithBOM(t *testing.T) {
+	input := "\xEF\xBB\xBFname,age\nAlice,30\n"
+	table := &common.Table{}
+	err := Unmarshal(&common.Config{Reader: strings.NewReader(input)}, table)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"name", "age"}, table.Headers)
+	assert.Equal(t, [][]string{{"Alice", "30"}}, table.Rows)
+}
+
 func TestUnmarshalEmptyCSV(t *testing.T) {
 	args := []string{"--from", "csv", "--to", "csv"}
 	cfg, err := common.ParseConfig(args)

@@ -10,7 +10,7 @@ import (
 )
 
 func Unmarshal(cfg *common.Config, table *common.Table) error {
-	scanner := bufio.NewScanner(cfg.Reader)
+	scanner := bufio.NewScanner(common.StripUTF8BOM(cfg.Reader))
 	var records []map[string]interface{}
 
 	lineNumber := 0

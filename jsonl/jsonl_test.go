@@ -58,6 +58,15 @@ func TestUnmarshalValidSingleJSONLine(t *testing.T) {
 	assert.Equal(t, 1, len(table.Rows), "Row count doesn't match expected value")
 }
 
+func TestUnmarshalWithBOM(t *testing.T) {
+	input := "\xEF\xBB\xBF{\"a\":\"1\"}\n"
+	table := &common.Table{}
+	err := Unmarshal(&common.Config{Reader: bytes.NewReader([]byte(input))}, table)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"a"}, table.Headers)
+	assert.Equal(t, [][]string{{"1"}}, table.Rows)
+}
+
 // TestUnmarshalDeterministicHeaders tests that headers are in sorted order
 func TestUnmarshalDeterministicHeaders(t *testing.T) {
 	// Prepare test input with fields in different orders

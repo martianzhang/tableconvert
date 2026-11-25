@@ -41,6 +41,15 @@ func TestUnmarshalDefaultFormatBasicCase(t *testing.T) {
 	assert.Equal(t, len(expectedRows), len(table.Rows), "Row data doesn't match expected values")
 }
 
+func TestUnmarshalWithBOM(t *testing.T) {
+	input := "\xEF\xBB\xBF[{\"a\":\"1\"}]"
+	table := &common.Table{}
+	err := Unmarshal(&common.Config{Reader: strings.NewReader(input)}, table)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"a"}, table.Headers)
+	assert.Equal(t, [][]string{{"1"}}, table.Rows)
+}
+
 func TestMarshalDefaultObjectFormat(t *testing.T) {
 	// Create a buffer to capture the output
 	var buf strings.Builder

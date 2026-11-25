@@ -8,7 +8,7 @@ import (
 )
 
 func Unmarshal(cfg *common.Config, table *common.Table) error {
-	csvReader := csv.NewReader(cfg.Reader)
+	csvReader := csv.NewReader(common.StripUTF8BOM(cfg.Reader))
 	// Allow variable number of fields per record
 	csvReader.FieldsPerRecord = -1
 

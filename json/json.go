@@ -16,6 +16,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	if err != nil {
 		return err
 	}
+	data = common.TrimUTF8BOM(data)
 
 	switch format {
 	case "2d":
