@@ -40,6 +40,19 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		"Sub": func(a, b int) int {
 			return a - b
 		},
+		"Substr": func(s string, start, end int) string {
+			runes := []rune(s)
+			if start < 0 {
+				start = 0
+			}
+			if end > len(runes) {
+				end = len(runes)
+			}
+			if start > end || start >= len(runes) {
+				return ""
+			}
+			return string(runes[start:end])
+		},
 		"Quote":                      strconv.Quote,
 		"CSVForceQuote":              common.CSVForceQuote,
 		"CSVQuoteEscape":             common.CSVQuoteEscape,

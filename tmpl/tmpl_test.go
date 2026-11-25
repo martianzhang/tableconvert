@@ -97,7 +97,7 @@ func TestMarshalWithHelperFunctions(t *testing.T) {
 	defer os.Remove(tmpfile.Name())
 
 	// Write template that uses helper functions
-	templateContent := `{{range .Rows}}{{Upper (index . 0)}} | {{Lower (index . 1)}} | {{Capitalize (index . 2)}}
+	templateContent := `{{range .Rows}}{{Upper (index . 0)}} | {{Lower (index . 1)}} | {{Capitalize (index . 2)}} | {{Substr (index . 0) 1 3}} | {{Sub 5 2}}
 {{end}}`
 	_, err = tmpfile.WriteString(templateContent)
 	require.NoError(t, err)
@@ -124,7 +124,7 @@ func TestMarshalWithHelperFunctions(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify output
-	expectedOutput := "ALICE | active | New York\n"
+	expectedOutput := "ALICE | active | New York | li | 3\n"
 	assert.Equal(t, expectedOutput, buf.String())
 }
 

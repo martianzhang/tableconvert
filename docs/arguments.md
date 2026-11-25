@@ -297,7 +297,8 @@ mysql -e "SELECT * FROM users" | tableconvert --from=mysql --to=markdown  # FAIL
 
 **Template Functions Available:**
 - `Upper`, `Lower`, `Capitalize`
-- `Sub` (substring)
+- `Sub` (integer subtraction)
+- `Substr` (substring; rune indexes, end exclusive)
 - `Quote` (add quotes)
 - Various escape functions
 
