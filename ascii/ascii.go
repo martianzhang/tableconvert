@@ -38,6 +38,7 @@ func omniUnmarshal(cfg *common.Config, table *common.Table) error {
 			return fmt.Errorf("unknown style: %s", style)
 		}
 	}
+	styleRune := []rune(style)[0]
 
 	scanner := bufio.NewScanner(cfg.Reader)
 	lineNumber := 0
@@ -61,7 +62,7 @@ func omniUnmarshal(cfg *common.Config, table *common.Table) error {
 				return false
 			}
 			for _, c := range trimmedLine {
-				if c != rune(style[0]) && c != '+' {
+				if c != styleRune && c != '+' {
 					return false
 				}
 			}
@@ -71,10 +72,10 @@ func omniUnmarshal(cfg *common.Config, table *common.Table) error {
 		// Inline data line check and parsing
 		parseDataLine := func() []string {
 			trimmed := strings.TrimPrefix(strings.TrimSuffix(trimmedLine, style), style)
-			parts := strings.Split(trimmed, style)
+			parts := splitASCIICells(trimmed, styleRune)
 			var cells []string
 			for _, part := range parts {
-				cells = append(cells, strings.TrimSpace(part))
+				cells = append(cells, unescapeASCIICell(strings.TrimSpace(part), styleRune))
 			}
 			return cells
 		}
@@ -152,7 +153,7 @@ func boxUnmarshal(cfg *common.Config, table *common.Table) error {
 	// splitAndTrim splits a data/header line by '|' and trims whitespace from each part.
 	// It skips empty strings resulting from leading/trailing '|' characters.
 	splitAndTrim := func(line string) []string {
-		parts := strings.Split(line, "|")
+		parts := splitASCIICells(line, '|')
 		if len(parts) < 2 { // Must have at least leading and trailing '|'
 			return []string{}
 		}
@@ -160,7 +161,7 @@ func boxUnmarshal(cfg *common.Config, table *common.Table) error {
 		relevantParts := parts[1 : len(parts)-1]
 		result := make([]string, len(relevantParts))
 		for i, part := range relevantParts {
-			result[i] = strings.TrimSpace(part)
+			result[i] = unescapeASCIICell(strings.TrimSpace(part), '|')
 		}
 		return result
 	}
@@ -209,8 +210,11 @@ func boxUnmarshal(cfg *common.Config, table *common.Table) error {
 			if isDataLine(line) {
 				rowData := splitAndTrim(line)
 				if len(rowData) != len(headers) {
-					// Note: Currently lenient about column count mismatch
-					// Could add warning or make this an error
+					return &common.ParseError{
+						LineNumber: lineNumber,
+						Message:    fmt.Sprintf("row has %d columns, expected %d", len(rowData), len(headers)),
+						Line:       line,
+					}
 				}
 				rows = append(rows, rowData)
 				// Remain in 'data' state to process more rows
@@ -251,6 +255,53 @@ func boxUnmarshal(cfg *common.Config, table *common.Table) error {
 
 }
 
+// escapeASCIICell escapes backslashes and the table's cell delimiter so a
+// value containing them can be parsed back unambiguously.
+func escapeASCIICell(s string, delimiter rune) string {
+	var b strings.Builder
+	for _, r := range s {
+		if r == '\\' || r == delimiter {
+			b.WriteRune('\\')
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
+// splitASCIICells splits on delimiter runes that are not escaped.
+func splitASCIICells(s string, delimiter rune) []string {
+	runes := []rune(s)
+	var parts []string
+	start := 0
+	escaped := false
+	for i, r := range runes {
+		switch {
+		case escaped:
+			escaped = false
+		case r == '\\':
+			escaped = true
+		case r == delimiter:
+			parts = append(parts, string(runes[start:i]))
+			start = i + 1
+		}
+	}
+	return append(parts, string(runes[start:]))
+}
+
+func unescapeASCIICell(s string, delimiter rune) string {
+	runes := []rune(s)
+	var b strings.Builder
+	for i := 0; i < len(runes); i++ {
+		if runes[i] == '\\' && i+1 < len(runes) && (runes[i+1] == '\\' || runes[i+1] == delimiter) {
+			i++
+			b.WriteRune(runes[i])
+			continue
+		}
+		b.WriteRune(runes[i])
+	}
+	return b.String()
+}
+
 func Marshal(cfg *common.Config, table *common.Table) error {
 	if table == nil {
 		return fmt.Errorf("Marshal: input table pointer cannot be nil")
@@ -260,25 +311,6 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	if columnCounts == 0 {
 		return fmt.Errorf("Marshal: table must have at least one header")
 	}
-	// Calculate column widths using runewidth for proper CJK support
-	columnWidths := make([]int, columnCounts)
-	for i, header := range table.Headers {
-		columnWidths[i] = runewidth.StringWidth(header)
-	}
-	// Update widths based on row data
-	for j, row := range table.Rows {
-		if len(row) != columnCounts {
-			return fmt.Errorf("Marshal: row %d has %d columns, but table header has %d columns", j, len(row), columnCounts)
-		}
-		for i, cell := range row {
-			cellWidth := runewidth.StringWidth(cell)
-			if cellWidth > columnWidths[i] {
-				columnWidths[i] = cellWidth
-			}
-		}
-	}
-	writer := cfg.Writer
-
 	// Table Style
 	style := cfg.GetExtensionString("style", ASCIIDefaultStyle)
 	if style != ASCIIDefaultStyle {
@@ -288,6 +320,30 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			style = ASCIIDefaultStyle
 		}
 	}
+	delimiter := '|'
+	if style != ASCIIDefaultStyle {
+		delimiter = []rune(style)[0]
+	}
+
+	// Calculate column widths using runewidth for proper CJK support. Measure
+	// the escaped text because that is what is actually written to each cell.
+	columnWidths := make([]int, columnCounts)
+	for i, header := range table.Headers {
+		columnWidths[i] = runewidth.StringWidth(escapeASCIICell(header, delimiter))
+	}
+	// Update widths based on row data
+	for j, row := range table.Rows {
+		if len(row) != columnCounts {
+			return fmt.Errorf("Marshal: row %d has %d columns, but table header has %d columns", j, len(row), columnCounts)
+		}
+		for i, cell := range row {
+			cellWidth := runewidth.StringWidth(escapeASCIICell(cell, delimiter))
+			if cellWidth > columnWidths[i] {
+				columnWidths[i] = cellWidth
+			}
+		}
+	}
+	writer := cfg.Writer
 
 	// Draw table
 	switch style {
@@ -303,7 +359,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 
 		// Write header row
 		for i, header := range table.Headers {
-			paddedHeader := runewidth.FillRight(header, columnWidths[i])
+			paddedHeader := runewidth.FillRight(escapeASCIICell(header, '|'), columnWidths[i])
 			fmt.Fprintf(writer, "| %s ", paddedHeader)
 		}
 		fmt.Fprintln(writer, "|")
@@ -313,7 +369,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		// --- Data Rows ---
 		for _, row := range table.Rows {
 			for i, cell := range row {
-				paddedCell := runewidth.FillRight(cell, columnWidths[i])
+				paddedCell := runewidth.FillRight(escapeASCIICell(cell, '|'), columnWidths[i])
 				fmt.Fprintf(writer, "| %s ", paddedCell)
 			}
 			fmt.Fprintln(writer, "|")
@@ -334,7 +390,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 
 		// Write header row
 		for i, header := range table.Headers {
-			paddedHeader := runewidth.FillRight(header, columnWidths[i])
+			paddedHeader := runewidth.FillRight(escapeASCIICell(header, delimiter), columnWidths[i])
 			fmt.Fprintf(writer, "%s %s ", style, paddedHeader)
 		}
 		fmt.Fprintln(writer, style)
@@ -344,7 +400,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		// --- Data Rows ---
 		for _, row := range table.Rows {
 			for i, cell := range row {
-				paddedCell := runewidth.FillRight(cell, columnWidths[i])
+				paddedCell := runewidth.FillRight(escapeASCIICell(cell, delimiter), columnWidths[i])
 				fmt.Fprintf(writer, "%s %s ", style, paddedCell)
 			}
 			fmt.Fprintln(writer, style)

@@ -57,6 +57,51 @@ func TestUnmarshalPlus(t *testing.T) {
 	assert.Equal(t, 3, len(table.Rows))
 }
 
+func TestUnmarshalDotAndBubbleRoundTrip(t *testing.T) {
+	for _, style := range []string{"dot", "bubble", "plus"} {
+		t.Run(style, func(t *testing.T) {
+			table := &common.Table{
+				Headers: []string{"h", "two"},
+				Rows: [][]string{
+					{"a|b", "c" + map[string]string{"dot": "·", "bubble": "◌", "plus": "+"}[style] + "d"},
+				},
+			}
+
+			var buf bytes.Buffer
+			cfg := &common.Config{
+				Writer:    &buf,
+				Extension: map[string]string{"style": style},
+			}
+			assert.NoError(t, Marshal(cfg, table))
+
+			got := &common.Table{}
+			readCfg := &common.Config{
+				Reader:    bytes.NewReader(buf.Bytes()),
+				Extension: map[string]string{"style": style},
+			}
+			assert.NoError(t, Unmarshal(readCfg, got))
+			assert.Equal(t, table.Headers, got.Headers)
+			assert.Equal(t, table.Rows, got.Rows)
+		})
+	}
+}
+
+func TestMarshalAndUnmarshalBoxPipe(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"h|1", `path\name`},
+		Rows: [][]string{
+			{"a|b", `C:\temp`},
+		},
+	}
+	var buf bytes.Buffer
+	assert.NoError(t, Marshal(&common.Config{Writer: &buf}, table))
+
+	got := &common.Table{}
+	assert.NoError(t, Unmarshal(&common.Config{Reader: bytes.NewReader(buf.Bytes())}, got))
+	assert.Equal(t, table.Headers, got.Headers)
+	assert.Equal(t, table.Rows, got.Rows)
+}
+
 func TestParseASCIIArtTable(t *testing.T) {
 	input := `
 
