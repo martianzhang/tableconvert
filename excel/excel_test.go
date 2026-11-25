@@ -1,12 +1,15 @@
 package excel
 
 import (
+	"bytes"
 	"os"
 	"testing"
 
 	"github.com/martianzhang/tableconvert/common"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/xuri/excelize/v2"
 )
 
 func TestMarshalAndUnmarshal(t *testing.T) {
@@ -191,6 +194,38 @@ func TestMarshalWithAutoWidth(t *testing.T) {
 	// Verify file was created
 	_, err = os.Stat(testFile)
 	assert.NoError(t, err)
+
+	// Verify the columns got usable widths, not the old width=0 (hidden).
+	f, err := excelize.OpenFile(testFile)
+	require.NoError(t, err)
+	defer f.Close()
+	widthA, err := f.GetColWidth("Sheet1", "A")
+	require.NoError(t, err)
+	widthB, err := f.GetColWidth("Sheet1", "B")
+	require.NoError(t, err)
+	assert.Greater(t, widthA, float64(0))
+	assert.GreaterOrEqual(t, widthA, float64(8))
+	assert.Greater(t, widthB, float64(0))
+}
+
+func TestMarshalWriterAndUnmarshalReader(t *testing.T) {
+	var buf bytes.Buffer
+	table := &common.Table{
+		Headers: []string{"Header1", "Header2"},
+		Rows: [][]string{
+			{"Data1", "Data2"},
+			{"Data3", "Data4"},
+		},
+	}
+
+	cfg := &common.Config{Writer: &buf}
+	require.NoError(t, Marshal(cfg, table))
+	require.NotZero(t, buf.Len())
+
+	got := &common.Table{}
+	require.NoError(t, Unmarshal(&common.Config{Reader: bytes.NewReader(buf.Bytes())}, got))
+	assert.Equal(t, table.Headers, got.Headers)
+	assert.Equal(t, table.Rows, got.Rows)
 }
 
 func TestMarshalWithTextFormat(t *testing.T) {

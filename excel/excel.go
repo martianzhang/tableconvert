@@ -5,12 +5,29 @@ import (
 
 	"github.com/martianzhang/tableconvert/common"
 
+	"github.com/mattn/go-runewidth"
 	"github.com/xuri/excelize/v2"
 )
 
 func Unmarshal(cfg *common.Config, table *common.Table) error {
-	// Open Excel file
-	f, err := excelize.OpenFile(cfg.File)
+	if cfg == nil {
+		return fmt.Errorf("Unmarshal: config cannot be nil")
+	}
+	if table == nil {
+		return fmt.Errorf("Unmarshal: output table cannot be nil")
+	}
+
+	// Prefer a real file path when available (normal CLI use), but fall back to
+	// the configured Reader so batch mode and in-memory callers work.
+	var f *excelize.File
+	var err error
+	if cfg.File != "" {
+		f, err = excelize.OpenFile(cfg.File)
+	} else if cfg.Reader != nil {
+		f, err = excelize.OpenReader(cfg.Reader)
+	} else {
+		return fmt.Errorf("Unmarshal: Excel input requires File or Reader")
+	}
 	if err != nil {
 		return err
 	}
@@ -139,16 +156,45 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 
 	// Auto adjust column widths if enabled
 	if autoWidth {
-		for colIndex := range table.Headers {
+		for colIndex, header := range table.Headers {
 			colName, err := excelize.ColumnNumberToName(colIndex + 1)
 			if err != nil {
 				return err
 			}
-			if err := f.SetColWidth(sheetName, colName, colName, 0); err != nil {
+
+			maxWidth := runewidth.StringWidth(header)
+			for _, row := range table.Rows {
+				if colIndex < len(row) {
+					if w := runewidth.StringWidth(row[colIndex]); w > maxWidth {
+						maxWidth = w
+					}
+				}
+			}
+			// Keep columns readable but bounded, like a spreadsheet's auto-fit.
+			width := float64(maxWidth + 2)
+			if width < 8 {
+				width = 8
+			}
+			if width > 100 {
+				width = 100
+			}
+			if err := f.SetColWidth(sheetName, colName, colName, width); err != nil {
 				return err
 			}
 		}
 	}
 
+	// Write to the configured Writer when present. This covers stdout, batch
+	// mode, MCP buffers, and dry-run (io.Discard). Only fall back to Result for
+	// direct API callers that did not provide a Writer.
+	if cfg.Writer != nil {
+		if err := f.Write(cfg.Writer); err != nil {
+			return fmt.Errorf("failed to write workbook: %w", err)
+		}
+		return nil
+	}
+	if cfg.Result == "" {
+		return fmt.Errorf("Marshal: Excel output requires Writer or Result")
+	}
 	return f.SaveAs(cfg.Result)
 }
