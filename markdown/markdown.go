@@ -22,73 +22,113 @@ func centerPad(s string, width int) string {
 	return strings.Repeat(" ", left) + s + strings.Repeat(" ", right)
 }
 
-// Helper function to parse a single line into cells
+// parseLine parses one Markdown table row. Leading/trailing pipes are
+// optional (GFM), and escaped pipes are not treated as separators.
 func parseLine(line string, lineNumber int) ([]string, *common.ParseError) {
-	if !strings.HasPrefix(line, "|") || !strings.HasSuffix(line, "|") {
+	trimmedLine := strings.TrimSpace(line)
+	hadOuterPipe := strings.HasPrefix(trimmedLine, "|") || strings.HasSuffix(trimmedLine, "|")
+	if strings.HasPrefix(trimmedLine, "|") {
+		trimmedLine = trimmedLine[1:]
+	}
+	if hasUnescapedTrailingPipe(trimmedLine) {
+		trimmedLine = trimmedLine[:len(trimmedLine)-1]
+	}
+
+	if !hadOuterPipe && !containsUnescapedPipe(trimmedLine) {
 		return nil, &common.ParseError{
 			LineNumber: lineNumber,
-			Message:    "line does not start and end with '|'",
+			Message:    "line does not contain an unescaped '|'",
 			Line:       line,
 		}
 	}
-	// Trim leading/trailing '|'
-	trimmedLine := strings.TrimPrefix(strings.TrimSuffix(line, "|"), "|")
 
-	// Split by unescaped pipes - need to handle escaped pipes properly
-	cells := []string{}
-	currentCell := ""
-	escaped := false
-
-	for i, char := range trimmedLine {
-		if escaped {
-			// Previous char was backslash, include this char literally
-			currentCell += string(char)
-			escaped = false
-		} else if char == '\\' {
-			// Start of escape sequence
-			escaped = true
-		} else if char == '|' {
-			// Unescaped pipe - this is a cell separator
-			cells = append(cells, currentCell)
-			currentCell = ""
-		} else {
-			// Regular character
-			currentCell += string(char)
-		}
-
-		// Handle case where string ends with backslash
-		if i == len(trimmedLine)-1 && escaped {
-			currentCell += "\\"
-		}
+	parts := splitMarkdownCells(trimmedLine)
+	cells := make([]string, len(parts))
+	for i, cell := range parts {
+		cells[i] = common.MarkdownUnescape(strings.TrimSpace(cell))
 	}
-	// Add the last cell
-	cells = append(cells, currentCell)
-
-	// Trim whitespace and unescape markdown from each cell
-	for i, cell := range cells {
-		trimmed := strings.TrimSpace(cell)
-		unescaped := common.MarkdownUnescape(trimmed)
-		cells[i] = unescaped
-	}
-
 	return cells, nil
+}
+
+func containsUnescapedPipe(s string) bool {
+	escaped := false
+	for _, r := range s {
+		if escaped {
+			escaped = false
+			continue
+		}
+		if r == '\\' {
+			escaped = true
+			continue
+		}
+		if r == '|' {
+			return true
+		}
+	}
+	return false
+}
+
+func hasUnescapedTrailingPipe(s string) bool {
+	if !strings.HasSuffix(s, "|") {
+		return false
+	}
+	backslashes := 0
+	for i := len(s) - 2; i >= 0 && s[i] == '\\'; i-- {
+		backslashes++
+	}
+	return backslashes%2 == 0
+}
+
+// splitMarkdownCells splits on unescaped pipes but keeps escapes in the cell
+// text for MarkdownUnescape.
+func splitMarkdownCells(s string) []string {
+	var parts []string
+	var b strings.Builder
+	escaped := false
+	for _, r := range s {
+		if escaped {
+			b.WriteRune('\\')
+			b.WriteRune(r)
+			escaped = false
+			continue
+		}
+		if r == '\\' {
+			escaped = true
+			continue
+		}
+		if r == '|' {
+			parts = append(parts, b.String())
+			b.Reset()
+			continue
+		}
+		b.WriteRune(r)
+	}
+	if escaped {
+		b.WriteRune('\\')
+	}
+	return append(parts, b.String())
 }
 
 // isSeparatorLine checks if a line looks like a Markdown table separator.
 func isSeparatorLine(line string) bool {
 	trimmedLine := strings.TrimSpace(line)
-	if !strings.HasPrefix(trimmedLine, "|") || !strings.HasSuffix(trimmedLine, "|") {
+	if strings.HasPrefix(trimmedLine, "|") {
+		trimmedLine = trimmedLine[1:]
+	}
+	if strings.HasSuffix(trimmedLine, "|") {
+		trimmedLine = trimmedLine[:len(trimmedLine)-1]
+	}
+	if trimmedLine == "" {
 		return false
 	}
 	// Check if the content between pipes consists only of '-', ':', '|' and spaces
-	inner := strings.Trim(trimmedLine, "|")
-	for _, r := range inner {
+	for _, r := range trimmedLine {
 		if r != '-' && r != ':' && r != '|' && r != ' ' {
 			return false
 		}
 	}
 	// Ensure there's at least one '-' for it to be a valid separator
-	return strings.Contains(inner, "-")
+	return strings.Contains(trimmedLine, "-")
 }
 
 // Unmarshal parses Markdown table content from an io.Reader and populates the given Table struct.
@@ -132,9 +172,8 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 
 		if !foundHeader {
 			// --- Expecting Header ---
-			if !strings.HasPrefix(trimmedLine, "|") {
-				// Ignore lines before the first '|' line (could be text before table)
-				// A stricter parser might error here immediately.
+			if !containsUnescapedPipe(trimmedLine) {
+				// Ignore lines before the first table row (could be text before table)
 				continue
 			}
 
@@ -180,20 +219,14 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 
 		} else {
 			// --- Expecting Data Row or End ---
-			if !strings.HasPrefix(trimmedLine, "|") {
-				// Stop parsing data rows if a line doesn't start with '|' after the separator.
-				// This treats subsequent non-table lines as the end of the table block.
+			if !containsUnescapedPipe(trimmedLine) {
+				// Stop parsing data rows at the first non-table line.
 				break
 			}
 
 			cells, parseErr := parseLine(trimmedLine, lineNumber)
 			if parseErr != nil {
-				// If parseLine indicates it's just not a valid table row (e.g., missing pipes)
-				// treat it as the end of the table data. Check the specific error if possible.
-				// The placeholder parseLine returns a specific message for this.
-				if strings.Contains(parseErr.Message, "does not start and end with '|'") {
-					break // Assume end of table data
-				}
+				break
 			}
 			if len(cells) != headerCount {
 				return &common.ParseError{

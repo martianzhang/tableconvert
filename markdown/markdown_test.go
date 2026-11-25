@@ -272,12 +272,12 @@ func TestIsSeparatorLine(t *testing.T) {
 		{
 			name:     "no pipes at start",
 			line:     "---|---|",
-			expected: false,
+			expected: true,
 		},
 		{
 			name:     "no pipes at end",
 			line:     "|---|---",
-			expected: false,
+			expected: true,
 		},
 		{
 			name:     "contains invalid characters",
@@ -773,6 +773,43 @@ func TestUnmarshalMixedEscaped(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(table.Rows))
 	assert.Equal(t, []string{"x|y", "z*w", "u_v"}, table.Rows[0])
+}
+
+func TestMarkdownRoundTripBackslashesAndNewlines(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"path", "note"},
+		Rows: [][]string{
+			{`C:\temp\new`, `a\*b`},
+			{"x\ny", "line2"},
+		},
+	}
+
+	var buf bytes.Buffer
+	cfg := &common.Config{Writer: &buf}
+	assert.NoError(t, Marshal(cfg, table))
+
+	got := &common.Table{}
+	assert.NoError(t, Unmarshal(&common.Config{Reader: bytes.NewReader(buf.Bytes())}, got))
+	assert.Equal(t, table.Headers, got.Headers)
+	assert.Equal(t, table.Rows, got.Rows)
+}
+
+func TestUnmarshalGFMWithoutOuterPipes(t *testing.T) {
+	input := "A | B\n---|---\n1 | 2\n3 | 4"
+	table := &common.Table{}
+	err := Unmarshal(&common.Config{Reader: strings.NewReader(input)}, table)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"A", "B"}, table.Headers)
+	assert.Equal(t, [][]string{{"1", "2"}, {"3", "4"}}, table.Rows)
+}
+
+func TestUnmarshalGFMMissingTrailingPipe(t *testing.T) {
+	input := "| A | B |\n|---|---|\n| 1 | 2 |\n| 3 | 4"
+	table := &common.Table{}
+	err := Unmarshal(&common.Config{Reader: strings.NewReader(input)}, table)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"A", "B"}, table.Headers)
+	assert.Equal(t, [][]string{{"1", "2"}, {"3", "4"}}, table.Rows)
 }
 
 // Test Unmarshal with trailing content after table

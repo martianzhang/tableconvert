@@ -26,64 +26,50 @@ func CSVQuoteEscape(field string) string {
 }
 
 func MarkdownEscape(s string) string {
-	// Escape special Markdown characters
-	specialChars := []string{"\\", "`", "*", "_", "{", "}", "[", "]", "(", ")", "#", "+", "-", ".", "!", "|", "~"}
-	for _, char := range specialChars {
-		s = strings.ReplaceAll(s, char, "\\"+char)
+	specialChars := "\\`*_{}[]()#+-.!|~"
+	var b strings.Builder
+	for _, r := range s {
+		switch r {
+		case '\n', '\r':
+			b.WriteString("<br>")
+		case '\\':
+			b.WriteString(`\\`)
+		default:
+			if strings.ContainsRune(specialChars, r) {
+				b.WriteByte('\\')
+			}
+			b.WriteRune(r)
+		}
 	}
-	return s
+	return b.String()
 }
 
 func MarkdownUnescape(s string) string {
-	// Unescape special Markdown characters
-	// First, replace escaped backslashes with a temporary marker
-	s = strings.ReplaceAll(s, `\\`, "\x00")
+	const backslashMarker = "\x00"
+	s = strings.ReplaceAll(s, `\\`, backslashMarker)
 
-	// Then replace other escapes
-	replacements := map[string]string{
-		`\ `: ` `,
-		`\!`: `!`,
-		`\#`: `#`,
-		`\$`: `$`,
-		`\%`: `%`,
-		`\&`: `&`,
-		`\(`: `(`,
-		`\)`: `)`,
-		`\*`: `*`,
-		`\+`: `+`,
-		`\,`: `,`,
-		`\-`: `-`,
-		`\.`: `.`,
-		`\/`: `/`,
-		`\:`: `:`,
-		`\;`: `;`,
-		`\<`: `<`,
-		`\=`: `=`,
-		`\>`: `>`,
-		`\?`: `?`,
-		`\@`: `@`,
-		`\[`: `[`,
-		`\]`: `]`,
-		`\^`: `^`,
-		`\_`: `_`,
-		`\{`: `{`,
-		`\|`: `|`,
-		`\}`: `}`,
-		`\~`: `~`,
+	replacements := map[rune]rune{
+		' ': ' ', '!': '!', '#': '#', '$': '$', '%': '%', '&': '&',
+		'(': '(', ')': ')', '*': '*', '+': '+', ',': ',', '-': '-',
+		'.': '.', '/': '/', ':': ':', ';': ';', '<': '<', '=': '=',
+		'>': '>', '?': '?', '@': '@', '[': '[', ']': ']', '^': '^',
+		'_': '_', '`': '`', '{': '{', '|': '|', '}': '}', '~': '~',
 	}
-	for from, to := range replacements {
-		s = strings.ReplaceAll(s, from, to)
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+1 < len(s) {
+			next := rune(s[i+1])
+			if _, ok := replacements[next]; ok {
+				b.WriteRune(next)
+				i++
+				continue
+			}
+		}
+		b.WriteByte(s[i])
 	}
 
-	// Handle backtick, double quote, and single quote
-	s = strings.ReplaceAll(s, "`", "`")
-	s = strings.ReplaceAll(s, `\"`, `"`)
-	s = strings.ReplaceAll(s, `'`, `'`)
-
-	// Finally restore the single backslashes
-	s = strings.ReplaceAll(s, "\x00", `\`)
-
-	return s
+	out := strings.ReplaceAll(b.String(), backslashMarker, `\`)
+	return strings.ReplaceAll(out, "<br>", "\n")
 }
 
 func HtmlEscape(s string) string {
