@@ -92,12 +92,12 @@ func DetectTableFormatByData(reader io.Reader) (string, error) {
 		return TableFormatLatex, nil
 	case isMediaWiki(strContent):
 		return TableFormatMediaWiki, nil
-	case isCSV(strContent):
-		return TableFormatCSV, nil
-	case isSQL(strContent):
-		return TableFormatSQL, nil
 	case isJSON(strContent):
 		return TableFormatJSON, nil
+	case isSQL(strContent):
+		return TableFormatSQL, nil
+	case isCSV(strContent):
+		return TableFormatCSV, nil
 	case isXML(strContent):
 		return TableFormatXML, nil
 	default:
@@ -111,6 +111,22 @@ func isHTML(content string) bool {
 }
 
 func isMarkdown(content string) bool {
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if !strings.Contains(trimmed, "|") || !strings.Contains(trimmed, "-") {
+			continue
+		}
+		valid := true
+		for _, r := range trimmed {
+			if r != '|' && r != '-' && r != ':' && r != ' ' {
+				valid = false
+				break
+			}
+		}
+		if valid {
+			return true
+		}
+	}
 	re, err := regexp.Compile(`^#+\s|^-\s|^\*\s`)
 	if err != nil {
 		return false

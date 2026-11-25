@@ -392,6 +392,24 @@ func TestDetectTableFormatByData(t *testing.T) {
 			shouldErr: false,
 		},
 		{
+			name:      "JSON array with commas",
+			input:     `[{"name":"Alice","age":30}]`,
+			expected:  TableFormatJSON,
+			shouldErr: false,
+		},
+		{
+			name:      "SQL INSERT with commas",
+			input:     "INSERT INTO t (a, b) VALUES (1, 2);",
+			expected:  TableFormatSQL,
+			shouldErr: false,
+		},
+		{
+			name:      "Markdown table",
+			input:     "| A | B |\n|---|---|\n| 1 | 2 |",
+			expected:  TableFormatMarkdown,
+			shouldErr: false,
+		},
+		{
 			name:      "Unknown format",
 			input:     "just plain text",
 			expected:  "",
