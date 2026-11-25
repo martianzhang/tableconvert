@@ -9,6 +9,7 @@ import (
 	"github.com/martianzhang/tableconvert/common"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRoundTripEscapedPipesAndNewlines(t *testing.T) {
@@ -27,6 +28,15 @@ func TestRoundTripEscapedPipesAndNewlines(t *testing.T) {
 	assert.NoError(t, Unmarshal(&common.Config{Reader: bytes.NewReader(buf.Bytes())}, got))
 	assert.Equal(t, table.Headers, got.Headers)
 	assert.Equal(t, table.Rows, got.Rows)
+}
+
+func TestUnmarshalMissingTopBorder(t *testing.T) {
+	input := "| a | b |\n+---+---+\n| 1 | 2 |\n+---+---+\n"
+	table := &common.Table{}
+	err := Unmarshal(&common.Config{Reader: strings.NewReader(input)}, table)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"a", "b"}, table.Headers)
+	assert.Equal(t, [][]string{{"1", "2"}}, table.Rows)
 }
 
 func TestUnmarshal(t *testing.T) {

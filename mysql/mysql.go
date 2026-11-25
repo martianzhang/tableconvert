@@ -191,9 +191,14 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 					return &common.ParseError{LineNumber: lineNumber, Message: "failed to parse header anchors (need at least two '+')", Line: line}
 				}
 				expectLineLength = anchors[len(anchors)-1] + 1 // Expect lines to reach the last '+'
-			} else {
-				// Allow skipping introductory lines before the first border
-				// return &common.ParseError{LineNumber: lineNumber, Message: "expected top border line (+--+)", Line: line}
+			} else if isDataLine(line) {
+				// Tolerate a table with the top border missing: the first data
+				// line is the header, and the next border is the separator.
+				headers = parseFields(line)
+				if len(headers) == 0 {
+					return &common.ParseError{LineNumber: lineNumber, Message: "failed to parse header fields from data line", Line: line}
+				}
+				parsingState = "header_separator"
 			}
 		case "header":
 			if isDataLine(line) {
