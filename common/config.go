@@ -769,15 +769,14 @@ func (c *Config) GetBatchFiles() ([]BatchFile, error) {
 		// Change extension to match output format
 		outputPath = c.changeExtension(outputPath, c.To)
 
-		// Auto-detect input format from extension
-		fromFormat := detectFormatFromExtension(inputPath)
+		// Auto-detect input format from extension unless the user explicitly
+		// provided --from, which must take precedence.
+		fromFormat := c.From
 		if fromFormat == "" {
-			// Try to use --from if specified
-			if c.From != "" {
-				fromFormat = c.From
-			} else {
-				return nil, fmt.Errorf("cannot detect format from input file: %s (use --from to specify)", inputPath)
-			}
+			fromFormat = detectFormatFromExtension(inputPath)
+		}
+		if fromFormat == "" {
+			return nil, fmt.Errorf("cannot detect format from input file: %s (use --from to specify)", inputPath)
 		}
 
 		files = append(files, BatchFile{

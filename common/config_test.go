@@ -886,4 +886,18 @@ func TestGetBatchFiles(t *testing.T) {
 		assert.Len(t, files, 1)
 		assert.Equal(t, "csv", files[0].FromFormat)
 	})
+
+	t.Run("explicit from overrides extension", func(t *testing.T) {
+		cfg := &Config{
+			Batch: testDir + "/*.csv",
+			From:  "mysql",
+			To:    "json",
+		}
+		files, err := cfg.GetBatchFiles()
+		assert.NoError(t, err)
+		assert.Len(t, files, 2)
+		for _, file := range files {
+			assert.Equal(t, "mysql", file.FromFormat)
+		}
+	})
 }
