@@ -194,7 +194,7 @@ Once configured, you can ask your AI assistant:
 | **JSON** | `.json` | ✅ | ✅ | JavaScript Object Notation |
 | **JSONL** | `.jsonl`, `.jsonlines` | ✅ | ✅ | JSON Lines format |
 | **Markdown** | `.md`, `.markdown` | ✅ | ✅ | GitHub/Markdown tables |
-| **Excel** | `.xlsx`, `.xls` | ✅ | ✅ | Microsoft Excel files |
+| **Excel** | `.xlsx`, `.xls` | ✅ | ✅（write `.xlsx` only） | Microsoft Excel files |
 | **HTML** | `.html`, `.htm` | ✅ | ✅ | HTML tables |
 | **XML** | `.xml` | ✅ | ✅ | XML data format |
 | **SQL** | `.sql` | ✅ | ✅ | SQL INSERT statements |
