@@ -990,13 +990,13 @@ func (c *Config) changeExtension(path, format string) string {
 		ext = ".sql"
 	case "latex":
 		ext = ".tex"
-	case "excel":
+	case "excel", "xlsx":
 		ext = ".xlsx"
 	case "mysql":
 		ext = ".txt"
 	case "mediawiki":
 		ext = ".wiki"
-	case "twiki":
+	case "twiki", "tracwiki":
 		ext = ".twiki"
 	case "tmpl", "template":
 		ext = ".tmpl"

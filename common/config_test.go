@@ -900,4 +900,19 @@ func TestGetBatchFiles(t *testing.T) {
 			assert.Equal(t, "mysql", file.FromFormat)
 		}
 	})
+
+	t.Run("output aliases change extension", func(t *testing.T) {
+		for to, ext := range map[string]string{"xlsx": ".xlsx", "tracwiki": ".twiki"} {
+			cfg := &Config{
+				Batch:     testDir + "/*.csv",
+				To:        to,
+				OutputDir: t.TempDir(),
+			}
+			files, err := cfg.GetBatchFiles()
+			assert.NoError(t, err)
+			for _, file := range files {
+				assert.Equal(t, ext, filepath.Ext(file.OutputPath), "to=%s", to)
+			}
+		}
+	})
 }
