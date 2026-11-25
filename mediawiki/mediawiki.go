@@ -134,8 +134,6 @@ func parseMediaWikiCells(line string, header bool) []string {
 	} else {
 		content = strings.TrimPrefix(content, "|")
 	}
-	content = strings.TrimSpace(content)
-	content = strings.TrimSuffix(content, "|")
 	separator := "||"
 	if header {
 		separator = "!!"

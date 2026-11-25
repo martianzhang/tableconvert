@@ -33,9 +33,9 @@ func TestMarshalSortAndMinify(t *testing.T) {
 
 func TestUnmarshalFirstRowHeader(t *testing.T) {
 	input := `{| class="wikitable"
-| a | b |
+| a || b
 |-
-| 1 | 2 |
+| 1 || 2
 |}`
 	var table common.Table
 	err := Unmarshal(&common.Config{
