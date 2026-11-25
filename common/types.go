@@ -48,13 +48,22 @@ var extensions = map[string]string{
 	".csv":       TableFormatCSV,
 	".sql":       TableFormatSQL,
 	".json":      TableFormatJSON,
+	".jsonl":     "jsonl",
+	".jsonlines": "jsonl",
 	".tex":       TableFormatLatex,
+	".latex":     TableFormatLatex,
 	".xml":       TableFormatXML,
 	".md":        TableFormatMarkdown,
 	".markdown":  TableFormatMarkdown,
 	".html":      TableFormatHTML,
+	".htm":       TableFormatHTML,
 	".mediawiki": TableFormatMediaWiki,
 	".wiki":      TableFormatMediaWiki,
+	".twiki":     TableFormatTWiki,
+	".tracwiki":  TableFormatTWiki,
+	".tmpl":      "tmpl",
+	".template":  "tmpl",
+	".ascii":     TableFormatASCII,
 }
 
 // DetectTableFormatByExtension detects the table format by the file extension.

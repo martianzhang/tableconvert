@@ -30,6 +30,27 @@ func TestDetectTableFormatByExtension(t *testing.T) {
 	}
 }
 
+func TestDetectTableFormatByExtensionAllAliases(t *testing.T) {
+	tests := map[string]string{
+		"data.jsonl":     "jsonl",
+		"data.jsonlines": "jsonl",
+		"data.tmpl":      "tmpl",
+		"data.template":  "tmpl",
+		"data.twiki":     "twiki",
+		"data.tracwiki":  "twiki",
+		"data.mediawiki": "mediawiki",
+		"data.wiki":      "mediawiki",
+		"data.htm":       "html",
+		"data.latex":     "latex",
+		"data.ascii":     "ascii",
+	}
+	for file, want := range tests {
+		t.Run(file, func(t *testing.T) {
+			assert.Equal(t, want, DetectTableFormatByExtension(file))
+		})
+	}
+}
+
 func TestParseError(t *testing.T) {
 	tests := []struct {
 		name     string

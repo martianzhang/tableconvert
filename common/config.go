@@ -461,40 +461,11 @@ func ParseConfig(args []string) (Config, error) {
 // detectFormatFromExtension detects format from file extension
 // Returns empty string if extension is not recognized
 func detectFormatFromExtension(filename string) string {
-	ext := strings.TrimPrefix(filepath.Ext(filename), ".")
-	ext = strings.ToLower(ext)
-
-	switch ext {
-	case "csv":
-		return "csv"
-	case "json":
-		return "json"
-	case "jsonl", "jsonlines":
-		return "jsonl"
-	case "md", "markdown":
-		return "markdown"
-	case "xlsx", "xls":
-		return "excel"
-	case "html", "htm":
-		return "html"
-	case "xml":
-		return "xml"
-	case "sql":
-		return "sql"
-	case "tex", "latex":
-		return "latex"
-	case "wiki", "mediawiki":
-		return "mediawiki"
-	case "twiki", "tracwiki":
-		return "twiki"
-	case "tmpl", "template":
-		return "tmpl"
-	case "txt":
-		// txt is too common, don't auto-detect
-		return ""
-	default:
+	// .txt is too common to auto-detect.
+	if strings.EqualFold(filepath.Ext(filename), ".txt") {
 		return ""
 	}
+	return DetectTableFormatByExtension(filename)
 }
 
 // getSupportedFormats returns a sorted list of supported formats
