@@ -4,9 +4,46 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"strings"
+	"unicode"
 
 	"github.com/martianzhang/tableconvert/common"
 )
+
+type xmlNode struct {
+	Name     xml.Name
+	Text     string
+	Children []xmlNode
+}
+
+func (n xmlNode) fullText() string {
+	return n.Text
+}
+
+func readXMLNode(decoder *xml.Decoder, start xml.StartElement) (xmlNode, error) {
+	node := xmlNode{Name: start.Name}
+	var text strings.Builder
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return node, err
+		}
+		switch t := token.(type) {
+		case xml.CharData:
+			text.Write([]byte(t))
+		case xml.StartElement:
+			child, err := readXMLNode(decoder, t)
+			if err != nil {
+				return node, err
+			}
+			node.Children = append(node.Children, child)
+			text.WriteString(child.fullText())
+		case xml.EndElement:
+			node.Text = text.String()
+			return node, nil
+		}
+	}
+}
 
 // Unmarshal parses XML data from the reader and populates the table
 func Unmarshal(cfg *common.Config, table *common.Table) error {
@@ -27,47 +64,53 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	table.Headers = nil
 	table.Rows = nil
 
-	// Define the structure for dynamic XML parsing
-	type GenericField struct {
-		XMLName xml.Name
-		Value   string `xml:",chardata"`
-	}
-
-	type GenericRow struct {
-		XMLName xml.Name
-		Fields  []GenericField `xml:",any"`
-	}
-
-	// Dynamic XML parsing
-	var root struct {
-		XMLName xml.Name
-		Rows    []GenericRow `xml:",any"`
-	}
-
 	decoder := xml.NewDecoder(reader)
-	if err := decoder.Decode(&root); err != nil {
-		return fmt.Errorf("failed to decode XML: %w", err)
-	}
-
-	// Extract headers and row data
-	if len(root.Rows) == 0 {
-		return nil // Empty table is valid
-	}
-
-	// Extract headers from the first row
-	for _, field := range root.Rows[0].Fields {
-		table.Headers = append(table.Headers, field.XMLName.Local)
-	}
-
-	// Extract all row data and validate column counts
-	headerCount := len(table.Headers)
-	for rowIdx, row := range root.Rows {
-		var dataRow []string
-		for _, field := range row.Fields {
-			dataRow = append(dataRow, field.Value)
+	var root *xmlNode
+	for {
+		token, err := decoder.Token()
+		if err == io.EOF {
+			break
 		}
+		if err != nil {
+			return fmt.Errorf("failed to decode XML: %w", err)
+		}
+		if start, ok := token.(xml.StartElement); ok {
+			node, err := readXMLNode(decoder, start)
+			if err != nil {
+				return fmt.Errorf("failed to decode XML: %w", err)
+			}
+			root = &node
+			break
+		}
+	}
 
-		// Validate column count matches headers
+	if root == nil {
+		return nil // Empty XML is a valid empty table.
+	}
+
+	// Only direct children matching row-element are records. This avoids
+	// treating metadata elements as table rows.
+	rowElement := cfg.GetExtensionString("row-element", "record")
+	var records []xmlNode
+	for _, child := range root.Children {
+		if child.Name.Local == rowElement {
+			records = append(records, child)
+		}
+	}
+	if len(records) == 0 {
+		return nil
+	}
+
+	for _, field := range records[0].Children {
+		table.Headers = append(table.Headers, field.Name.Local)
+	}
+
+	headerCount := len(table.Headers)
+	for rowIdx, record := range records {
+		dataRow := make([]string, 0, len(record.Children))
+		for _, field := range record.Children {
+			dataRow = append(dataRow, strings.TrimSpace(field.fullText()))
+		}
 		if len(dataRow) != headerCount {
 			return &common.ParseError{
 				LineNumber: rowIdx + 1,
@@ -75,7 +118,6 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 				Line:       fmt.Sprintf("row %d", rowIdx+1),
 			}
 		}
-
 		table.Rows = append(table.Rows, dataRow)
 	}
 
@@ -202,19 +244,14 @@ func isValidXMLElementName(name string) bool {
 		return false
 	}
 
-	// XML element names must start with a letter or underscore
-	firstChar := name[0]
-	if !((firstChar >= 'a' && firstChar <= 'z') ||
-		(firstChar >= 'A' && firstChar <= 'Z') ||
-		firstChar == '_') {
-		return false
-	}
-
-	// Check remaining characters
-	for _, char := range name {
-		if !((char >= 'a' && char <= 'z') ||
-			(char >= 'A' && char <= 'Z') ||
-			(char >= '0' && char <= '9') ||
+	for i, char := range name {
+		if i == 0 {
+			if !(unicode.IsLetter(char) || char == '_') {
+				return false
+			}
+			continue
+		}
+		if !(unicode.IsLetter(char) || unicode.IsDigit(char) || unicode.IsMark(char) ||
 			char == '_' || char == '-' || char == '.') {
 			return false
 		}

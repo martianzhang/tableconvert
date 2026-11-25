@@ -474,6 +474,29 @@ func TestSpecialCharactersInData(t *testing.T) {
 	assert.Contains(t, output, "</Value>")
 }
 
+func TestUnmarshalNestedTextAndSkipsMetadata(t *testing.T) {
+	xmlData := `<dataset><meta><name>ignored</name></meta><record><note>a <b>bold</b> c</note><age>30</age></record></dataset>`
+	table := &common.Table{}
+	err := Unmarshal(&common.Config{Reader: strings.NewReader(xmlData)}, table)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"note", "age"}, table.Headers)
+	assert.Equal(t, [][]string{{"a bold c", "30"}}, table.Rows)
+}
+
+func TestUnicodeElementNamesRoundTrip(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"姓名", "年龄"},
+		Rows:    [][]string{{"张三", "30"}},
+	}
+	var buf bytes.Buffer
+	require.NoError(t, Marshal(&common.Config{Writer: &buf}, table))
+
+	got := &common.Table{}
+	require.NoError(t, Unmarshal(&common.Config{Reader: bytes.NewReader(buf.Bytes())}, got))
+	assert.Equal(t, table.Headers, got.Headers)
+	assert.Equal(t, table.Rows, got.Rows)
+}
+
 func TestUnmarshalWithNestedElements(t *testing.T) {
 	// Test that nested elements are handled correctly
 	xmlData := `
