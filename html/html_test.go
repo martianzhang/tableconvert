@@ -232,7 +232,7 @@ func TestUnmarshal(t *testing.T) {
 				Headers: nil,
 				Rows:    nil,
 			},
-			expectedError: "Unmarshal: no header row found in table",
+			expectedError: "Unmarshal: no rows found in table",
 		},
 		{
 			name:  "no header cells",
@@ -241,7 +241,7 @@ func TestUnmarshal(t *testing.T) {
 				Headers: nil,
 				Rows:    nil,
 			},
-			expectedError: "Unmarshal: no header row found in table",
+			expectedError: "Unmarshal: no rows found in table",
 		},
 		{
 			name: "valid basic table",
@@ -465,17 +465,19 @@ func TestUnmarshalFirstColumnHeader(t *testing.T) {
 			expectedError: "",
 		},
 		{
-			name: "first-column-header with no header-like content should not auto-detect",
+			name: "first-column-header with no header-like content should use first row",
 			input: "<table>\n" +
 				"  <tr><td>alice</td><td>25</td></tr>\n" +
 				"  <tr><td>bob</td><td>30</td></tr>\n" +
 				"</table>",
 			extension: map[string]string{},
 			expectedTable: &common.Table{
-				Headers: nil,
-				Rows:    nil,
+				Headers: []string{"alice", "25"},
+				Rows: [][]string{
+					{"bob", "30"},
+				},
 			},
-			expectedError: "Unmarshal: no header row found in table",
+			expectedError: "",
 		},
 	}
 
@@ -496,6 +498,61 @@ func TestUnmarshalFirstColumnHeader(t *testing.T) {
 				assert.Equal(t, tt.expectedTable.Headers, table.Headers)
 				assert.Equal(t, tt.expectedTable.Rows, table.Rows)
 			}
+		})
+	}
+}
+
+func TestUnmarshalNestedTextAndRowHeaders(t *testing.T) {
+	input := `<table>
+<tr><th>Name</th><th>Age</th></tr>
+<tr><th><b>Alice</b></th><td>30</td></tr>
+<tr><td>Hello <i>world</i></td><td>25</td></tr>
+</table>`
+
+	var table common.Table
+	err := Unmarshal(&common.Config{Reader: strings.NewReader(input)}, &table)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"Name", "Age"}, table.Headers)
+	assert.Equal(t, [][]string{
+		{"Alice", "30"},
+		{"Hello world", "25"},
+	}, table.Rows)
+}
+
+func TestUnmarshalAllTDTablesUseFirstRowAsHeader(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		headers []string
+		rows    [][]string
+	}{
+		{
+			name:    "lowercase first row",
+			input:   "<table><tr><td>name</td><td>age</td></tr><tr><td>Alice</td><td>30</td></tr></table>",
+			headers: []string{"name", "age"},
+			rows:    [][]string{{"Alice", "30"}},
+		},
+		{
+			name:    "numeric first column",
+			input:   "<table><tr><td>1</td><td>Alice</td></tr><tr><td>2</td><td>Bob</td></tr></table>",
+			headers: []string{"1", "Alice"},
+			rows:    [][]string{{"2", "Bob"}},
+		},
+		{
+			name:    "CJK first column",
+			input:   "<table><tr><td>小明</td><td>25</td></tr><tr><td>小红</td><td>30</td></tr></table>",
+			headers: []string{"小明", "25"},
+			rows:    [][]string{{"小红", "30"}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var table common.Table
+			err := Unmarshal(&common.Config{Reader: strings.NewReader(tt.input)}, &table)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.headers, table.Headers)
+			assert.Equal(t, tt.rows, table.Rows)
 		})
 	}
 }
@@ -559,7 +616,7 @@ func TestCollectRows(t *testing.T) {
 				"  <tr><td>B1</td><td>B2</td></tr>\n" +
 				"</table>",
 			expected: [][]string{
-				{"span", "b"},
+				{"A1", "A2"},
 				{"B1", "B2"},
 			},
 		},

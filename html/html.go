@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"strings"
+	"unicode"
 
 	"github.com/martianzhang/tableconvert/common"
 
@@ -135,229 +136,187 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	return parseFirstRowAsHeader(tableNode, table)
 }
 
-// isFirstColumnHeader detects if the table uses first column as header
+// isFirstColumnHeader detects if the table uses first column as header.
 func isFirstColumnHeader(tableNode *html.Node) bool {
-	// Check for traditional header (thead or th in first row)
-	hasTraditionalHeader := false
-	var checkTraditionalHeader func(*html.Node) bool
-	checkTraditionalHeader = func(n *html.Node) bool {
-		if n.Type == html.ElementNode && n.Data == "thead" {
-			return true
-		}
-		if n.Type == html.ElementNode && n.Data == "tr" {
-			for c := n.FirstChild; c != nil; c = c.NextSibling {
-				if c.Type == html.ElementNode && c.Data == "th" {
-					return true
-				}
-			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			if checkTraditionalHeader(c) {
-				return true
-			}
-		}
-		return false
-	}
-	hasTraditionalHeader = checkTraditionalHeader(tableNode)
-
-	// If traditional header exists, it's not first-column header
-	if hasTraditionalHeader {
-		return false
-	}
-
-	// Check for first-column header pattern
-	// A table is considered first-column-header if:
-	// 1. No thead or th in first row
-	// 2. First cell of each row contains header-like content
+	// A thead or a th in the first row means the table has a normal row header.
 	rows := collectRows(tableNode)
 	if len(rows) == 0 {
 		return false
 	}
-
-	// Check if first column looks like headers (more text, different formatting, etc.)
-	// This is a simple heuristic - can be enhanced based on specific needs
-	headerLikeCount := 0
-	for _, row := range rows {
-		if len(row) > 0 {
-			firstCell := row[0]
-			// Simple heuristic: if first cell is all caps or contains colon, it's likely a header
-			if strings.ToUpper(firstCell) == firstCell || strings.Contains(firstCell, ":") {
-				headerLikeCount++
-			}
-		}
-	}
-
-	// If majority of first cells look like headers, assume first-column-header
-	return headerLikeCount > len(rows)/2
-}
-
-// collectRows collects all rows from the table
-func collectRows(tableNode *html.Node) [][]string {
-	var rows [][]string
-	var processRows func(*html.Node)
-	processRows = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "tr" {
-			var row []string
-			for c := n.FirstChild; c != nil; c = c.NextSibling {
-				if c.Type == html.ElementNode && (c.Data == "td" || c.Data == "th") {
-					if c.FirstChild != nil {
-						row = append(row, strings.TrimSpace(c.FirstChild.Data))
-					} else {
-						row = append(row, "")
-					}
-				}
-			}
-			if len(row) > 0 {
-				rows = append(rows, row)
-			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			processRows(c)
-		}
-	}
-	processRows(tableNode)
-	return rows
-}
-
-// parseFirstRowAsHeader parses table with first row as header (default behavior)
-func parseFirstRowAsHeader(tableNode *html.Node, table *common.Table) error {
-	// Find first header row (tr with th cells)
-	var headerRow *html.Node
-	var findHeaderRow func(*html.Node) bool
-	findHeaderRow = func(n *html.Node) bool {
-		if n.Type == html.ElementNode && n.Data == "tr" {
-			// Check if this row has th cells
-			for c := n.FirstChild; c != nil; c = c.NextSibling {
-				if c.Type == html.ElementNode && c.Data == "th" {
-					headerRow = n
-					return true
-				}
-			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			if findHeaderRow(c) {
-				return true
-			}
-		}
+	if hasTraditionalHeader(tableNode) {
 		return false
 	}
 
-	if !findHeaderRow(tableNode) {
-		return fmt.Errorf("Unmarshal: no header row found in table")
+	// Check if first column looks like headers. Requiring an actual uppercase
+	// letter (or colon) avoids treating numeric IDs, CJK text, or empty cells as
+	// headers just because they contain no lowercase letters.
+	headerLikeCount := 0
+	for _, row := range rows {
+		if len(row) > 0 && looksLikeHeaderCell(row[0]) {
+			headerLikeCount++
+		}
 	}
+	return headerLikeCount > len(rows)/2
+}
 
-	// Extract headers from header row
-	var headers []string
-	for c := headerRow.FirstChild; c != nil; c = c.NextSibling {
+func hasTraditionalHeader(tableNode *html.Node) bool {
+	if findFirstElement(tableNode, "thead") != nil {
+		return true
+	}
+	firstRow := findFirstElement(tableNode, "tr")
+	if firstRow == nil {
+		return false
+	}
+	for c := firstRow.FirstChild; c != nil; c = c.NextSibling {
 		if c.Type == html.ElementNode && c.Data == "th" {
-			// Handle empty th cells
-			if c.FirstChild != nil {
-				headers = append(headers, strings.TrimSpace(c.FirstChild.Data))
-			} else {
-				headers = append(headers, "")
+			return true
+		}
+	}
+	return false
+}
+
+func looksLikeHeaderCell(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+	if strings.Contains(s, ":") {
+		return true
+	}
+	hasUpper := false
+	for _, r := range s {
+		if unicode.IsLower(r) {
+			return false
+		}
+		if unicode.IsUpper(r) {
+			hasUpper = true
+		}
+	}
+	return hasUpper
+}
+
+// findFirstElement returns the first descendant element with the given tag name.
+func findFirstElement(root *html.Node, tag string) *html.Node {
+	var found *html.Node
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if found != nil {
+			return
+		}
+		if n.Type == html.ElementNode && n.Data == tag {
+			found = n
+			return
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			walk(c)
+		}
+	}
+	walk(root)
+	return found
+}
+
+// collectRows collects all rows from the table (excluding nested tables).
+func collectRows(tableNode *html.Node) [][]string {
+	var rows [][]string
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			if c.Type == html.ElementNode && c.Data == "table" {
+				continue // don't merge rows from a nested table
+			}
+			if c.Type == html.ElementNode && c.Data == "tr" {
+				var row []string
+				for cell := c.FirstChild; cell != nil; cell = cell.NextSibling {
+					if cell.Type == html.ElementNode && (cell.Data == "td" || cell.Data == "th") {
+						row = append(row, strings.TrimSpace(nodeText(cell)))
+					}
+				}
+				if len(row) > 0 {
+					rows = append(rows, row)
+				}
+			}
+			walk(c)
+		}
+	}
+	walk(tableNode)
+	return rows
+}
+
+// nodeText returns the visible text content of a node, including text nested
+// inside formatting elements. <br> is rendered as a newline.
+func nodeText(n *html.Node) string {
+	var b strings.Builder
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		switch n.Type {
+		case html.TextNode:
+			b.WriteString(n.Data)
+		case html.ElementNode:
+			if n.Data == "br" {
+				b.WriteString("\n")
+				return
+			}
+			if n.Data == "script" || n.Data == "style" {
+				return
+			}
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				walk(c)
 			}
 		}
 	}
+	walk(n)
+	return b.String()
+}
 
-	if len(headers) == 0 {
-		return fmt.Errorf("Unmarshal: no header cells found in header row")
+// parseFirstRowAsHeader parses a table whose first row is the header. Tables
+// without <th>/<thead> are supported too; the first row is still the header.
+func parseFirstRowAsHeader(tableNode *html.Node, table *common.Table) error {
+	rows := collectRows(tableNode)
+	if len(rows) == 0 {
+		return fmt.Errorf("Unmarshal: no rows found in table")
+	}
+
+	headers := append([]string(nil), rows[0]...)
+	dataRows := rows[1:]
+
+	// Keep the table rectangular. Extra cells in a data row create additional
+	// empty-named columns instead of being silently dropped; short rows are
+	// padded with empty strings.
+	maxCols := len(headers)
+	for _, row := range dataRows {
+		if len(row) > maxCols {
+			maxCols = len(row)
+		}
+	}
+	for len(headers) < maxCols {
+		headers = append(headers, "")
+	}
+	for i, row := range dataRows {
+		if len(row) < maxCols {
+			dataRows[i] = append(row, make([]string, maxCols-len(row))...)
+		}
 	}
 
 	table.Headers = headers
-
-	// Process data rows
-	var processRows func(*html.Node)
-	processRows = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "tr" {
-			// Skip header rows (already processed)
-			isHeaderRow := false
-			for c := n.FirstChild; c != nil; c = c.NextSibling {
-				if c.Type == html.ElementNode && c.Data == "th" {
-					isHeaderRow = true
-					break
-				}
-			}
-			if isHeaderRow {
-				return
-			}
-
-			// Process data row
-			var row []string
-			for c := n.FirstChild; c != nil; c = c.NextSibling {
-				if c.Type == html.ElementNode && c.Data == "td" {
-					// Handle empty td cells
-					if c.FirstChild != nil {
-						row = append(row, strings.TrimSpace(c.FirstChild.Data))
-					} else {
-						row = append(row, "")
-					}
-				}
-			}
-
-			// Only add row if it has the same number of columns as headers
-			if len(row) == len(headers) {
-				table.Rows = append(table.Rows, row)
-			} else if len(row) > 0 {
-				// If row has fewer columns, pad with empty strings
-				for len(row) < len(headers) {
-					row = append(row, "")
-				}
-				table.Rows = append(table.Rows, row)
-			}
-		}
-
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			processRows(c)
-		}
-	}
-
-	processRows(tableNode)
-
+	table.Rows = dataRows
 	return nil
 }
 
 // parseFirstColumnAsHeader parses table with first column as header
 func parseFirstColumnAsHeader(tableNode *html.Node, table *common.Table) error {
-	var headers []string
-	var rows [][]string
-
-	// Process all rows
-	var processRows func(*html.Node)
-	processRows = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "tr" {
-			var row []string
-			for c := n.FirstChild; c != nil; c = c.NextSibling {
-				if c.Type == html.ElementNode && (c.Data == "td" || c.Data == "th") {
-					// Handle empty cells
-					if c.FirstChild != nil {
-						row = append(row, strings.TrimSpace(c.FirstChild.Data))
-					} else {
-						row = append(row, "")
-					}
-				}
-			}
-			if len(row) > 0 {
-				rows = append(rows, row)
-			}
-		}
-
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			processRows(c)
-		}
-	}
-
-	processRows(tableNode)
-
+	rows := collectRows(tableNode)
 	if len(rows) == 0 {
 		return fmt.Errorf("Unmarshal: no rows found in table")
 	}
 
-	// Extract headers from first column
-	for _, row := range rows {
+	headers := make([]string, len(rows))
+	maxDataCols := 0
+	for i, row := range rows {
 		if len(row) > 0 {
-			headers = append(headers, row[0])
-		} else {
-			headers = append(headers, "")
+			headers[i] = row[0]
+			if len(row)-1 > maxDataCols {
+				maxDataCols = len(row) - 1
+			}
 		}
 	}
 
@@ -366,15 +325,13 @@ func parseFirstColumnAsHeader(tableNode *html.Node, table *common.Table) error {
 	}
 
 	table.Headers = headers
-
-	// Extract data (skip first column)
-	for _, row := range rows {
+	table.Rows = make([][]string, len(rows))
+	for i, row := range rows {
+		data := make([]string, maxDataCols)
 		if len(row) > 1 {
-			table.Rows = append(table.Rows, row[1:])
-		} else {
-			// If row only has header column, add empty row
-			table.Rows = append(table.Rows, []string{})
+			copy(data, row[1:])
 		}
+		table.Rows[i] = data
 	}
 
 	return nil
