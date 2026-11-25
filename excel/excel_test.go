@@ -208,6 +208,16 @@ func TestMarshalWithAutoWidth(t *testing.T) {
 	assert.Greater(t, widthB, float64(0))
 }
 
+func TestMarshalRejectsLegacyXLS(t *testing.T) {
+	var buf bytes.Buffer
+	err := Marshal(&common.Config{
+		Writer: &buf,
+		Result: "out.xls",
+	}, &common.Table{Headers: []string{"a"}, Rows: [][]string{{"1"}}})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), ".xlsx")
+}
+
 func TestMarshalWriterAndUnmarshalReader(t *testing.T) {
 	var buf bytes.Buffer
 	table := &common.Table{

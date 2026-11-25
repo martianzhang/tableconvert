@@ -2,6 +2,8 @@ package excel
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
 
 	"github.com/martianzhang/tableconvert/common"
 
@@ -104,6 +106,16 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 }
 
 func Marshal(cfg *common.Config, table *common.Table) error {
+	if cfg == nil {
+		return fmt.Errorf("Marshal: config cannot be nil")
+	}
+	if table == nil {
+		return fmt.Errorf("Marshal: input table pointer cannot be nil")
+	}
+	if cfg.Result != "" && strings.EqualFold(filepath.Ext(cfg.Result), ".xls") {
+		return fmt.Errorf("legacy .xls output is not supported; use .xlsx")
+	}
+
 	f := excelize.NewFile()
 
 	// Sheet Name: reuse/rename the default sheet so we do not leave an empty
