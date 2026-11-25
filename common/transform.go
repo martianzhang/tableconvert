@@ -91,11 +91,16 @@ func DeduplicateRows(table *Table) {
 	uniqueRows := make([][]string, 0, len(table.Rows))
 
 	for _, row := range table.Rows {
-		// Create a key by joining all cells with a delimiter
-		// Using a delimiter that's unlikely to appear in normal data
-		key := strings.Join(row, "\x00")
-		if !seen[key] {
-			seen[key] = true
+		// Length-prefix each cell so different rows cannot collide even when
+		// cells contain the separator (including NUL).
+		var key strings.Builder
+		for _, cell := range row {
+			key.WriteString(strconv.Itoa(len(cell)))
+			key.WriteByte(':')
+			key.WriteString(cell)
+		}
+		if !seen[key.String()] {
+			seen[key.String()] = true
 			uniqueRows = append(uniqueRows, row)
 		}
 	}

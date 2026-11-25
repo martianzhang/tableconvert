@@ -237,6 +237,23 @@ func TestDeduplicateRows(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "NUL characters do not collide",
+			input: &Table{
+				Headers: []string{"A", "B"},
+				Rows: [][]string{
+					{"a\x00b", "c"},
+					{"a", "b\x00c"},
+				},
+			},
+			expected: &Table{
+				Headers: []string{"A", "B"},
+				Rows: [][]string{
+					{"a\x00b", "c"},
+					{"a", "b\x00c"},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
