@@ -217,6 +217,35 @@ func ShowFormatHelp(format string) {
 	fmt.Fprintln(os.Stderr, "")
 }
 
+// canonicalFlagName maps short/long aliases to one key so repeated aliases are
+// resolved by argument order rather than Go map iteration order.
+func canonicalFlagName(key string) string {
+	switch key {
+	case "f":
+		return "from"
+	case "t":
+		return "to"
+	case "file", "input", "i":
+		return "file"
+	case "result", "output", "o":
+		return "result"
+	case "v":
+		return "verbose"
+	case "b":
+		return "batch"
+	case "r":
+		return "recursive"
+	case "dir":
+		return "output-dir"
+	case "dryrun", "preview":
+		return "dry-run"
+	case "h":
+		return "help"
+	default:
+		return key
+	}
+}
+
 // ParseConfig parses arguments in format "--key=value" or "--key value" and returns a key-value map
 func ParseConfig(args []string) (Config, error) {
 	configs := make(map[string]string)
@@ -245,36 +274,37 @@ func ParseConfig(args []string) (Config, error) {
 					value = "" // No value = boolean flag
 				}
 			}
-			configs[key] = value
+			configs[canonicalFlagName(key)] = value
 		} else {
 			// Positional argument (file path)
 			positionalArgs = append(positionalArgs, arg)
 		}
 	}
 
-	// Process known parameters
+	// Process known parameters. Keys are canonicalized above, so aliases such
+	// as --from/-f and --file/-i cannot race each other in map iteration order.
 	var cfg = Config{Extension: make(map[string]string)}
 	for k, v := range configs {
 		switch k {
-		case "from", "f":
+		case "from":
 			cfg.From = v
-		case "to", "t":
+		case "to":
 			cfg.To = v
-		case "file", "input", "i":
+		case "file":
 			cfg.File = v
-		case "result", "output", "o":
+		case "result":
 			cfg.Result = v
-		case "verbose", "v":
+		case "verbose":
 			cfg.Verbose = parseBool(v, true) // empty -> true, unknown -> false
-		case "batch", "b":
+		case "batch":
 			cfg.Batch = v
-		case "recursive", "r":
+		case "recursive":
 			cfg.Recursive = parseBool(v, true)
-		case "output-dir", "dir":
+		case "output-dir":
 			cfg.OutputDir = v
-		case "dry-run", "dryrun", "preview":
+		case "dry-run":
 			cfg.DryRun = parseBool(v, true) // empty -> true, unknown -> false
-		case "h", "help":
+		case "help":
 			Usage()
 			os.Exit(0)
 		case "help-formats":

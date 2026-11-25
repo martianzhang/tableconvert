@@ -653,6 +653,26 @@ func TestParseConfigMixedAndEdgeCases(t *testing.T) {
 	assert.Equal(t, "3", cfg.Extension["param3"])
 }
 
+func TestAliasConflictUsesLastArgument(t *testing.T) {
+	cfg, err := ParseConfig([]string{"--from=csv", "--f=markdown", "--to=json"})
+	require.NoError(t, err)
+	assert.Equal(t, "markdown", cfg.From)
+
+	cfg, err = ParseConfig([]string{"--f=csv", "--from=markdown", "--to=json"})
+	require.NoError(t, err)
+	assert.Equal(t, "markdown", cfg.From)
+
+	dir := t.TempDir()
+	first := filepath.Join(dir, "first.csv")
+	second := filepath.Join(dir, "second.csv")
+	require.NoError(t, os.WriteFile(first, []byte("a\n1\n"), 0644))
+	require.NoError(t, os.WriteFile(second, []byte("a\n2\n"), 0644))
+
+	cfg, err = ParseConfig([]string{"--file", first, "-i", second, "--to=json"})
+	require.NoError(t, err)
+	assert.Equal(t, second, cfg.File)
+}
+
 func TestParseConfigBatchMode(t *testing.T) {
 	// Test basic batch mode
 	args := []string{"--batch=*.csv", "--to=json"}
