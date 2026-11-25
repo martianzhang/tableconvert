@@ -71,6 +71,21 @@ func TestMarshalOptions(t *testing.T) {
 	})
 }
 
+func TestUnmarshalColumnSpecsAndBooktabs(t *testing.T) {
+	input := `\begin{tabular}{p{3cm}l}
+\toprule
+A & B \\
+\midrule
+1 & 2 \\
+\bottomrule
+\end{tabular}`
+	table := &common.Table{}
+	err := Unmarshal(&common.Config{Reader: strings.NewReader(input)}, table)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"A", "B"}, table.Headers)
+	assert.Equal(t, [][]string{{"1", "2"}}, table.Rows)
+}
+
 func TestUnmarshal(t *testing.T) {
 	input := `\begin{tabular}{|l|c|r|}
 \hline

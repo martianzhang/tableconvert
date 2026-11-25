@@ -36,10 +36,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 			end := strings.LastIndex(line, "}")
 			if start > 0 && end > start {
 				colSpec := line[start:end]
-				// Count the number of column specifiers (l, c, r etc.)
-				// Remove | characters first
-				cleanSpec := strings.ReplaceAll(colSpec, "|", "")
-				expectedColumns = len(cleanSpec)
+				expectedColumns = countLaTeXColumns(colSpec)
 			}
 			continue
 		}
@@ -53,7 +50,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 			continue
 		}
 
-		if strings.HasPrefix(line, "\\hline") || line == "" {
+		if line == "" || isLaTeXRuleLine(line) {
 			continue
 		}
 
@@ -96,6 +93,37 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	}
 
 	return nil
+}
+
+// countLaTeXColumns counts alignment columns while ignoring modifiers such as
+// p{3cm}, @{} and >{}, which must not be treated as extra columns.
+func countLaTeXColumns(spec string) int {
+	count := 0
+	depth := 0
+	for _, r := range spec {
+		switch r {
+		case '{':
+			depth++
+		case '}':
+			if depth > 0 {
+				depth--
+			}
+		case 'l', 'c', 'r', 'X', 'S':
+			if depth == 0 {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func isLaTeXRuleLine(line string) bool {
+	for _, prefix := range []string{`\toprule`, `\midrule`, `\bottomrule`, `\cline`, `\cmidrule`, `\addlinespace`, `\hline`} {
+		if strings.HasPrefix(line, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // splitLaTeXLine properly splits a LaTeX table line into cells
