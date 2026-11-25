@@ -11,6 +11,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestRoundTripEscapedPipesAndNewlines(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"h|1", `path\name`},
+		Rows: [][]string{
+			{"a|b", `C:\temp`},
+			{"x\ny", "z\rw"},
+		},
+	}
+
+	var buf bytes.Buffer
+	assert.NoError(t, Marshal(&common.Config{Writer: &buf}, table))
+
+	got := &common.Table{}
+	assert.NoError(t, Unmarshal(&common.Config{Reader: bytes.NewReader(buf.Bytes())}, got))
+	assert.Equal(t, table.Headers, got.Headers)
+	assert.Equal(t, table.Rows, got.Rows)
+}
+
 func TestUnmarshal(t *testing.T) {
 	mysqlOutput := `
 +----------+--------------+------+-----+---------+----------------+
@@ -252,8 +270,7 @@ func TestMarshalColumnMismatch(t *testing.T) {
 }
 
 func TestMarshalPipesInContent(t *testing.T) {
-	// Test that pipes in content are output as-is
-	// Note: This will create output that cannot be parsed back
+	// Pipes in content are escaped so the output can be parsed back.
 	table := &common.Table{
 		Headers: []string{"A", "B"},
 		Rows:    [][]string{{"1", "2|3"}},
@@ -268,8 +285,7 @@ func TestMarshalPipesInContent(t *testing.T) {
 	assert.NoError(t, err)
 
 	output := buf.String()
-	// Should contain the pipe in the output
-	assert.Contains(t, output, "2|3")
+	assert.Contains(t, output, `2\|3`)
 }
 
 func TestMarshal(t *testing.T) {

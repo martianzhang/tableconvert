@@ -49,12 +49,83 @@ func parseFields(line string) []string {
 	// Remove leading and trailing pipe
 	trimmed = strings.TrimPrefix(trimmed, "|")
 	trimmed = strings.TrimSuffix(trimmed, "|")
-	raw := strings.Split(trimmed, "|")
+	raw := splitMySQLFields(trimmed)
 	result := make([]string, 0, len(raw))
 	for _, cell := range raw {
-		result = append(result, strings.TrimSpace(cell))
+		result = append(result, unescapeMySQLCell(strings.TrimSpace(cell)))
 	}
 	return result
+}
+
+func splitMySQLFields(s string) []string {
+	var parts []string
+	var b strings.Builder
+	escaped := false
+	for _, r := range s {
+		if escaped {
+			b.WriteRune('\\')
+			b.WriteRune(r)
+			escaped = false
+			continue
+		}
+		if r == '\\' {
+			escaped = true
+			continue
+		}
+		if r == '|' {
+			parts = append(parts, b.String())
+			b.Reset()
+			continue
+		}
+		b.WriteRune(r)
+	}
+	if escaped {
+		b.WriteRune('\\')
+	}
+	return append(parts, b.String())
+}
+
+func escapeMySQLCell(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		switch r {
+		case '\\':
+			b.WriteString(`\\`)
+		case '|':
+			b.WriteString(`\|`)
+		case '\n':
+			b.WriteString(`\n`)
+		case '\r':
+			b.WriteString(`\r`)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+func unescapeMySQLCell(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+1 < len(s) {
+			switch s[i+1] {
+			case '\\', '|':
+				b.WriteByte(s[i+1])
+				i++
+				continue
+			case 'n':
+				b.WriteByte('\n')
+				i++
+				continue
+			case 'r':
+				b.WriteByte('\r')
+				i++
+				continue
+			}
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
 }
 
 func Unmarshal(cfg *common.Config, table *common.Table) error {
@@ -271,7 +342,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	// Calculate column widths using runewidth for proper CJK support
 	columnWidths := make([]int, columnCount)
 	for i, header := range table.Headers {
-		columnWidths[i] = runewidth.StringWidth(header)
+		columnWidths[i] = runewidth.StringWidth(escapeMySQLCell(header))
 	}
 	// Update widths based on row data
 	for j, row := range table.Rows {
@@ -279,7 +350,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			return fmt.Errorf("Marshal: %d row has %d columns, but table has %d", j, len(row), columnCount)
 		}
 		for i, cell := range row {
-			cellWidth := runewidth.StringWidth(cell)
+			cellWidth := runewidth.StringWidth(escapeMySQLCell(cell))
 			if cellWidth > columnWidths[i] {
 				columnWidths[i] = cellWidth
 			}
@@ -294,7 +365,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	fmt.Fprintln(writer, "+")
 	// Write header row
 	for i, header := range table.Headers {
-		paddedHeader := runewidth.FillRight(header, columnWidths[i])
+		paddedHeader := runewidth.FillRight(escapeMySQLCell(header), columnWidths[i])
 		fmt.Fprintf(writer, "| %s ", paddedHeader)
 	}
 	fmt.Fprintln(writer, "|")
@@ -306,7 +377,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	// --- Data Rows ---
 	for _, row := range table.Rows {
 		for i, cell := range row {
-			paddedCell := runewidth.FillRight(cell, columnWidths[i])
+			paddedCell := runewidth.FillRight(escapeMySQLCell(cell), columnWidths[i])
 			fmt.Fprintf(writer, "| %s ", paddedCell)
 		}
 		fmt.Fprintln(writer, "|")
