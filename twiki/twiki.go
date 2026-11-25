@@ -103,9 +103,9 @@ func parseTWikiHeaderLine(line string, lineNumber int) ([]string, error) {
 		}
 	}
 
-	// Remove leading/trailing pipes and split
+	// Remove leading/trailing pipes and split on unescaped pipes
 	content := strings.TrimSuffix(strings.TrimPrefix(line, "|"), "|")
-	parts := strings.Split(content, "|")
+	parts := splitEscaped(content, '|')
 
 	cells := make([]string, 0, len(parts))
 	for _, part := range parts {
@@ -113,6 +113,7 @@ func parseTWikiHeaderLine(line string, lineNumber int) ([]string, error) {
 		if part == "" {
 			continue
 		}
+		part = unescapeTWiki(part)
 		// TWiki headers are wrapped in = signs
 		// Check for = signs in the original part (before trimming spaces)
 		if !strings.HasPrefix(part, "=") || !strings.HasSuffix(part, "=") {
@@ -131,6 +132,40 @@ func parseTWikiHeaderLine(line string, lineNumber int) ([]string, error) {
 	return cells, nil
 }
 
+// splitEscaped splits s on delimiter bytes that are not escaped with a
+// backslash. Escapes are left in place for unescapeTWiki to process.
+func splitEscaped(s string, delimiter byte) []string {
+	var parts []string
+	start := 0
+	escaped := false
+	for i := 0; i < len(s); i++ {
+		switch {
+		case escaped:
+			escaped = false
+		case s[i] == '\\':
+			escaped = true
+		case s[i] == delimiter:
+			parts = append(parts, s[start:i])
+			start = i + 1
+		}
+	}
+	return append(parts, s[start:])
+}
+
+// unescapeTWiki decodes backslash escapes used by the TWiki marshaller.
+func unescapeTWiki(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+1 < len(s) && (s[i+1] == '|' || s[i+1] == '\\') {
+			i++
+			b.WriteByte(s[i])
+			continue
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
+}
+
 // parseLine parses a regular TWiki table line (either header or data row)
 func parseLine(line string, lineNumber int) ([]string, error) {
 	if !strings.HasPrefix(line, "|") || !strings.HasSuffix(line, "|") {
@@ -141,16 +176,21 @@ func parseLine(line string, lineNumber int) ([]string, error) {
 		}
 	}
 
-	// Remove leading/trailing pipes and split
+	// Remove leading/trailing pipes and split on unescaped pipes
 	content := strings.TrimSuffix(strings.TrimPrefix(line, "|"), "|")
-	parts := strings.Split(content, "|")
+	parts := splitEscaped(content, '|')
 
 	cells := make([]string, 0, len(parts))
 	for _, part := range parts {
-		cells = append(cells, strings.TrimSpace(part))
+		cells = append(cells, strings.TrimSpace(unescapeTWiki(part)))
 	}
 
 	return cells, nil
+}
+
+func escapeTWiki(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	return strings.ReplaceAll(s, `|`, `\|`)
 }
 
 func Marshal(cfg *common.Config, table *common.Table) error {
@@ -163,9 +203,8 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	// Write TWiki table header
 	headerLine := "|"
 	for _, header := range table.Headers {
-		// Escape pipe characters in header content
-		escapedHeader := strings.ReplaceAll(header, "|", "\\|")
-		headerLine += "=" + escapedHeader + "=|"
+		// Escape backslashes and pipe characters in header content
+		headerLine += "=" + escapeTWiki(header) + "=|"
 	}
 	headerLine += "\n"
 	if _, err := writer.Write([]byte(headerLine)); err != nil {
@@ -176,9 +215,8 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	for _, row := range table.Rows {
 		rowLine := "|"
 		for _, cell := range row {
-			// Escape pipe characters in cell content
-			escapedCell := strings.ReplaceAll(cell, "|", "\\|")
-			rowLine += escapedCell + "|"
+			// Escape backslashes and pipe characters in cell content
+			rowLine += escapeTWiki(cell) + "|"
 		}
 		rowLine += "\n"
 		if _, err := writer.Write([]byte(rowLine)); err != nil {

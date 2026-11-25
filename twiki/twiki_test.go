@@ -248,6 +248,24 @@ func TestMarshalErrorCases(t *testing.T) {
 	})
 }
 
+func TestRoundTripWithPipeAndBackslash(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"Name|Age", `Path\Name`},
+		Rows: [][]string{
+			{"Alice|30", `C:\temp\new`},
+			{`a\|b`, `c\\d`},
+		},
+	}
+
+	var buf bytes.Buffer
+	require.NoError(t, Marshal(&common.Config{Writer: &buf}, table))
+
+	got := &common.Table{}
+	require.NoError(t, Unmarshal(&common.Config{Reader: bytes.NewReader(buf.Bytes())}, got))
+	assert.Equal(t, table.Headers, got.Headers)
+	assert.Equal(t, table.Rows, got.Rows)
+}
+
 func TestUnmarshalEmptyTable(t *testing.T) {
 	// Test with no data
 	input := "|=Header1=|=Header2=|"
