@@ -150,10 +150,22 @@ func parseMediaWikiCells(line string, header bool) []string {
 	cells := make([]string, 0, len(parts))
 	for _, cell := range parts {
 		cell = strings.TrimSpace(cell)
+		cell = stripMediaWikiAttributes(cell)
 		cell = strings.ReplaceAll(cell, "{{!}}", "|")
+		cell = strings.ReplaceAll(cell, "&#33;", "!")
 		cells = append(cells, cell)
 	}
 	return cells
+}
+
+func stripMediaWikiAttributes(cell string) string {
+	if idx := strings.Index(cell, "|"); idx >= 0 {
+		attrs := strings.TrimSpace(cell[:idx])
+		if strings.Contains(attrs, "=") {
+			return strings.TrimSpace(cell[idx+1:])
+		}
+	}
+	return cell
 }
 
 func Marshal(cfg *common.Config, table *common.Table) error {
@@ -198,8 +210,9 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			if i > 0 {
 				headerLine += cellSeparator
 			}
-			// Escape pipes in header content using {{!}} template
-			escapedHeader := strings.ReplaceAll(header, "|", "{{!}}")
+			// Escape header separators and pipes in header content.
+			escapedHeader := strings.ReplaceAll(header, "!", "&#33;")
+			escapedHeader = strings.ReplaceAll(escapedHeader, "|", "{{!}}")
 			headerLine += escapedHeader
 		}
 		writer.Write([]byte(headerLine + "\n"))

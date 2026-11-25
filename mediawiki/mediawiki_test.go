@@ -11,6 +11,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestUnmarshalStripsAttributesAndHeaderEscapes(t *testing.T) {
+	input := `{| class="wikitable"
+! scope="col" | Name !! B
+|-
+| style="color:red" | Alice || 30
+|}`
+	var table common.Table
+	require.NoError(t, Unmarshal(&common.Config{Reader: strings.NewReader(input)}, &table))
+	assert.Equal(t, []string{"Name", "B"}, table.Headers)
+	assert.Equal(t, [][]string{{"Alice", "30"}}, table.Rows)
+
+	var buf bytes.Buffer
+	require.NoError(t, Marshal(&common.Config{Writer: &buf}, &common.Table{
+		Headers: []string{"a!!b", "c|d"},
+		Rows:    [][]string{{"1", "2"}},
+	}))
+	got := &common.Table{}
+	require.NoError(t, Unmarshal(&common.Config{Reader: bytes.NewReader(buf.Bytes())}, got))
+	assert.Equal(t, []string{"a!!b", "c|d"}, got.Headers)
+}
+
 func TestMarshalSortAndMinify(t *testing.T) {
 	table := &common.Table{
 		Headers: []string{"a", "b"},
