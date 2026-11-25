@@ -2,7 +2,6 @@ package common
 
 import (
 	"html"
-	"strconv"
 	"strings"
 )
 
@@ -163,19 +162,49 @@ func LaTeXUnescape(s string) string {
 	return s
 }
 
-// SQLValueEscape values for SQL insertion (handle quotes, NULLs, etc.)
+// SQLValueEscape escapes values for SQL insertion using MySQL syntax.
+// Kept for template helpers and backwards compatibility.
 func SQLValueEscape(s string) string {
+	return SQLValueEscapeDialect(s, "mysql")
+}
+
+// SQLValueEscapeDialect escapes a SQL string value using the requested
+// dialect. MySQL uses backslash escapes; the other dialects use standard SQL
+// single-quote doubling.
+func SQLValueEscapeDialect(s, dialect string) string {
 	if strings.EqualFold(s, "NULL") {
 		return "NULL"
 	}
 
-	// Double Quote string
-	s = strconv.Quote(s)
-	// Convert to Single Quote string
-	s = s[1 : len(s)-1]
-	s = strings.ReplaceAll(s, "\\\"", "\"")
-	s = strings.ReplaceAll(s, "'", "\\'")
-	return "'" + s + "'"
+	switch dialect {
+	case "postgres", "postgresql", "oracle", "mssql", "none":
+		return "'" + strings.ReplaceAll(s, "'", "''") + "'"
+	default: // mysql (also fallback)
+		var b strings.Builder
+		b.WriteByte('\'')
+		for _, r := range s {
+			switch r {
+			case '\'':
+				b.WriteString(`\'`)
+			case '\\':
+				b.WriteString(`\\`)
+			case 0:
+				b.WriteString(`\0`)
+			case '\n':
+				b.WriteString(`\n`)
+			case '\r':
+				b.WriteString(`\r`)
+			case '\t':
+				b.WriteString(`\t`)
+			case 0x1a:
+				b.WriteString(`\Z`)
+			default:
+				b.WriteRune(r)
+			}
+		}
+		b.WriteByte('\'')
+		return b.String()
+	}
 }
 
 // SQLIdentifierEscape mysql identifier escape

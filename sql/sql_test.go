@@ -8,6 +8,7 @@ import (
 	"github.com/martianzhang/tableconvert/common"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"vitess.io/vitess/go/vt/sqlparser"
 )
 
@@ -362,6 +363,41 @@ func TestMarshalWithDifferentDialects(t *testing.T) {
 	}
 }
 
+func TestMarshalDialectValueEscaping(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"name", "path"},
+		Rows: [][]string{
+			{"O'Brien", `C:\path`},
+		},
+	}
+
+	tests := []struct {
+		dialect  string
+		expected string
+	}{
+		{"mysql", `('O\'Brien', 'C:\\path')`},
+		{"postgres", `('O''Brien', 'C:\path')`},
+		{"postgresql", `('O''Brien', 'C:\path')`},
+		{"oracle", `('O''Brien', 'C:\path')`},
+		{"mssql", `('O''Brien', 'C:\path')`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.dialect, func(t *testing.T) {
+			var buf bytes.Buffer
+			cfg := &common.Config{
+				Writer: &buf,
+				Extension: map[string]string{
+					"table":   "users",
+					"dialect": tt.dialect,
+				},
+			}
+			require.NoError(t, Marshal(cfg, table))
+			assert.Contains(t, buf.String(), tt.expected)
+		})
+	}
+}
+
 // TestMarshalWithOneInsert tests all-in-one INSERT mode
 func TestMarshalWithOneInsert(t *testing.T) {
 	table := &common.Table{
@@ -454,6 +490,7 @@ func TestEscapeIdentifierDialects(t *testing.T) {
 		{"mysql", "mysql", "col-name", "`col-name`"},
 		{"oracle", "oracle", "col-name", `"col-name"`},
 		{"postgres", "postgres", "col-name", `"col-name"`},
+		{"postgresql", "postgresql", "col-name", `"col-name"`},
 		{"mssql", "mssql", "col-name", `[col-name]`},
 		{"none", "none", "col-name", "col-name"},
 		{"default", "", "col-name", "`col-name`"}, // default to mysql

@@ -167,7 +167,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	for j, row := range table.Rows {
 		values := make([]string, columnCount)
 		for i, cell := range row {
-			values[i] = common.SQLValueEscape(cell)
+			values[i] = common.SQLValueEscapeDialect(cell, dialect)
 		}
 		if allInOne {
 			if j == 0 {
@@ -204,7 +204,7 @@ func escapeIdentifier(s string, dialect string) string {
 	switch dialect {
 	case "oracle":
 		return common.OracleIdentifierEscape(s)
-	case "postgres":
+	case "postgres", "postgresql":
 		return common.PostgreSQLIdentifierEscape(s)
 	case "mssql":
 		return common.MssqlIdentifierEscape(s)

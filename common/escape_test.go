@@ -29,6 +29,31 @@ func TestSQLValueEscape(t *testing.T) {
 	}
 }
 
+func TestSQLValueEscapeDialect(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		dialect  string
+		expected string
+	}{
+		{"mysql quote", "O'Brien", "mysql", `'O\'Brien'`},
+		{"mysql backslash", `C:\path`, "mysql", `'C:\\path'`},
+		{"mysql control char", "a\x01b", "mysql", "'a\x01b'"},
+		{"postgres quote", "O'Brien", "postgres", "'O''Brien'"},
+		{"postgresql alias", "O'Brien", "postgresql", "'O''Brien'"},
+		{"postgres backslash", `C:\path`, "postgres", `'C:\path'`},
+		{"oracle quote", "O'Brien", "oracle", "'O''Brien'"},
+		{"mssql quote", "O'Brien", "mssql", "'O''Brien'"},
+		{"none quote", "O'Brien", "none", "'O''Brien'"},
+		{"null sentinel", "null", "postgres", "NULL"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, SQLValueEscapeDialect(tt.input, tt.dialect))
+		})
+	}
+}
+
 func TestCSVForceQuote(t *testing.T) {
 	tests := []struct {
 		name     string
