@@ -12,6 +12,7 @@ import (
 
 func Unmarshal(cfg *common.Config, table *common.Table) error {
 	scanner := bufio.NewScanner(common.StripUTF8BOM(cfg.Reader))
+	scanner.Buffer(make([]byte, 64*1024), 16*1024*1024)
 	var records []map[string]interface{}
 
 	lineNumber := 0
@@ -40,11 +41,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	}
 
 	if len(records) == 0 {
-		return &common.ParseError{
-			LineNumber: 0,
-			Message:    "empty JSONL file",
-			Line:       "",
-		}
+		return nil // An empty JSONL file is an empty table.
 	}
 
 	// Collect all unique keys from all records to form headers

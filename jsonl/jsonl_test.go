@@ -3,11 +3,13 @@ package jsonl
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/martianzhang/tableconvert/common"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMarshal(t *testing.T) {
@@ -74,6 +76,24 @@ func TestUnmarshalPreservesNumberPrecision(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"big", "id"}, table.Headers)
 	assert.Equal(t, [][]string{{"9007199254740993", "1234567"}}, table.Rows)
+}
+
+func TestEmptyJSONLIsEmptyTable(t *testing.T) {
+	table := &common.Table{}
+	err := Unmarshal(&common.Config{Reader: bytes.NewReader(nil)}, table)
+	require.NoError(t, err)
+	assert.Empty(t, table.Headers)
+	assert.Empty(t, table.Rows)
+}
+
+func TestUnmarshalLongLine(t *testing.T) {
+	long := strings.Repeat("x", 70000)
+	input := `{"a":"` + long + `"}` + "\n"
+	table := &common.Table{}
+	err := Unmarshal(&common.Config{Reader: strings.NewReader(input)}, table)
+	require.NoError(t, err)
+	require.Len(t, table.Rows, 1)
+	assert.Equal(t, long, table.Rows[0][0])
 }
 
 // TestUnmarshalDeterministicHeaders tests that headers are in sorted order
