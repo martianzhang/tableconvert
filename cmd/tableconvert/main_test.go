@@ -1429,6 +1429,27 @@ func TestDryRunBasic(t *testing.T) {
 	assert.Contains(t, outputStr, "Conversion would succeed")
 }
 
+func TestDryRunRejectsMissingOutputDirectory(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "dryrun-missing-dir-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	inputFile := filepath.Join(tmpDir, "input.csv")
+	require.NoError(t, os.WriteFile(inputFile, []byte("a\n1\n"), 0644))
+
+	cfg, err := common.ParseConfig([]string{
+		"--from=csv", "--to=json",
+		"--file", inputFile,
+		"--result", filepath.Join(tmpDir, "missing", "out.json"),
+		"--dry-run",
+	})
+	require.NoError(t, err)
+
+	err = performConversion(&cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "output directory")
+}
+
 // TestDryRunVerbose tests dry-run with verbose flag
 func TestDryRunVerbose(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "dryrun-verbose-*")

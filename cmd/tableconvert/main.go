@@ -274,6 +274,20 @@ func performConversion(cfg *common.Config) (err error) {
 
 // performDryRun performs a dry-run conversion, showing preview without writing
 func performDryRun(cfg *common.Config) error {
+	if cfg.Result != "" {
+		dir := filepath.Dir(cfg.Result)
+		info, err := os.Stat(dir)
+		if err != nil {
+			return fmt.Errorf("output directory %s is not accessible: %w", dir, err)
+		}
+		if !info.IsDir() {
+			return fmt.Errorf("output directory %s is not a directory", dir)
+		}
+		if target, err := os.Stat(cfg.Result); err == nil && target.IsDir() {
+			return fmt.Errorf("output path %s is a directory", cfg.Result)
+		}
+	}
+
 	// Parse input
 	var table common.Table
 
