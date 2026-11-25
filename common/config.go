@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -370,11 +371,22 @@ func ParseConfig(args []string) (Config, error) {
 			// In dry-run mode, use a discard writer since we won't write output
 			cfg.Writer = io.Discard
 		} else {
-			file, err := os.Create(cfg.Result)
+			// Write to a temporary file in the destination directory first. The
+			// final file is only replaced after a successful conversion, so a
+			// failure (or input == output) cannot destroy existing data.
+			dir := filepath.Dir(cfg.Result)
+			base := filepath.Base(cfg.Result)
+			tmp, err := os.CreateTemp(dir, "."+base+".tmp-*")
 			if err != nil {
 				return cfg, err
 			}
-			cfg.Writer = file
+			if err := tmp.Chmod(0644); err != nil {
+				tmp.Close()
+				os.Remove(tmp.Name())
+				return cfg, err
+			}
+			cfg.Writer = tmp
+			cfg.TempResult = tmp.Name()
 		}
 	} else {
 		cfg.Writer = os.Stdout
@@ -487,19 +499,53 @@ func parseBool(value string, defaultValue bool) bool {
 
 // Config holds configuration, reader/writer, and extension parameters
 type Config struct {
-	From      string
-	To        string
-	File      string
-	Result    string
-	Verbose   bool
-	MCPMode   bool
-	Batch     string // Batch mode pattern (e.g., "*.csv")
-	Recursive bool   // Recursive directory traversal
-	OutputDir string // Output directory for batch mode
-	DryRun    bool   // Dry run mode - preview without writing
-	Reader    io.Reader
-	Writer    io.Writer
-	Extension map[string]string
+	From       string
+	To         string
+	File       string
+	Result     string
+	Verbose    bool
+	MCPMode    bool
+	Batch      string // Batch mode pattern (e.g., "*.csv")
+	Recursive  bool   // Recursive directory traversal
+	OutputDir  string // Output directory for batch mode
+	DryRun     bool   // Dry run mode - preview without writing
+	Reader     io.Reader
+	Writer     io.Writer
+	Extension  map[string]string
+	TempResult string // Temporary output path used until CommitOutput
+}
+
+// CommitOutput closes the temporary output file and atomically moves it to the
+// final Result path. It is a no-op when no temporary output is active.
+func (c *Config) CommitOutput() error {
+	if c.TempResult == "" {
+		return nil
+	}
+	if f, ok := c.Writer.(*os.File); ok {
+		if err := f.Close(); err != nil {
+			c.AbortOutput()
+			return err
+		}
+	}
+	if err := os.Rename(c.TempResult, c.Result); err != nil {
+		c.AbortOutput()
+		return err
+	}
+	c.TempResult = ""
+	return nil
+}
+
+// AbortOutput closes and removes the temporary output file, leaving any
+// existing destination file untouched.
+func (c *Config) AbortOutput() {
+	if c.TempResult == "" {
+		return
+	}
+	if f, ok := c.Writer.(*os.File); ok {
+		_ = f.Close()
+	}
+	_ = os.Remove(c.TempResult)
+	c.TempResult = ""
 }
 
 // GetExtensionBool gets a boolean value from Extension with default
@@ -711,7 +757,37 @@ func (c *Config) GetBatchFiles() ([]BatchFile, error) {
 		})
 	}
 
+	// Reject output collisions before touching any file. Two inputs mapping to
+	// the same output would silently overwrite one result, and an output that
+	// matches any input (including its own) would overwrite source data.
+	inputs := make(map[string]string, len(files))
+	for _, file := range files {
+		inputs[canonicalPath(file.InputPath)] = file.InputPath
+	}
+	outputs := make(map[string]string, len(files))
+	for _, file := range files {
+		outKey := canonicalPath(file.OutputPath)
+		if prev, ok := outputs[outKey]; ok {
+			return nil, fmt.Errorf("multiple inputs map to the same output %s: %s and %s", file.OutputPath, prev, file.InputPath)
+		}
+		outputs[outKey] = file.InputPath
+		if inputPath, ok := inputs[outKey]; ok {
+			return nil, fmt.Errorf("output %s would overwrite input %s", file.OutputPath, inputPath)
+		}
+	}
+
 	return files, nil
+}
+
+func canonicalPath(path string) string {
+	if abs, err := filepath.Abs(path); err == nil {
+		path = abs
+	}
+	path = filepath.Clean(path)
+	if runtime.GOOS == "windows" {
+		path = strings.ToLower(path)
+	}
+	return path
 }
 
 // walkPattern recursively finds files matching the pattern

@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/martianzhang/tableconvert/ascii"
 	"github.com/martianzhang/tableconvert/common"
@@ -134,9 +135,20 @@ func runBatchMode(cfg *common.Config) {
 			continue
 		}
 
-		// Create output file
-		outputFile, err := os.Create(file.OutputPath)
+		// Create a temporary output file. The final path is only replaced after
+		// a successful conversion.
+		dir := filepath.Dir(file.OutputPath)
+		base := filepath.Base(file.OutputPath)
+		outputFile, err := os.CreateTemp(dir, "."+base+".tmp-*")
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "  ✗ Failed to create %s: %v\n", file.OutputPath, err)
+			inputFile.Close()
+			failCount++
+			continue
+		}
+		if err := outputFile.Chmod(0644); err != nil {
+			outputFile.Close()
+			os.Remove(outputFile.Name())
 			fmt.Fprintf(os.Stderr, "  ✗ Failed to create %s: %v\n", file.OutputPath, err)
 			inputFile.Close()
 			failCount++
@@ -145,23 +157,27 @@ func runBatchMode(cfg *common.Config) {
 
 		// Create a temporary config for this file
 		fileCfg := &common.Config{
-			From:      file.FromFormat,
-			To:        file.ToFormat,
-			Reader:    inputFile,
-			Writer:    outputFile,
-			Verbose:   cfg.Verbose,
-			Extension: cfg.Extension,
+			From:       file.FromFormat,
+			To:         file.ToFormat,
+			File:       file.InputPath,
+			Result:     file.OutputPath,
+			Reader:     inputFile,
+			Writer:     outputFile,
+			Verbose:    cfg.Verbose,
+			Extension:  cfg.Extension,
+			TempResult: outputFile.Name(),
 		}
 
 		// Perform conversion
 		err = common.PerformConversionWithRegistry(formatRegistry, fileCfg)
 		inputFile.Close()
-		outputFile.Close()
 
 		if err != nil {
+			fileCfg.AbortOutput()
 			fmt.Fprintf(os.Stderr, "  ✗ Conversion failed: %v\n", err)
-			// Clean up failed output file
-			os.Remove(file.OutputPath)
+			failCount++
+		} else if err := fileCfg.CommitOutput(); err != nil {
+			fmt.Fprintf(os.Stderr, "  ✗ Failed to write %s: %v\n", file.OutputPath, err)
 			failCount++
 		} else {
 			if cfg.Verbose {
@@ -230,7 +246,7 @@ func registerFormats() {
 }
 
 // performConversion performs the core table conversion logic
-func performConversion(cfg *common.Config) error {
+func performConversion(cfg *common.Config) (err error) {
 	// Print verbose output
 	if cfg.Verbose {
 		fmt.Fprintf(os.Stderr, "# From: %s\n", cfg.From)
@@ -243,8 +259,17 @@ func performConversion(cfg *common.Config) error {
 		return performDryRun(cfg)
 	}
 
-	// Use the registry-based conversion
-	return common.PerformConversionWithRegistry(formatRegistry, cfg)
+	// Remove the temporary output if conversion fails or panics.
+	defer func() {
+		if err != nil {
+			cfg.AbortOutput()
+		}
+	}()
+
+	if err = common.PerformConversionWithRegistry(formatRegistry, cfg); err != nil {
+		return err
+	}
+	return cfg.CommitOutput()
 }
 
 // performDryRun performs a dry-run conversion, showing preview without writing

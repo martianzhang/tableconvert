@@ -2,10 +2,12 @@ package common
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseConfigMissingRequiredParameters(t *testing.T) {
@@ -227,11 +229,17 @@ func TestParseConfigWithResultFileOutput(t *testing.T) {
 	fileWriter, ok := cfg.Writer.(*os.File)
 	assert.True(t, ok, "Writer should be a *os.File")
 	assert.NotNil(t, fileWriter)
+	assert.NotEmpty(t, cfg.TempResult, "temporary output should be active")
 
-	// Clean up: close the file
-	if fileWriter != nil {
-		fileWriter.Close()
-	}
+	// The final destination must not be created before CommitOutput.
+	_, err = os.Stat("output.txt")
+	assert.True(t, os.IsNotExist(err))
+
+	// Clean up: close and remove the temporary file.
+	tempPath := cfg.TempResult
+	cfg.AbortOutput()
+	_, err = os.Stat(tempPath)
+	assert.True(t, os.IsNotExist(err))
 }
 
 func TestParseConfigWithNonExistentFile(t *testing.T) {
@@ -690,6 +698,65 @@ func TestParseConfigBatchMode(t *testing.T) {
 	cfg, err = ParseConfig(args)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported output format")
+}
+
+func TestGetBatchFilesRejectsUnsafeOutputPaths(t *testing.T) {
+	t.Run("output would overwrite input", func(t *testing.T) {
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "a.csv"), []byte("a\n1\n"), 0644))
+
+		cfg := &Config{Batch: filepath.Join(dir, "*.csv"), To: "csv"}
+		_, err := cfg.GetBatchFiles()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "would overwrite input")
+	})
+
+	t.Run("multiple inputs map to same output", func(t *testing.T) {
+		dir := t.TempDir()
+		out := t.TempDir()
+		require.NoError(t, os.MkdirAll(filepath.Join(dir, "a"), 0755))
+		require.NoError(t, os.MkdirAll(filepath.Join(dir, "b"), 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "a", "data.csv"), []byte("a\n1\n"), 0644))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "b", "data.csv"), []byte("a\n2\n"), 0644))
+
+		cfg := &Config{
+			Batch:     filepath.Join(dir, "**", "*.csv"),
+			To:        "json",
+			Recursive: true,
+			OutputDir: out,
+		}
+		_, err := cfg.GetBatchFiles()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "same output")
+	})
+}
+
+func TestConfigCommitAndAbortOutput(t *testing.T) {
+	dir := t.TempDir()
+	final := filepath.Join(dir, "out.json")
+
+	cfg, err := ParseConfig([]string{"--from", "csv", "--to", "json", "--result", final})
+	require.NoError(t, err)
+	_, err = os.Stat(final)
+	assert.True(t, os.IsNotExist(err), "destination must not exist before commit")
+	_, err = cfg.Writer.Write([]byte("data"))
+	require.NoError(t, err)
+	require.NoError(t, cfg.CommitOutput())
+
+	got, err := os.ReadFile(final)
+	require.NoError(t, err)
+	assert.Equal(t, "data", string(got))
+
+	// A second run that aborts must leave the committed file untouched.
+	cfg, err = ParseConfig([]string{"--from", "csv", "--to", "json", "--result", final})
+	require.NoError(t, err)
+	_, err = cfg.Writer.Write([]byte("partial"))
+	require.NoError(t, err)
+	cfg.AbortOutput()
+
+	got, err = os.ReadFile(final)
+	require.NoError(t, err)
+	assert.Equal(t, "data", string(got))
 }
 
 func TestGetBatchFiles(t *testing.T) {

@@ -443,6 +443,7 @@ func TestPerformConversionWithRegistry(t *testing.T) {
 	// Use the main registry
 	err = common.PerformConversionWithRegistry(formatRegistry, &cfg)
 	assert.NoError(t, err)
+	assert.NoError(t, cfg.CommitOutput())
 
 	// Verify file was created
 	_, err = os.Stat(resultFile)
