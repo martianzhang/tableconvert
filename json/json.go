@@ -98,6 +98,48 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 			table.Rows = append(table.Rows, row)
 		}
 
+	case "keyed":
+		var input map[string]map[string]interface{}
+		if err := json.Unmarshal(data, &input); err != nil {
+			return err
+		}
+		if len(input) == 0 {
+			return nil
+		}
+
+		// Object values provide the column names; the object key is the first
+		// column. We use "key" as the synthetic first-column header because the
+		// keyed shape does not carry the original header name.
+		headerSet := make(map[string]struct{})
+		for _, obj := range input {
+			for k := range obj {
+				headerSet[k] = struct{}{}
+			}
+		}
+		headers := []string{"key"}
+		for k := range headerSet {
+			headers = append(headers, k)
+		}
+		sort.Strings(headers[1:])
+		table.Headers = headers
+
+		keys := make([]string, 0, len(input))
+		for k := range input {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+
+		for _, key := range keys {
+			row := make([]string, len(headers))
+			row[0] = key
+			for i, header := range headers[1:] {
+				if val, ok := input[key][header]; ok && val != nil {
+					row[i+1] = fmt.Sprint(val)
+				}
+			}
+			table.Rows = append(table.Rows, row)
+		}
+
 	default: // Array of Object
 		var input []map[string]interface{}
 		if err := json.Unmarshal(data, &input); err != nil {
@@ -199,6 +241,36 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		var output []map[string]interface{}
 		for _, header := range table.Headers {
 			output = append(output, map[string]interface{}{header: columns[header]})
+		}
+		if minify {
+			data, err = json.Marshal(output)
+		} else {
+			data, err = json.MarshalIndent(output, "", "  ")
+		}
+	// Keyed by first column
+	case "keyed":
+		if len(table.Headers) == 0 {
+			data, err = json.Marshal(map[string]interface{}{})
+			break
+		}
+		output := make(map[string]map[string]interface{}, len(table.Rows))
+		for _, row := range table.Rows {
+			if len(row) != len(table.Headers) {
+				return fmt.Errorf("row length %d does not match header length %d", len(row), len(table.Headers))
+			}
+			key := row[0]
+			if _, exists := output[key]; exists {
+				return fmt.Errorf("duplicate key %q in keyed JSON output", key)
+			}
+			record := make(map[string]interface{}, len(table.Headers)-1)
+			for i := 1; i < len(table.Headers); i++ {
+				if parsing {
+					record[table.Headers[i]] = common.InferType(row[i])
+				} else {
+					record[table.Headers[i]] = row[i]
+				}
+			}
+			output[key] = record
 		}
 		if minify {
 			data, err = json.Marshal(output)

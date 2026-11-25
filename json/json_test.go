@@ -1,6 +1,7 @@
 package json
 
 import (
+	"bytes"
 	"encoding/json"
 	"sort"
 	"strings"
@@ -265,6 +266,57 @@ func TestColumnFormatRoundTrip(t *testing.T) {
 		}
 	}
 	assert.True(t, hasCol1 && hasCol2, "Should have both col1 and col2")
+}
+
+func TestKeyedFormat(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"id", "name", "age"},
+		Rows: [][]string{
+			{"1", "Alice", "30"},
+			{"2", "Bob", "25"},
+		},
+	}
+
+	var buf bytes.Buffer
+	cfg := &common.Config{
+		Writer: &buf,
+		Extension: map[string]string{
+			"format": "keyed",
+			"minify": "true",
+		},
+	}
+	err := Marshal(cfg, table)
+	assert.NoError(t, err)
+	assert.JSONEq(t, `{"1":{"name":"Alice","age":"30"},"2":{"name":"Bob","age":"25"}}`, buf.String())
+
+	got := &common.Table{}
+	err = Unmarshal(&common.Config{
+		Reader:    bytes.NewReader(buf.Bytes()),
+		Extension: map[string]string{"format": "keyed"},
+	}, got)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"key", "age", "name"}, got.Headers)
+	assert.Equal(t, [][]string{
+		{"1", "30", "Alice"},
+		{"2", "25", "Bob"},
+	}, got.Rows)
+}
+
+func TestKeyedFormatDuplicateKey(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"id", "name"},
+		Rows: [][]string{
+			{"1", "Alice"},
+			{"1", "Bob"},
+		},
+	}
+	var buf bytes.Buffer
+	err := Marshal(&common.Config{
+		Writer:    &buf,
+		Extension: map[string]string{"format": "keyed"},
+	}, table)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "duplicate key")
 }
 
 // Test2dFormatRoundTrip tests 2d format round-trip
