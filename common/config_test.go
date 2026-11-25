@@ -673,6 +673,24 @@ func TestAliasConflictUsesLastArgument(t *testing.T) {
 	assert.Equal(t, second, cfg.File)
 }
 
+func TestAutoDetectWikiExtensions(t *testing.T) {
+	dir := t.TempDir()
+	for ext, want := range map[string]string{
+		".twiki":     "twiki",
+		".tracwiki":  "twiki",
+		".mediawiki": "mediawiki",
+		".wiki":      "mediawiki",
+	} {
+		t.Run(ext, func(t *testing.T) {
+			file := filepath.Join(dir, "data"+ext)
+			require.NoError(t, os.WriteFile(file, []byte("x"), 0644))
+			cfg, err := ParseConfig([]string{"--to=csv", "--file", file})
+			require.NoError(t, err)
+			assert.Equal(t, want, cfg.From)
+		})
+	}
+}
+
 func TestParseConfigBatchMode(t *testing.T) {
 	// Test basic batch mode
 	args := []string{"--batch=*.csv", "--to=json"}

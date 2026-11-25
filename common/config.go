@@ -450,8 +450,10 @@ func detectFormatFromExtension(filename string) string {
 		return "sql"
 	case "tex", "latex":
 		return "latex"
-	case "wiki":
+	case "wiki", "mediawiki":
 		return "mediawiki"
+	case "twiki", "tracwiki":
+		return "twiki"
 	case "tmpl", "template":
 		return "tmpl"
 	case "txt":
