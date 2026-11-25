@@ -460,7 +460,7 @@ func TestMarshalExtensionParams(t *testing.T) {
 		{
 			name:     "align=center",
 			options:  map[string]string{"align": "c"},
-			contains: []string{"|:--:|"},
+			contains: []string{"|:-:|"},
 		},
 		{
 			name:     "align=multiple",
@@ -740,7 +740,7 @@ func TestMarshalCenterAlignPretty(t *testing.T) {
 
 	output := buf.String()
 	// Center aligned should have colons on both sides
-	assert.Contains(t, output, "|:--:|")
+	assert.Contains(t, output, "|:-:|")
 }
 
 // Test Unmarshal with escaped backslashes

@@ -391,8 +391,12 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		var alignMarker string
 		switch alignChar {
 		case "c":
+			dashWidth := columnWidths[i]
+			if dashWidth < 1 {
+				dashWidth = 1
+			}
 			if pretty {
-				alignMarker = fmt.Sprintf(":%s-:", strings.Repeat("-", columnWidths[i]))
+				alignMarker = fmt.Sprintf(":%s:", strings.Repeat("-", dashWidth))
 			} else {
 				alignMarker = ":---:"
 			}
