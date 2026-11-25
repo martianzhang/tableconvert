@@ -22,6 +22,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	lineNumber := 0
 	foundHeader := false
 	headerCount := 0
+	firstRowHeader := cfg.GetExtensionBool("first-row-header", false)
 
 	for scanner.Scan() {
 		lineNumber++
@@ -45,7 +46,13 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 		// --- State Machine: Header -> Data Rows ---
 		if !foundHeader {
 			// --- Expecting Header ---
-			cells, err := parseTWikiHeaderLine(trimmedLine, lineNumber)
+			var cells []string
+			var err error
+			if firstRowHeader {
+				cells, err = parseLine(trimmedLine, lineNumber)
+			} else {
+				cells, err = parseTWikiHeaderLine(trimmedLine, lineNumber)
+			}
 			if err != nil {
 				return err
 			}

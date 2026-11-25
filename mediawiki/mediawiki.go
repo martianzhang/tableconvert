@@ -28,10 +28,18 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	inTable := false
 	headerCount := 0
 	headerDone := false
+	firstRowHeader := cfg.GetExtensionBool("first-row-header", false)
 	lineNumber := 0
 
 	flushRow := func(lineNo int) error {
 		if len(currentRow) == 0 {
+			return nil
+		}
+		if headerCount == 0 && firstRowHeader {
+			table.Headers = append([]string(nil), currentRow...)
+			headerCount = len(currentRow)
+			headerDone = true
+			currentRow = nil
 			return nil
 		}
 		if len(currentRow) != headerCount {
@@ -126,6 +134,8 @@ func parseMediaWikiCells(line string, header bool) []string {
 	} else {
 		content = strings.TrimPrefix(content, "|")
 	}
+	content = strings.TrimSpace(content)
+	content = strings.TrimSuffix(content, "|")
 	separator := "||"
 	if header {
 		separator = "!!"
@@ -168,16 +178,27 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	}
 
 	writer := cfg.Writer
+	minify := cfg.GetExtensionBool("minify", false)
+	sortable := cfg.GetExtensionBool("sort", false)
 
+	class := "wikitable"
+	if sortable {
+		class += " sortable"
+	}
 	// Write table start with default wikitable class
-	writer.Write([]byte("{| class=\"wikitable\"\n"))
+	writer.Write([]byte("{| class=\"" + class + "\"\n"))
 
 	// Write headers (MediaWiki uses ! for headers)
 	if len(table.Headers) > 0 {
 		headerLine := "! "
+		cellSeparator := " !! "
+		if minify {
+			headerLine = "!"
+			cellSeparator = "!!"
+		}
 		for i, header := range table.Headers {
 			if i > 0 {
-				headerLine += " !! "
+				headerLine += cellSeparator
 			}
 			// Escape pipes in header content using {{!}} template
 			escapedHeader := strings.ReplaceAll(header, "|", "{{!}}")
@@ -201,9 +222,14 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 
 		// Write row data (MediaWiki uses | for data cells)
 		rowLine := "| "
+		cellSeparator := " || "
+		if minify {
+			rowLine = "|"
+			cellSeparator = "||"
+		}
 		for j, cell := range row {
 			if j > 0 {
-				rowLine += " || "
+				rowLine += cellSeparator
 			}
 			// Escape pipes in cell content using {{!}} template
 			escapedCell := strings.ReplaceAll(cell, "|", "{{!}}")

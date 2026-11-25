@@ -55,6 +55,18 @@ func TestUnmarshal(t *testing.T) {
 	}, table.Rows)
 }
 
+func TestUnmarshalFirstRowHeader(t *testing.T) {
+	input := "|a|b|\n|1|2|"
+	table := &common.Table{}
+	err := Unmarshal(&common.Config{
+		Reader:    bytes.NewBufferString(input),
+		Extension: map[string]string{"first-row-header": "true"},
+	}, table)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"a", "b"}, table.Headers)
+	assert.Equal(t, [][]string{{"1", "2"}}, table.Rows)
+}
+
 func TestMarshalWithPipeCharacters(t *testing.T) {
 	// Test that pipe characters in content are properly escaped
 	var buf bytes.Buffer

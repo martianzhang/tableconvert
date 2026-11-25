@@ -8,7 +8,44 @@ import (
 	"github.com/martianzhang/tableconvert/common"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestMarshalSortAndMinify(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"a", "b"},
+		Rows:    [][]string{{"1", "2"}},
+	}
+	var buf bytes.Buffer
+	cfg := &common.Config{
+		Writer: &buf,
+		Extension: map[string]string{
+			"sort":   "true",
+			"minify": "true",
+		},
+	}
+	require.NoError(t, Marshal(cfg, table))
+	out := buf.String()
+	assert.Contains(t, out, `class="wikitable sortable"`)
+	assert.Contains(t, out, "!a!!b\n")
+	assert.Contains(t, out, "|1||2\n")
+}
+
+func TestUnmarshalFirstRowHeader(t *testing.T) {
+	input := `{| class="wikitable"
+| a | b |
+|-
+| 1 | 2 |
+|}`
+	var table common.Table
+	err := Unmarshal(&common.Config{
+		Reader:    strings.NewReader(input),
+		Extension: map[string]string{"first-row-header": "true"},
+	}, &table)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"a", "b"}, table.Headers)
+	assert.Equal(t, [][]string{{"1", "2"}}, table.Rows)
+}
 
 func TestUnmarshal(t *testing.T) {
 	// Create a simple table markup

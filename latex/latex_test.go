@@ -8,7 +8,68 @@ import (
 	"github.com/martianzhang/tableconvert/common"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestMarshalOptions(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"Name", "Age"},
+		Rows:    [][]string{{"Alice", "30"}},
+	}
+
+	t.Run("text align and bold", func(t *testing.T) {
+		var buf bytes.Buffer
+		cfg := &common.Config{
+			Writer: &buf,
+			Extension: map[string]string{
+				"text-align":        "c",
+				"bold-first-row":    "true",
+				"bold-first-column": "true",
+			},
+		}
+		require.NoError(t, Marshal(cfg, table))
+		out := buf.String()
+		assert.Contains(t, out, `\begin{tabular}{cc}`)
+		assert.Contains(t, out, `\textbf{Name}`)
+		assert.Contains(t, out, `\textbf{Alice}`)
+	})
+
+	t.Run("caption label and float", func(t *testing.T) {
+		var buf bytes.Buffer
+		cfg := &common.Config{
+			Writer: &buf,
+			Extension: map[string]string{
+				"caption":     "Results",
+				"label":       "tab:results",
+				"table-align": "raggedleft",
+				"location":    "below",
+			},
+		}
+		require.NoError(t, Marshal(cfg, table))
+		out := buf.String()
+		assert.Contains(t, out, `\begin{table}`)
+		assert.Contains(t, out, `\raggedleft`)
+		assert.Contains(t, out, `\caption{Results}`)
+		assert.Contains(t, out, `\label{tab:results}`)
+		assert.True(t, strings.Index(out, `\caption{Results}`) > strings.Index(out, `\end{tabular}`))
+	})
+
+	t.Run("mwe and no borders", func(t *testing.T) {
+		var buf bytes.Buffer
+		cfg := &common.Config{
+			Writer: &buf,
+			Extension: map[string]string{
+				"mwe":     "true",
+				"borders": "0000,0000",
+			},
+		}
+		require.NoError(t, Marshal(cfg, table))
+		out := buf.String()
+		assert.Contains(t, out, `\documentclass{article}`)
+		assert.Contains(t, out, `\begin{document}`)
+		assert.NotContains(t, out, `\hline`)
+	})
+}
 
 func TestUnmarshal(t *testing.T) {
 	input := `\begin{tabular}{|l|c|r|}

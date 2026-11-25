@@ -148,52 +148,132 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		return fmt.Errorf("Marshal: config or writer cannot be nil")
 	}
 
-	writer := cfg.Writer
+	var out strings.Builder
 	escape := cfg.GetExtensionBool("escape", true)
+	boldFirstColumn := cfg.GetExtensionBool("bold-first-column", false)
+	boldFirstRow := cfg.GetExtensionBool("bold-first-row", false)
+	mwe := cfg.GetExtensionBool("mwe", false)
+	ht := cfg.GetExtensionBool("ht", false)
+	caption := cfg.GetExtensionString("caption", "")
+	label := cfg.GetExtensionString("label", "")
+	location := strings.ToLower(cfg.GetExtensionString("location", "above"))
+	textAlign := strings.ToLower(cfg.GetExtensionString("text-align", "l"))
+	tableAlign := strings.ToLower(cfg.GetExtensionString("table-align", "centering"))
+	borders := cfg.GetExtensionString("borders", "1111,1111")
 
-	// Begin LaTeX tabular environment
-	// Default to left-aligned columns (l) for each column
-	colSpec := strings.Repeat("l", len(table.Headers))
-	if len(table.Headers) == 0 && len(table.Rows) > 0 {
-		colSpec = strings.Repeat("l", len(table.Rows[0]))
+	if textAlign != "l" && textAlign != "c" && textAlign != "r" {
+		textAlign = "l"
 	}
-	writer.Write([]byte("\\begin{tabular}{" + colSpec + "}\n"))
-	writer.Write([]byte("\\hline\n"))
+	if tableAlign != "centering" && tableAlign != "raggedleft" && tableAlign != "raggedright" {
+		tableAlign = "centering"
+	}
 
-	// Write headers if they exist
+	// Border bits are treated as top, header separator, row separator, bottom.
+	// Unknown patterns fall back to the default.
+	bitString := strings.ReplaceAll(strings.ReplaceAll(borders, ",", ""), " ", "")
+	showTop, showHeader, showRows, showBottom := true, true, true, true
+	if len(bitString) >= 4 && strings.Trim(bitString, "01") == "" {
+		showTop = bitString[0] == '1'
+		showHeader = bitString[1] == '1'
+		showRows = bitString[2] == '1'
+		showBottom = bitString[3] == '1'
+	}
+
+	columns := len(table.Headers)
+	if columns == 0 && len(table.Rows) > 0 {
+		columns = len(table.Rows[0])
+	}
+	colSpec := strings.Repeat(textAlign, columns)
+
+	formatCell := func(cell string, bold bool) string {
+		if escape {
+			cell = common.LaTeXEscape(cell)
+		}
+		if bold {
+			cell = `\textbf{` + cell + `}`
+		}
+		return cell
+	}
+
+	needsFloat := caption != "" || label != "" || ht || mwe
+	if _, ok := cfg.Extension["table-align"]; ok {
+		needsFloat = true
+	}
+
+	if mwe {
+		out.WriteString("\\documentclass{article}\n\\begin{document}\n")
+	}
+	if needsFloat {
+		if ht {
+			out.WriteString("\\begin{table}[ht]\n")
+		} else {
+			out.WriteString("\\begin{table}\n")
+		}
+		out.WriteString("\\" + tableAlign + "\n")
+		if caption != "" && location != "below" {
+			out.WriteString("\\caption{" + formatCaption(caption, escape) + "}\n")
+		}
+	}
+	out.WriteString("\\begin{tabular}{" + colSpec + "}\n")
+	if showTop {
+		out.WriteString("\\hline\n")
+	}
+
 	if len(table.Headers) > 0 {
 		headerLine := ""
 		for i, header := range table.Headers {
 			if i > 0 {
 				headerLine += " & "
 			}
-			if escape {
-				header = common.LaTeXEscape(header)
-			}
-			headerLine += header
+			bold := boldFirstRow || (boldFirstColumn && i == 0)
+			headerLine += formatCell(header, bold)
 		}
-		headerLine += " \\\\\n\\hline\n"
-		writer.Write([]byte(headerLine))
+		headerLine += " \\\\\n"
+		out.WriteString(headerLine)
+		if showHeader {
+			out.WriteString("\\hline\n")
+		}
 	}
 
-	// Write data rows
 	for _, row := range table.Rows {
 		rowLine := ""
 		for i, cell := range row {
 			if i > 0 {
 				rowLine += " & "
 			}
-			if escape {
-				cell = common.LaTeXEscape(cell)
-			}
-			rowLine += cell
+			rowLine += formatCell(cell, boldFirstColumn && i == 0)
 		}
-		rowLine += " \\\\\n\\hline\n"
-		writer.Write([]byte(rowLine))
+		rowLine += " \\\\\n"
+		out.WriteString(rowLine)
+		if showRows {
+			out.WriteString("\\hline\n")
+		}
 	}
 
-	// End LaTeX tabular environment
-	writer.Write([]byte("\\end{tabular}\n"))
+	if showBottom && len(table.Rows) > 0 && !showRows {
+		out.WriteString("\\hline\n")
+	}
+	out.WriteString("\\end{tabular}\n")
+	if needsFloat {
+		if caption != "" && location == "below" {
+			out.WriteString("\\caption{" + formatCaption(caption, escape) + "}\n")
+		}
+		if label != "" {
+			out.WriteString("\\label{" + label + "}\n")
+		}
+		out.WriteString("\\end{table}\n")
+	}
+	if mwe {
+		out.WriteString("\\end{document}\n")
+	}
 
-	return nil
+	_, err := cfg.Writer.Write([]byte(out.String()))
+	return err
+}
+
+func formatCaption(caption string, escape bool) string {
+	if escape {
+		return common.LaTeXEscape(caption)
+	}
+	return caption
 }
