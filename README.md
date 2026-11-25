@@ -32,7 +32,7 @@ wget https://github.com/martianzhang/tableconvert/releases/latest/download/table
 chmod +x tableconvert-linux-amd64
 sudo mv tableconvert-linux-amd64 /usr/local/bin/tableconvert
 
-# Option 4: Build from source (requires Go 1.23+)
+# Option 4: Build from source (requires Go 1.25.13+)
 git clone https://github.com/martianzhang/tableconvert.git
 cd tableconvert
 make build
