@@ -296,16 +296,17 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		}
 	// Array of Object
 	default:
-		var output []map[string]interface{}
+		output := make([]map[string]interface{}, 0, len(table.Rows))
 		for _, row := range table.Rows {
+			if len(row) != len(table.Headers) {
+				return fmt.Errorf("row length %d does not match header length %d", len(row), len(table.Headers))
+			}
 			record := make(map[string]interface{})
 			for i, header := range table.Headers {
-				if i < len(row) {
-					if parsing {
-						record[header] = common.InferType(row[i])
-					} else {
-						record[header] = row[i]
-					}
+				if parsing {
+					record[header] = common.InferType(row[i])
+				} else {
+					record[header] = row[i]
 				}
 			}
 			output = append(output, record)

@@ -268,6 +268,23 @@ func TestColumnFormatRoundTrip(t *testing.T) {
 	assert.True(t, hasCol1 && hasCol2, "Should have both col1 and col2")
 }
 
+func TestObjectFormatEmptyRows(t *testing.T) {
+	var buf bytes.Buffer
+	err := Marshal(&common.Config{Writer: &buf}, &common.Table{Headers: []string{"a", "b"}})
+	assert.NoError(t, err)
+	assert.JSONEq(t, `[]`, buf.String())
+}
+
+func TestObjectFormatRejectsRaggedRows(t *testing.T) {
+	var buf bytes.Buffer
+	err := Marshal(&common.Config{Writer: &buf}, &common.Table{
+		Headers: []string{"a", "b"},
+		Rows:    [][]string{{"1"}},
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "row length 1 does not match header length 2")
+}
+
 func TestUnmarshalPreservesNumberPrecision(t *testing.T) {
 	input := `[{"id":1234567,"big":9007199254740993}]`
 	table := &common.Table{}
