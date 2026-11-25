@@ -32,7 +32,7 @@ func TestEscapeIdentifier(t *testing.T) {
 		expected string
 	}{
 		{"normal_identifier", "`normal_identifier`"},
-		{"`identifier_with_backtick`", "`\\`identifier_with_backtick\\``"},
+		{"`identifier_with_backtick`", "```identifier_with_backtick```"},
 		{"", "``"},
 	}
 

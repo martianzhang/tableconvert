@@ -1,6 +1,7 @@
 package common
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -373,27 +374,27 @@ func TestSQLIdentifierEscape(t *testing.T) {
 		{
 			name:     "single backtick",
 			input:    "table`name",
-			expected: "`table\\`name`",
+			expected: "`table``name`",
 		},
 		{
 			name:     "multiple backticks",
 			input:    "table`name`with`ticks",
-			expected: "`table\\`name\\`with\\`ticks`",
+			expected: "`table``name``with``ticks`",
 		},
 		{
 			name:     "backtick at start",
 			input:    "`tablename",
-			expected: "`\\`tablename`",
+			expected: "```tablename`",
 		},
 		{
 			name:     "backtick at end",
 			input:    "tablename`",
-			expected: "`tablename\\``",
+			expected: "`tablename```",
 		},
 		{
 			name:     "only backticks",
 			input:    "```",
-			expected: "`\\`\\`\\``",
+			expected: "`" + strings.Repeat("`", 6) + "`",
 		},
 	}
 
@@ -475,12 +476,12 @@ func TestPostgreSQLIdentifierEscape(t *testing.T) {
 		{
 			name:     "with single quote",
 			input:    "table\"name",
-			expected: "\"table\\\"name\"",
+			expected: `"table""name"`,
 		},
 		{
 			name:     "multiple quotes",
 			input:    "\"table\"\"name\"",
-			expected: "\"\\\"table\\\"\\\"name\\\"\"",
+			expected: `"""table""""name"""`,
 		},
 		{
 			name:     "special characters",
@@ -521,22 +522,22 @@ func TestMssqlIdentifierEscape(t *testing.T) {
 		{
 			name:     "contains single [",
 			input:    "table[name",
-			expected: "[table[]name]",
+			expected: "[table[name]",
 		},
 		{
 			name:     "contains multiple [",
 			input:    "[table][name]",
-			expected: "[[]table][]name]]", // 修正为正确的转义
+			expected: "[[table]][name]]]",
 		},
 		{
 			name:     "contains ] without [",
 			input:    "table]name",
-			expected: "[table]name]",
+			expected: "[table]]name]",
 		},
 		{
 			name:     "contains both [ and ]",
 			input:    "table[name]value",
-			expected: "[table[]name]value]",
+			expected: "[table[name]]value]",
 		},
 	}
 

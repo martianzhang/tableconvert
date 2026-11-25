@@ -201,7 +201,7 @@ func SQLValueEscapeDialectWithNull(s, dialect string, nullSentinel bool) string 
 
 // SQLIdentifierEscape mysql identifier escape
 func SQLIdentifierEscape(s string) string {
-	return "`" + strings.ReplaceAll(s, "`", "\\`") + "`"
+	return "`" + strings.ReplaceAll(s, "`", "``") + "`"
 }
 
 func OracleIdentifierEscape(s string) string {
@@ -209,9 +209,9 @@ func OracleIdentifierEscape(s string) string {
 }
 
 func PostgreSQLIdentifierEscape(s string) string {
-	return "\"" + strings.ReplaceAll(s, "\"", "\\\"") + "\""
+	return "\"" + strings.ReplaceAll(s, "\"", "\"\"") + "\""
 }
 
 func MssqlIdentifierEscape(s string) string {
-	return "[" + strings.ReplaceAll(s, "[", "[]") + "]"
+	return "[" + strings.ReplaceAll(s, "]", "]]") + "]"
 }
