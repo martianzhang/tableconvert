@@ -149,6 +149,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	}
 
 	writer := cfg.Writer
+	escape := cfg.GetExtensionBool("escape", true)
 
 	// Begin LaTeX tabular environment
 	// Default to left-aligned columns (l) for each column
@@ -166,7 +167,10 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			if i > 0 {
 				headerLine += " & "
 			}
-			headerLine += common.LaTeXEscape(header)
+			if escape {
+				header = common.LaTeXEscape(header)
+			}
+			headerLine += header
 		}
 		headerLine += " \\\\\n\\hline\n"
 		writer.Write([]byte(headerLine))
@@ -179,7 +183,10 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			if i > 0 {
 				rowLine += " & "
 			}
-			rowLine += common.LaTeXEscape(cell)
+			if escape {
+				cell = common.LaTeXEscape(cell)
+			}
+			rowLine += cell
 		}
 		rowLine += " \\\\\n\\hline\n"
 		writer.Write([]byte(rowLine))

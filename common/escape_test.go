@@ -257,7 +257,7 @@ func TestLaTeXEscape(t *testing.T) {
 		{
 			name:     "backslash",
 			input:    "\\",
-			expected: "\\\\",
+			expected: `\textbackslash{}`,
 		},
 		{
 			name:     "ampersand",
@@ -297,22 +297,22 @@ func TestLaTeXEscape(t *testing.T) {
 		{
 			name:     "tilde",
 			input:    "~",
-			expected: "\\~",
+			expected: `\textasciitilde{}`,
 		},
 		{
 			name:     "caret",
 			input:    "^",
-			expected: "\\^",
+			expected: `\^{}`,
 		},
 		{
 			name:     "multiple special characters",
 			input:    "a\\b&c%d$e#f_g{h}i~j^k",
-			expected: "a\\\\b\\&c\\%d\\$e\\#f\\_g\\{h\\}i\\~j\\^k",
+			expected: `a\textbackslash{}b\&c\%d\$e\#f\_g\{h\}i\textasciitilde{}j\^{}k`,
 		},
 		{
 			name:     "mixed characters",
 			input:    "Hello\\World & 100%",
-			expected: "Hello\\\\World \\& 100\\%",
+			expected: `Hello\textbackslash{}World \& 100\%`,
 		},
 	}
 
@@ -556,7 +556,7 @@ func TestLaTeXUnescape(t *testing.T) {
 		{
 			name:     "with spaces",
 			input:    "  hello\\ world  ",
-			expected: "hello world",
+			expected: "  hello world  ",
 		},
 		{
 			name:     "nested replacements",
@@ -574,6 +574,21 @@ func TestLaTeXUnescape(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			actual := LaTeXUnescape(tt.input)
 			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestLaTeXEscapeRoundTrip(t *testing.T) {
+	inputs := []string{
+		`a\b`,
+		`a~b^c`,
+		`&%$#_{}`,
+		`  padded  `,
+		`path\to\file`,
+	}
+	for _, input := range inputs {
+		t.Run(input, func(t *testing.T) {
+			assert.Equal(t, input, LaTeXUnescape(LaTeXEscape(input)))
 		})
 	}
 }

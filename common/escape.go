@@ -93,41 +93,72 @@ func HtmlEscape(s string) string {
 
 // LaTeXEscape escapes special LaTeX characters in the content
 func LaTeXEscape(s string) string {
-	// List of LaTeX special characters that need escaping
-	specialChars := []string{"\\", "&", "%", "$", "#", "_", "{", "}", "~", "^"}
-	for _, char := range specialChars {
-		s = strings.ReplaceAll(s, char, "\\"+char)
+	var b strings.Builder
+	for _, r := range s {
+		switch r {
+		case '\\':
+			b.WriteString(`\textbackslash{}`)
+		case '&':
+			b.WriteString(`\&`)
+		case '%':
+			b.WriteString(`\%`)
+		case '$':
+			b.WriteString(`\$`)
+		case '#':
+			b.WriteString(`\#`)
+		case '_':
+			b.WriteString(`\_`)
+		case '{':
+			b.WriteString(`\{`)
+		case '}':
+			b.WriteString(`\}`)
+		case '~':
+			b.WriteString(`\textasciitilde{}`)
+		case '^':
+			b.WriteString(`\^{}`)
+		default:
+			b.WriteRune(r)
+		}
 	}
-	return s
+	return b.String()
 }
 
 func LaTeXUnescape(s string) string {
-	// First handle special characters with {}
-	s = strings.ReplaceAll(s, `\^{}`, "^")
-	s = strings.ReplaceAll(s, `\~{}`, "~")
-	s = strings.ReplaceAll(s, `\textasciitilde{}`, "~")
+	// Use placeholders for characters produced by \text... commands so that
+	// later unescaping passes cannot reinterpret the inserted backslashes.
+	const (
+		backslashMarker = "\x00"
+		tildeMarker     = "\x01"
+		caretMarker     = "\x02"
+	)
 
-	// Handle basic escape characters
-	replacements := map[string]string{
-		`\&`:              "&",
-		`\%`:              "%",
-		`\$`:              "$",
-		`\#`:              "#",
-		`\_`:              "_",
-		`\~`:              "~",
-		`\{`:              "{",
-		`\}`:              "}",
-		`\textasciitilde`: "~",
-		`\textbackslash`:  `\`,
-		`\ `:              " ", // Handle LaTeX space escape
+	s = strings.ReplaceAll(s, `\textbackslash{}`, backslashMarker)
+	s = strings.ReplaceAll(s, `\textasciitilde{}`, tildeMarker)
+	s = strings.ReplaceAll(s, `\^{}`, caretMarker)
+	s = strings.ReplaceAll(s, `\~{}`, tildeMarker)
+	s = strings.ReplaceAll(s, `\textbackslash`, backslashMarker)
+	s = strings.ReplaceAll(s, `\textasciitilde`, tildeMarker)
+
+	// Handle basic escape characters. Replace longer forms before shorter ones.
+	replacements := []struct{ from, to string }{
+		{`\^`, "^"},
+		{`\&`, "&"},
+		{`\%`, "%"},
+		{`\$`, "$"},
+		{`\#`, "#"},
+		{`\_`, "_"},
+		{`\~`, "~"},
+		{`\{`, "{"},
+		{`\}`, "}"},
+		{`\ `, " "},
+	}
+	for _, replacement := range replacements {
+		s = strings.ReplaceAll(s, replacement.from, replacement.to)
 	}
 
-	for from, to := range replacements {
-		s = strings.ReplaceAll(s, from, to)
-	}
-
-	// Trim extra whitespace
-	s = strings.TrimSpace(s)
+	s = strings.ReplaceAll(s, backslashMarker, `\`)
+	s = strings.ReplaceAll(s, tildeMarker, "~")
+	s = strings.ReplaceAll(s, caretMarker, "^")
 
 	return s
 }
