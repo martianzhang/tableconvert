@@ -246,6 +246,36 @@ func canonicalFlagName(key string) string {
 	}
 }
 
+func isBooleanFlag(key string) bool {
+	switch canonicalFlagName(key) {
+	case "verbose", "recursive", "dry-run", "mcp", "help", "help-formats":
+		return true
+	}
+	for _, params := range FormatParamsRegistry {
+		for _, param := range params {
+			if param.Name == key {
+				return param.DefaultValue == "true" || param.DefaultValue == "false" ||
+					strings.Contains(param.AllowedValues, "true, false")
+			}
+		}
+	}
+	for _, param := range GlobalTransformParams {
+		if param.Name == key {
+			return param.DefaultValue == "true" || param.DefaultValue == "false"
+		}
+	}
+	return false
+}
+
+func isBooleanLiteral(value string) bool {
+	switch strings.ToLower(value) {
+	case "true", "false", "yes", "no", "y", "n", "1", "0":
+		return true
+	default:
+		return false
+	}
+}
+
 // ParseConfig parses arguments in format "--key=value" or "--key value" and returns a key-value map
 func ParseConfig(args []string) (Config, error) {
 	configs := make(map[string]string)
@@ -264,14 +294,14 @@ func ParseConfig(args []string) (Config, error) {
 				key = trimmed[:idx]
 				value = trimmed[idx+1:]
 			} else {
-				// Flag-style: check if it's a boolean flag
+				// Flag-style: boolean flags do not consume a following
+				// positional argument; non-boolean flags take the next token.
 				key = trimmed
-				// Check if next argument exists and doesn't start with "-", use as value if true
 				if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
-					value = args[i+1]
-					i++ // Skip the next element since we consumed it as the value
-				} else {
-					value = "" // No value = boolean flag
+					if !isBooleanFlag(key) || isBooleanLiteral(args[i+1]) {
+						value = args[i+1]
+						i++ // Skip the next element since we consumed it as the value
+					}
 				}
 			}
 			configs[canonicalFlagName(key)] = value

@@ -693,6 +693,27 @@ func TestAutoDetectWikiExtensions(t *testing.T) {
 	}
 }
 
+func TestBooleanFlagsDoNotConsumeFile(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "data.csv")
+	require.NoError(t, os.WriteFile(file, []byte("a\n1\n"), 0644))
+
+	cfg, err := ParseConfig([]string{"--from=csv", "--to=json", "--verbose", file})
+	require.NoError(t, err)
+	assert.True(t, cfg.Verbose)
+	assert.Equal(t, file, cfg.File)
+
+	cfg, err = ParseConfig([]string{"--from=csv", "--to=markdown", "--bold-header", file})
+	require.NoError(t, err)
+	assert.Equal(t, file, cfg.File)
+	assert.Contains(t, cfg.Extension, "bold-header")
+
+	cfg, err = ParseConfig([]string{"--from=csv", "--to=json", "--verbose=false", file})
+	require.NoError(t, err)
+	assert.False(t, cfg.Verbose)
+	assert.Equal(t, file, cfg.File)
+}
+
 func TestParseConfigBatchMode(t *testing.T) {
 	// Test basic batch mode
 	args := []string{"--batch=*.csv", "--to=json"}
