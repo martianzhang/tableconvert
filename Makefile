@@ -51,10 +51,10 @@ ifeq ($(IS_WINDOWS),)
 	CLEAN_CMD = rm -rf bin/ release/ feature/
 	COVER_SUMMARY_CMD = tail -n 1 test/coverage.txt | awk '{sub(/%/, "", $$NF); if($$NF < 70) {print "$(CRED)"$$0"%$(CEND)"} else if ($$NF >= 80) {print "$(CGREEN)"$$0"%$(CEND)"} else {print "$(CYELLOW)"$$0"%$(CEND)"}}'
 else
-	# Windows: run via PowerShell so commands work in PowerShell/cmd environments.
-	# Use -ldflags=-X=... (no embedded quotes) to avoid PowerShell argument
-	# mangling, and propagate the native exit code so make does not report success.
-	BUILD_CMD = powershell -NoProfile -Command "& { if (-not (Test-Path -Path bin)) { New-Item -ItemType Directory -Path bin | Out-Null }; go build -trimpath -ldflags=-X=main.version=$(VERSION) -o bin/tableconvert.exe ./cmd/tableconvert; if ($$LASTEXITCODE -ne 0) { exit $$LASTEXITCODE } }"
+	# Windows: invoke Go directly. `go build -o bin/...` creates the parent
+	# directory, so no PowerShell wrapper or nested quoting is needed. Make
+	# stops automatically when go build exits non-zero.
+	BUILD_CMD = go build -trimpath -ldflags=-X=main.version=$(VERSION) -o bin/tableconvert.exe ./cmd/tableconvert
 	CLEAN_CMD = powershell -NoProfile -Command "Remove-Item -Recurse -Force bin,release,feature -ErrorAction SilentlyContinue"
 	# Use Write-Host -ForegroundColor for colored coverage output
 	COVER_SUMMARY_CMD = powershell -NoProfile -Command "$$line = (Get-Content test/coverage.txt | Select-Object -Last 1); if ($$line -match '(\d+(\.\d+)?)%') { $$p=[double]$$Matches[1]; if($$p -lt 80){ Write-Host $$line -ForegroundColor Red } elseif($$p -ge 90){ Write-Host $$line -ForegroundColor Green } else { Write-Host $$line -ForegroundColor Yellow } } else { Write-Host $$line }"
