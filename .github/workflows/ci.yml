@@ -4,6 +4,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
 
@@ -122,6 +123,8 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [test, lint]
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -145,22 +148,24 @@ jobs:
       - name: Build binaries for release
         run: |
           mkdir -p release
+          VERSION="${GITHUB_REF_NAME}"
+          LDFLAGS="-s -w -X=main.version=${VERSION}"
 
           # Linux
           echo "Building Linux amd64..."
-          GOOS=linux GOARCH=amd64 go build -trimpath -o release/tableconvert-linux-amd64 ./cmd/tableconvert
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="$LDFLAGS" -o release/tableconvert-linux-amd64 ./cmd/tableconvert
           echo "Building Linux arm64..."
-          GOOS=linux GOARCH=arm64 go build -trimpath -o release/tableconvert-linux-arm64 ./cmd/tableconvert
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="$LDFLAGS" -o release/tableconvert-linux-arm64 ./cmd/tableconvert
 
           # macOS
           echo "Building macOS amd64..."
-          GOOS=darwin GOARCH=amd64 go build -trimpath -o release/tableconvert-darwin-amd64 ./cmd/tableconvert
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags="$LDFLAGS" -o release/tableconvert-darwin-amd64 ./cmd/tableconvert
           echo "Building macOS arm64..."
-          GOOS=darwin GOARCH=arm64 go build -trimpath -o release/tableconvert-darwin-arm64 ./cmd/tableconvert
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="$LDFLAGS" -o release/tableconvert-darwin-arm64 ./cmd/tableconvert
 
           # Windows
           echo "Building Windows amd64..."
-          GOOS=windows GOARCH=amd64 go build -trimpath -o release/tableconvert-windows-amd64.exe ./cmd/tableconvert
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="$LDFLAGS" -o release/tableconvert-windows-amd64.exe ./cmd/tableconvert
 
           # Generate checksums
           echo "Generating checksums..."
@@ -195,15 +200,19 @@ jobs:
       - name: Generate changelog
         id: changelog
         run: |
-          # Get commits since last tag
+          # Get commits since the previous tag (HEAD^ avoids selecting the current tag)
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREVIOUS_TAG" ]; then
+            PREVIOUS_TAG="HEAD~5"
+          fi
           echo "## Changes in this release" > release/CHANGELOG.md
           echo "" >> release/CHANGELOG.md
-          git log --oneline --decorate --no-merges $(git describe --tags --abbrev=0 2>/dev/null || echo HEAD~5)..HEAD 2>/dev/null | head -20 >> release/CHANGELOG.md || echo "No git history available" >> release/CHANGELOG.md
+          git log --oneline --decorate --no-merges "${PREVIOUS_TAG}..HEAD" 2>/dev/null | head -20 >> release/CHANGELOG.md || echo "No git history available" >> release/CHANGELOG.md
 
           # Add full changelog link
           echo "" >> release/CHANGELOG.md
           echo "## Full Changelog" >> release/CHANGELOG.md
-          echo "https://github.com/${{ github.repository }}/compare/$(git describe --tags --abbrev=0 2>/dev/null || echo 'HEAD~5')...${{ github.ref_name }}" >> release/CHANGELOG.md
+          echo "https://github.com/${{ github.repository }}/compare/${PREVIOUS_TAG}...${{ github.ref_name }}" >> release/CHANGELOG.md
 
           # Set output
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
@@ -258,5 +267,5 @@ jobs:
             release/RELEASE_INFO.txt
             release/CHANGELOG.md
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: false
