@@ -19,7 +19,7 @@ var tableStyleMap = map[string]string{
 }
 
 func Unmarshal(cfg *common.Config, table *common.Table) error {
-	style := cfg.GetExtensionString("style", ASCIIDefaultStyle)
+	style := strings.ToLower(cfg.GetExtensionString("style", ASCIIDefaultStyle))
 
 	switch style {
 	case ASCIIDefaultStyle:
@@ -30,7 +30,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 }
 
 func omniUnmarshal(cfg *common.Config, table *common.Table) error {
-	style := cfg.GetExtensionString("style", "dot")
+	style := strings.ToLower(cfg.GetExtensionString("style", "dot"))
 	if len(style) != 1 {
 		if v, ok := tableStyleMap[style]; ok {
 			style = v
@@ -312,7 +312,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		return fmt.Errorf("Marshal: table must have at least one header")
 	}
 	// Table Style
-	style := cfg.GetExtensionString("style", ASCIIDefaultStyle)
+	style := strings.ToLower(cfg.GetExtensionString("style", ASCIIDefaultStyle))
 	if style != ASCIIDefaultStyle {
 		if v, ok := tableStyleMap[style]; ok {
 			style = v

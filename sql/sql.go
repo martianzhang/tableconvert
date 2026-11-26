@@ -136,7 +136,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	tableName := cfg.GetExtensionString("table", "{table_name}")
 
 	// dialect
-	dialect := cfg.GetExtensionString("dialect", "mysql")
+	dialect := strings.ToLower(cfg.GetExtensionString("dialect", "mysql"))
 
 	// all-in-one
 	allInOne := cfg.GetExtensionBool("one-insert", false)

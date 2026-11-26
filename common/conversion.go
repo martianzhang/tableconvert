@@ -77,6 +77,10 @@ func (e *ConversionError) Unwrap() error {
 
 // PerformConversionWithRegistry performs conversion using a registry of format functions
 func PerformConversionWithRegistry(registry *FormatRegistry, cfg *Config) error {
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
+
 	// Parse input
 	var table Table
 

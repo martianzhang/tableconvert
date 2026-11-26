@@ -135,6 +135,7 @@ tableconvert data.csv output.php --template=php_array.tmpl
 - `--help-format={FORMAT}` - Show format-specific parameters
 - `--encoding={ENC}` - Input encoding (utf-8, gbk, gb18030, big5, utf-16le, auto)
 - `--output-encoding={ENC}` - Output encoding for text formats
+- `--allow-unknown` - Do not reject unknown options (not recommended)
 - `--mcp` - Run as MCP server for AI assistants
 
 **Batch Processing:**

@@ -502,4 +502,5 @@ tableconvert data.csv output.json --verbose
 - **Boolean Values**: Use `true`/`false` or just the flag (e.g., `--bold-header` or `--bold-header=true`)
 - **Multiple Values**: Use comma-separated for lists (e.g., `--align=l,c,r`)
 - **File Paths**: Always quote paths with spaces
+- **Unknown Options**: Unknown options and invalid enum values are rejected so typos cannot silently change output. Use `--allow-unknown` only for forward-compatibility experiments.
 - **Auto-Detection**: When in doubt, let tableconvert detect formats from extensions

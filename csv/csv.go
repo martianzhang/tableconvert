@@ -3,6 +3,7 @@ package csv
 import (
 	"encoding/csv"
 	"fmt"
+	"strings"
 
 	"github.com/martianzhang/tableconvert/common"
 )
@@ -13,7 +14,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	csvReader.FieldsPerRecord = -1
 
 	// Set custom delimiter (default: comma)
-	delimiter := cfg.GetExtensionString("delimiter", ",")
+	delimiter := strings.ToUpper(cfg.GetExtensionString("delimiter", ","))
 	switch delimiter {
 	case "TAB", "\t":
 		csvReader.Comma = '\t'
@@ -113,7 +114,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	csvWriter := csv.NewWriter(cfg.Writer)
 
 	// Set custom delimiter (default: comma)
-	delimiter := cfg.GetExtensionString("delimiter", ",")
+	delimiter := strings.ToUpper(cfg.GetExtensionString("delimiter", ","))
 	switch delimiter {
 	case "TAB", "\t":
 		csvWriter.Comma = '\t'

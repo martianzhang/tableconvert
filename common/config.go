@@ -248,7 +248,7 @@ func canonicalFlagName(key string) string {
 
 func isBooleanFlag(key string) bool {
 	switch canonicalFlagName(key) {
-	case "verbose", "recursive", "dry-run", "mcp", "help", "help-formats", "list-sheets":
+	case "verbose", "recursive", "dry-run", "mcp", "help", "help-formats", "list-sheets", "allow-unknown":
 		return true
 	}
 	for _, params := range FormatParamsRegistry {
@@ -325,15 +325,27 @@ func ParseConfig(args []string) (Config, error) {
 		case "result":
 			cfg.Result = v
 		case "verbose":
-			cfg.Verbose = parseBool(v, true) // empty -> true, unknown -> false
+			parsed, err := parseBoolStrict(v, true)
+			if err != nil {
+				return cfg, fmt.Errorf("--verbose: %w", err)
+			}
+			cfg.Verbose = parsed
 		case "batch":
 			cfg.Batch = v
 		case "recursive":
-			cfg.Recursive = parseBool(v, true)
+			parsed, err := parseBoolStrict(v, true)
+			if err != nil {
+				return cfg, fmt.Errorf("--recursive: %w", err)
+			}
+			cfg.Recursive = parsed
 		case "output-dir":
 			cfg.OutputDir = v
 		case "dry-run":
-			cfg.DryRun = parseBool(v, true) // empty -> true, unknown -> false
+			parsed, err := parseBoolStrict(v, true)
+			if err != nil {
+				return cfg, fmt.Errorf("--dry-run: %w", err)
+			}
+			cfg.DryRun = parsed
 		case "help":
 			Usage()
 			os.Exit(0)
@@ -344,9 +356,23 @@ func ParseConfig(args []string) (Config, error) {
 			ShowFormatHelp(v)
 			os.Exit(0)
 		case "mcp":
-			cfg.MCPMode = parseBool(v, true) // empty -> true, unknown -> false
+			parsed, err := parseBoolStrict(v, true)
+			if err != nil {
+				return cfg, fmt.Errorf("--mcp: %w", err)
+			}
+			cfg.MCPMode = parsed
 		case "list-sheets":
-			cfg.ListSheets = parseBool(v, true)
+			parsed, err := parseBoolStrict(v, true)
+			if err != nil {
+				return cfg, fmt.Errorf("--list-sheets: %w", err)
+			}
+			cfg.ListSheets = parsed
+		case "allow-unknown":
+			parsed, err := parseBoolStrict(v, true)
+			if err != nil {
+				return cfg, fmt.Errorf("--allow-unknown: %w", err)
+			}
+			cfg.AllowUnknown = parsed
 		default:
 			cfg.Extension[k] = v
 		}
@@ -529,42 +555,42 @@ func newParseError(from, to, file, result string) error {
 	return fmt.Errorf("%s", msg.String())
 }
 
-// parseBool parses a string value to boolean, with a default for empty string
-// For non-empty values: true/yes/y/1 -> true, false/no/n/0 -> false, anything else -> defaultValue
-func parseBool(value string, defaultValue bool) bool {
+// parseBoolStrict parses a boolean flag value and rejects unknown values
+// instead of silently treating them as false.
+func parseBoolStrict(value string, defaultValue bool) (bool, error) {
 	if value == "" {
-		return defaultValue
+		return defaultValue, nil
 	}
-	lower := strings.ToLower(value)
-	switch lower {
+	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "true", "yes", "y", "1":
-		return true
+		return true, nil
 	case "false", "no", "n", "0":
-		return false
+		return false, nil
 	default:
-		return false // unknown values default to false
+		return false, fmt.Errorf("invalid boolean value %q (use true/false, yes/no, or 1/0)", value)
 	}
 }
 
 // Config holds configuration, reader/writer, and extension parameters
 type Config struct {
-	From       string
-	To         string
-	File       string
-	Result     string
-	Verbose    bool
-	MCPMode    bool
-	Batch      string // Batch mode pattern (e.g., "*.csv")
-	Recursive  bool   // Recursive directory traversal
-	OutputDir  string // Output directory for batch mode
-	DryRun     bool   // Dry run mode - preview without writing
-	ListSheets bool   // List Excel worksheet names and exit
-	Reader     io.Reader
-	Writer     io.Writer
-	InputFile  *os.File
-	Extension  map[string]string
-	TempResult string // Temporary output path used until CommitOutput
-	SQLNull    bool   // Source represents SQL NULL as the string "NULL"
+	From         string
+	To           string
+	File         string
+	Result       string
+	Verbose      bool
+	MCPMode      bool
+	Batch        string // Batch mode pattern (e.g., "*.csv")
+	Recursive    bool   // Recursive directory traversal
+	OutputDir    string // Output directory for batch mode
+	DryRun       bool   // Dry run mode - preview without writing
+	ListSheets   bool   // List Excel worksheet names and exit
+	AllowUnknown bool   // Do not reject unknown extension options
+	Reader       io.Reader
+	Writer       io.Writer
+	InputFile    *os.File
+	Extension    map[string]string
+	TempResult   string // Temporary output path used until CommitOutput
+	SQLNull      bool   // Source represents SQL NULL as the string "NULL"
 
 	OutputTransform io.WriteCloser
 	OutputFile      *os.File

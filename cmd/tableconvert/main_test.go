@@ -45,7 +45,7 @@ func TestMain(t *testing.T) {
 	}{
 		{
 			name:   "mysql to markdown",
-			args:   []string{"tableconvert", "--from", "mysql", "--to", "markdown", "--key", "value"},
+			args:   []string{"tableconvert", "--from", "mysql", "--to", "markdown"},
 			file:   "mysql.txt",
 			result: "mysql.md",
 		},

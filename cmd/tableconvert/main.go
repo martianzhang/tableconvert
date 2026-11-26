@@ -307,6 +307,9 @@ func performDryRun(cfg *common.Config) error {
 	// Parse input
 	var table common.Table
 
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
 	if err := cfg.EnsureTextIO(); err != nil {
 		return err
 	}

@@ -195,6 +195,7 @@ type FlatJSONRecord struct {
 // FlattenJSONValue flattens a JSON object into dot/bracket paths. It returns
 // nil when the value is not an object (callers handle top-level scalars/arrays).
 func FlattenJSONValue(value interface{}, opts JSONFlattenOptions) *FlatJSONRecord {
+	opts.Arrays = strings.ToLower(opts.Arrays)
 	if opts.Arrays == "" {
 		opts.Arrays = "json"
 	}

@@ -18,6 +18,7 @@ QUICK OPTIONS:
   --mcp                     Run as MCP (Model Context Protocol) server
   --list-sheets             List Excel worksheet names and exit
   --encoding={ENC}          Input encoding: utf-8, gbk, gb18030, big5, utf-16le, auto
+  --allow-unknown           Do not reject unknown options (not recommended)
   --output-encoding={ENC}   Output encoding: utf-8, gbk, gb18030, big5, utf-16le
 
 DATA TRANSFORMATIONS:

@@ -586,7 +586,6 @@ func TestParseConfigVerboseFlagVariations(t *testing.T) {
 		{"verbose=0", []string{"--mcp", "--verbose=0"}, false},
 		{"verbose=y", []string{"--mcp", "--verbose=y"}, true},
 		{"verbose=n", []string{"--mcp", "--verbose=n"}, false},
-		{"verbose=unknown", []string{"--mcp", "--verbose=unknown"}, false},
 	}
 
 	for _, tt := range tests {
@@ -616,7 +615,6 @@ func TestParseConfigMCPFlagVariations(t *testing.T) {
 		{"mcp=0", []string{"--mcp=0", "--from", "csv", "--to", "json"}, false, true},
 		{"mcp=y", []string{"--mcp=y"}, true, false},
 		{"mcp=n", []string{"--mcp=n", "--from", "csv", "--to", "json"}, false, true},
-		{"mcp=unknown", []string{"--mcp=unknown", "--from", "csv", "--to", "json"}, false, true},
 	}
 
 	for _, tt := range tests {

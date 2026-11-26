@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 
 	"github.com/martianzhang/tableconvert/common"
 )
@@ -27,7 +28,7 @@ func decodeJSON(data []byte, v interface{}) error {
 }
 
 func Unmarshal(cfg *common.Config, table *common.Table) error {
-	format := cfg.GetExtensionString("format", "")
+	format := strings.ToLower(cfg.GetExtensionString("format", ""))
 
 	data, err := io.ReadAll(cfg.Reader)
 	if err != nil {
@@ -203,7 +204,7 @@ func decodeJSONRoot(data []byte, cfg *common.Config) ([]interface{}, error) {
 }
 
 func Marshal(cfg *common.Config, table *common.Table) error {
-	format := cfg.GetExtensionString("format", "")
+	format := strings.ToLower(cfg.GetExtensionString("format", ""))
 	parsing := cfg.GetParseTypes()
 	typed := parsing || (common.IsJSONSource(cfg.From) && table.Raw != nil)
 	minify := cfg.GetExtensionBool("minify", false)
