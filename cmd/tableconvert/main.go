@@ -163,6 +163,7 @@ func runBatchMode(cfg *common.Config) {
 			Result:     file.OutputPath,
 			Reader:     inputFile,
 			Writer:     outputFile,
+			OutputFile: outputFile,
 			Verbose:    cfg.Verbose,
 			Extension:  cfg.Extension,
 			TempResult: outputFile.Name(),
@@ -305,6 +306,10 @@ func performDryRun(cfg *common.Config) error {
 
 	// Parse input
 	var table common.Table
+
+	if err := cfg.EnsureTextIO(); err != nil {
+		return err
+	}
 
 	unmarshalFn, ok := formatRegistry.GetUnmarshalFunc(cfg.From)
 	if !ok {

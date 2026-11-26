@@ -461,6 +461,7 @@ func ParseConfig(args []string) (Config, error) {
 				return cfg, err
 			}
 			cfg.Writer = tmp
+			cfg.OutputFile = tmp
 			cfg.TempResult = tmp.Name()
 		}
 	} else {
@@ -564,6 +565,43 @@ type Config struct {
 	Extension  map[string]string
 	TempResult string // Temporary output path used until CommitOutput
 	SQLNull    bool   // Source represents SQL NULL as the string "NULL"
+
+	OutputTransform io.WriteCloser
+	OutputFile      *os.File
+	ioWrapped       bool
+}
+
+// EnsureTextIO applies --encoding / --output-encoding once. Binary formats
+// such as Excel are left untouched.
+func (c *Config) EnsureTextIO() error {
+	if c.ioWrapped {
+		return nil
+	}
+	if c.Reader != nil && IsTextFormat(c.From) {
+		reader, err := DecodeReader(c.Reader, c.GetExtensionString("encoding", ""))
+		if err != nil {
+			return err
+		}
+		c.Reader = reader
+	}
+	if c.Writer != nil && IsTextFormat(c.To) {
+		writer, err := EncodeWriter(c.Writer, c.GetExtensionString("output-encoding", ""))
+		if err != nil {
+			return err
+		}
+		c.OutputTransform = writer
+		c.Writer = writer
+	}
+	c.ioWrapped = true
+	return nil
+}
+
+func (c *Config) closeOutputTransform() {
+	if c.OutputTransform == nil {
+		return
+	}
+	_ = c.OutputTransform.Close()
+	c.OutputTransform = nil
 }
 
 // CloseInput closes the input file opened by ParseConfig, if any.
@@ -580,9 +618,18 @@ func (c *Config) CloseInput() error {
 // final Result path. It is a no-op when no temporary output is active.
 func (c *Config) CommitOutput() error {
 	if c.TempResult == "" {
+		c.closeOutputTransform()
 		return nil
 	}
-	if f, ok := c.Writer.(*os.File); ok {
+	c.closeOutputTransform()
+	if c.OutputFile != nil {
+		if err := c.OutputFile.Close(); err != nil {
+			c.OutputFile = nil
+			c.AbortOutput()
+			return err
+		}
+		c.OutputFile = nil
+	} else if f, ok := c.Writer.(*os.File); ok {
 		if err := f.Close(); err != nil {
 			c.AbortOutput()
 			return err
@@ -599,10 +646,14 @@ func (c *Config) CommitOutput() error {
 // AbortOutput closes and removes the temporary output file, leaving any
 // existing destination file untouched.
 func (c *Config) AbortOutput() {
+	c.closeOutputTransform()
 	if c.TempResult == "" {
 		return
 	}
-	if f, ok := c.Writer.(*os.File); ok {
+	if c.OutputFile != nil {
+		_ = c.OutputFile.Close()
+		c.OutputFile = nil
+	} else if f, ok := c.Writer.(*os.File); ok {
 		_ = f.Close()
 	}
 	_ = os.Remove(c.TempResult)

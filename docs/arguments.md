@@ -407,6 +407,25 @@ tableconvert data.csv output.xml --minify
 
 ---
 
+## 🌐 Encoding
+
+Text formats are decoded as UTF-8 by default (an optional UTF-8 BOM is stripped).
+
+| Parameter | Default | Allowed Values | Description |
+|-----------|---------|----------------|-------------|
+| `encoding` | `utf-8` | `utf-8`, `utf-16le`, `utf-16be`, `gbk`, `gb18030`, `big5`, `shift_jis`, `latin1`, `auto` | Input text encoding |
+| `output-encoding` | `utf-8` | `utf-8`, `utf-16le`, `utf-16be`, `gbk`, `gb18030`, `big5`, `shift_jis`, `latin1` | Output text encoding |
+
+`auto` only detects UTF-8/UTF-16 BOMs; for GBK/Big5, specify the encoding explicitly. Excel files are binary and ignore these options.
+
+```bash
+# GBK CSV exported from Windows Excel
+tableconvert --from=csv --to=json --encoding=gbk data.csv data.json
+
+# Write GBK CSV for Excel
+tableconvert --from=json --to=csv --output-encoding=gbk data.json data.csv
+```
+
 ## 🎯 Quick Reference by Use Case
 
 ### For Documentation

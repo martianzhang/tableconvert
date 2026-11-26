@@ -16,6 +16,9 @@ QUICK OPTIONS:
   --help-formats            Show all supported formats and their parameters
   --help-format={FORMAT}    Show parameters for a specific format
   --mcp                     Run as MCP (Model Context Protocol) server
+  --list-sheets             List Excel worksheet names and exit
+  --encoding={ENC}          Input encoding: utf-8, gbk, gb18030, big5, utf-16le, auto
+  --output-encoding={ENC}   Output encoding: utf-8, gbk, gb18030, big5, utf-16le
 
 DATA TRANSFORMATIONS:
   --transpose               Transpose the table (swap rows and columns)
@@ -24,6 +27,7 @@ DATA TRANSFORMATIONS:
   --uppercase               Convert all text to UPPERCASE
   --lowercase               Convert all text to lowercase
   --capitalize              Capitalize the first letter of each cell
+  --strict-columns          Fail on ragged rows or empty/duplicate headers
 
 BATCH PROCESSING:
   --batch|-b={PATTERN}      Process multiple files matching a pattern
@@ -42,6 +46,11 @@ FORMAT-SPECIFIC OPTIONS:
     --template=file.tmpl    For tmpl: template file path
     --bold-header           For markdown/latex: make headers bold
     --auto-width            For excel: auto-adjust column widths
+    --sheet-index=2         For excel: read the second worksheet
+    --expand-merged         For excel: expand merged cells (default true)
+    --parse-types           For json/sql: emit numbers/booleans/null
+    --json-path=data.items  For json: select the row array in a wrapper object
+    --flatten-arrays=index  For json: expand arrays into tags[0], tags[1]
 
 EXAMPLES:
   # Basic conversion with auto-detection
@@ -71,6 +80,12 @@ EXAMPLES:
   # Preview conversion without writing
   tableconvert --from=csv --to=json input.csv --dry-run
 
+  # GBK CSV from Windows Excel
+  tableconvert --from=csv --to=json --encoding=gbk input.csv output.json
+
+  # List Excel worksheets
+  tableconvert --list-sheets report.xlsx
+
   # SQL generation
   tableconvert data.csv data.sql --table=users --dialect=mysql --one-insert
 
@@ -94,7 +109,7 @@ AUTO-DETECTION:
     .json     -> json
     .jsonl    -> jsonl
     .md, .markdown -> markdown
-    .xlsx, .xls -> excel
+    .xlsx     -> excel (legacy .xls is not supported)
     .html, .htm -> html
     .xml      -> xml
     .sql      -> sql

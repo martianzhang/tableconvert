@@ -133,6 +133,8 @@ tableconvert data.csv output.php --template=php_array.tmpl
 - `--dry-run|--preview` - Preview conversion without writing output
 - `--help-formats` - List all supported formats
 - `--help-format={FORMAT}` - Show format-specific parameters
+- `--encoding={ENC}` - Input encoding (utf-8, gbk, gb18030, big5, utf-16le, auto)
+- `--output-encoding={ENC}` - Output encoding for text formats
 - `--mcp` - Run as MCP server for AI assistants
 
 **Batch Processing:**

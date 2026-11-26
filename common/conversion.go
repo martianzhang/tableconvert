@@ -89,6 +89,10 @@ func PerformConversionWithRegistry(registry *FormatRegistry, cfg *Config) error 
 		return fmt.Errorf("format %s does not support reading (unmarshal)", cfg.From)
 	}
 
+	if err := cfg.EnsureTextIO(); err != nil {
+		return err
+	}
+
 	if err := unmarshalFn(cfg, &table); err != nil {
 		return &ConversionError{Stage: "unmarshal", Format: cfg.From, Err: err}
 	}
