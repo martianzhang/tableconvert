@@ -187,8 +187,9 @@ type JSONFlattenOptions struct {
 // FlatJSONRecord is the flattened string view of one JSON row plus the key
 // order in which the keys first appeared.
 type FlatJSONRecord struct {
-	Keys   []string
-	Values map[string]string
+	Keys      []string
+	Values    map[string]string
+	RawValues map[string]interface{}
 }
 
 // FlattenJSONValue flattens a JSON object into dot/bracket paths. It returns
@@ -197,7 +198,7 @@ func FlattenJSONValue(value interface{}, opts JSONFlattenOptions) *FlatJSONRecor
 	if opts.Arrays == "" {
 		opts.Arrays = "json"
 	}
-	record := &FlatJSONRecord{Values: make(map[string]string)}
+	record := &FlatJSONRecord{Values: make(map[string]string), RawValues: make(map[string]interface{})}
 	if object, ok := value.(*OrderedObject); ok {
 		for _, key := range object.Keys {
 			flattenJSONEntry(joinJSONPath("", key), object.Values[key], record, opts)
@@ -243,17 +244,18 @@ func flattenJSONEntry(path string, value interface{}, record *FlatJSONRecord, op
 			}
 			return
 		}
-		record.set(path, JSONCompactString(node))
+		record.set(path, JSONCompactString(node), node)
 	default:
-		record.set(path, JSONScalarString(node))
+		record.set(path, JSONScalarString(node), node)
 	}
 }
 
-func (r *FlatJSONRecord) set(key, value string) {
+func (r *FlatJSONRecord) set(key, value string, raw interface{}) {
 	if _, exists := r.Values[key]; !exists {
 		r.Keys = append(r.Keys, key)
 	}
 	r.Values[key] = value
+	r.RawValues[key] = raw
 }
 
 func joinJSONPath(prefix, key string) string {
@@ -356,9 +358,27 @@ func ToPlainJSON(value interface{}) interface{} {
 	}
 }
 
+// IsJSONSource reports whether format is one of the JSON-family input formats.
+func IsJSONSource(format string) bool {
+	switch strings.ToLower(format) {
+	case "json", "jsonl", "jsonlines":
+		return true
+	default:
+		return false
+	}
+}
+
 // FlattenJSONRecords builds a table from decoded JSON rows. It preserves the
 // first-seen key order unless sortHeaders is true.
 func FlattenJSONRecords(records []interface{}, opts JSONFlattenOptions, sortHeaders bool) ([]string, [][]string) {
+	headers, rows, _ := FlattenJSONRecordsWithRaw(records, opts, sortHeaders)
+	return headers, rows
+}
+
+// FlattenJSONRecordsWithRaw is FlattenJSONRecords plus a typed raw view for
+// JSON/SQL output. Raw cells use json.Number for numbers, bool for booleans,
+// nil for nulls, and the original composite value for arrays/objects.
+func FlattenJSONRecordsWithRaw(records []interface{}, opts JSONFlattenOptions, sortHeaders bool) ([]string, [][]string, [][]interface{}) {
 	flatRecords := make([]*FlatJSONRecord, 0, len(records))
 	seen := make(map[string]bool)
 	headers := make([]string, 0)
@@ -367,7 +387,11 @@ func FlattenJSONRecords(records []interface{}, opts JSONFlattenOptions, sortHead
 		if flat == nil {
 			// A scalar/array row is represented as a single "value" column so
 			// that arrays like [1,2,3] still produce a usable table.
-			flat = &FlatJSONRecord{Keys: []string{"value"}, Values: map[string]string{"value": JSONScalarString(record)}}
+			flat = &FlatJSONRecord{
+				Keys:      []string{"value"},
+				Values:    map[string]string{"value": JSONScalarString(record)},
+				RawValues: map[string]interface{}{"value": record},
+			}
 		}
 		flatRecords = append(flatRecords, flat)
 		for _, key := range flat.Keys {
@@ -381,12 +405,22 @@ func FlattenJSONRecords(records []interface{}, opts JSONFlattenOptions, sortHead
 		sort.Strings(headers)
 	}
 	rows := make([][]string, len(flatRecords))
+	raw := make([][]interface{}, len(flatRecords))
 	for i, flat := range flatRecords {
 		row := make([]string, len(headers))
+		rawRow := make([]interface{}, len(headers))
 		for j, header := range headers {
 			row[j] = flat.Values[header]
+			if value, ok := flat.RawValues[header]; ok {
+				rawRow[j] = value
+			} else {
+				// Missing keys are empty strings in the string view; keep the
+				// raw view consistent instead of emitting JSON null.
+				rawRow[j] = ""
+			}
 		}
 		rows[i] = row
+		raw[i] = rawRow
 	}
-	return headers, rows
+	return headers, rows, raw
 }

@@ -141,6 +141,10 @@ tableconvert data.csv output.html --thead
 - Use `--flatten-arrays=index` to expand arrays into `tags[0]`, `tags[1]`.
 - A top-level object is treated as one row; use `--json-path` for wrapper objects.
 
+**Type preservation:**
+- JSON → JSON/JSONL preserves nested values, `null`, booleans, and the original number text when no destructive transformation is applied.
+- For CSV/Excel/SQL sources, use `--parse-types` to emit numbers, booleans, and nulls instead of strings. Leading-zero values and long IDs stay strings.
+
 **Examples:**
 ```bash
 # Array of objects (default)

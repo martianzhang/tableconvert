@@ -13,6 +13,14 @@ import (
 type Table struct {
 	Headers []string
 	Rows    [][]string
+	// RawRows optionally holds the original JSON rows. It is used by JSON/JSONL
+	// output to preserve nested objects, nulls, and number text when no
+	// destructive transformation has been applied.
+	RawRows []interface{}
+	// Raw optionally holds the flattened scalar values for each cell, in the
+	// same shape as Rows. It lets JSON/SQL output keep number/bool/null types
+	// after a transformation that only reorders rows.
+	Raw [][]interface{}
 }
 
 // ParseError represents an error during parsing.

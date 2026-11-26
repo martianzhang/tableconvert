@@ -155,3 +155,21 @@ func TestUnmarshalArrayLine(t *testing.T) {
 	assert.Equal(t, []string{"a"}, table.Headers)
 	assert.Equal(t, [][]string{{"1"}, {"2"}, {"3"}}, table.Rows)
 }
+
+func TestMarshalRawRowsRoundTrip(t *testing.T) {
+	input := `{"id":1,"ok":true,"x":null,"nested":{"a":1},"big":9007199254740993,"f":1.50}
+`
+	ingest := &common.Table{}
+	require.NoError(t, Unmarshal(&common.Config{Reader: strings.NewReader(input)}, ingest))
+
+	var buf strings.Builder
+	require.NoError(t, Marshal(&common.Config{From: "jsonl", Writer: &buf}, ingest))
+
+	output := buf.String()
+	assert.Contains(t, output, `"id":1`)
+	assert.Contains(t, output, `"ok":true`)
+	assert.Contains(t, output, `"x":null`)
+	assert.Contains(t, output, `"nested":{"a":1}`)
+	assert.Contains(t, output, `"big":9007199254740993`)
+	assert.Contains(t, output, `"f":1.50`)
+}

@@ -162,13 +162,15 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 		if err != nil {
 			return err
 		}
-		headers, rows := common.FlattenJSONRecords(
+		headers, rows, raw := common.FlattenJSONRecordsWithRaw(
 			root,
 			common.JSONFlattenOptions{Arrays: cfg.GetExtensionString("flatten-arrays", "json")},
 			cfg.GetExtensionBool("sort-headers", false),
 		)
 		table.Headers = headers
 		table.Rows = rows
+		table.RawRows = root
+		table.Raw = raw
 	}
 
 	return nil
@@ -203,6 +205,7 @@ func decodeJSONRoot(data []byte, cfg *common.Config) ([]interface{}, error) {
 func Marshal(cfg *common.Config, table *common.Table) error {
 	format := cfg.GetExtensionString("format", "")
 	parsing := cfg.GetParseTypes()
+	typed := parsing || (common.IsJSONSource(cfg.From) && table.Raw != nil)
 	minify := cfg.GetExtensionBool("minify", false)
 
 	var data []byte
@@ -219,19 +222,13 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		output = append(output, headers)
 
 		// Rows
-		for _, row := range table.Rows {
+		for rowIndex, row := range table.Rows {
 			if len(row) != len(table.Headers) {
 				return fmt.Errorf("row length %d does not match header length %d", len(row), len(table.Headers))
 			}
 			record := make([]interface{}, len(table.Headers))
 			for i := range table.Headers {
-				if i < len(row) {
-					if parsing {
-						record[i] = common.InferType(row[i])
-					} else {
-						record[i] = row[i]
-					}
-				}
+				record[i] = jsonCellValue(table, rowIndex, i, typed)
 			}
 			output = append(output, record)
 		}
@@ -247,17 +244,13 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		for _, header := range table.Headers {
 			columns[header] = []interface{}{}
 		}
-		for _, row := range table.Rows {
+		for rowIndex, row := range table.Rows {
 			if len(row) != len(table.Headers) {
 				return fmt.Errorf("row length %d does not match header length %d", len(row), len(table.Headers))
 			}
-			for i, cell := range row {
+			for i := range row {
 				header := table.Headers[i]
-				if parsing {
-					columns[header] = append(columns[header], common.InferType(cell))
-				} else {
-					columns[header] = append(columns[header], cell)
-				}
+				columns[header] = append(columns[header], jsonCellValue(table, rowIndex, i, typed))
 			}
 		}
 		// convert map[string][]interface{} to []map[string]interface{}
@@ -277,7 +270,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			break
 		}
 		output := make(map[string]map[string]interface{}, len(table.Rows))
-		for _, row := range table.Rows {
+		for rowIndex, row := range table.Rows {
 			if len(row) != len(table.Headers) {
 				return fmt.Errorf("row length %d does not match header length %d", len(row), len(table.Headers))
 			}
@@ -287,11 +280,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			}
 			record := make(map[string]interface{}, len(table.Headers)-1)
 			for i := 1; i < len(table.Headers); i++ {
-				if parsing {
-					record[table.Headers[i]] = common.InferType(row[i])
-				} else {
-					record[table.Headers[i]] = row[i]
-				}
+				record[table.Headers[i]] = jsonCellValue(table, rowIndex, i, typed)
 			}
 			output[key] = record
 		}
@@ -302,18 +291,24 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		}
 	// Array of Object
 	default:
+		if len(table.RawRows) == len(table.Rows) && common.IsJSONSource(cfg.From) {
+			output := common.ToPlainJSON(table.RawRows)
+			if minify {
+				data, err = json.Marshal(output)
+			} else {
+				data, err = json.MarshalIndent(output, "", "  ")
+			}
+			break
+		}
 		output := make([]map[string]interface{}, 0, len(table.Rows))
-		for _, row := range table.Rows {
+		for rowIndex := range table.Rows {
+			row := table.Rows[rowIndex]
 			if len(row) != len(table.Headers) {
 				return fmt.Errorf("row length %d does not match header length %d", len(row), len(table.Headers))
 			}
 			record := make(map[string]interface{})
 			for i, header := range table.Headers {
-				if parsing {
-					record[header] = common.InferType(row[i])
-				} else {
-					record[header] = row[i]
-				}
+				record[header] = jsonCellValue(table, rowIndex, i, typed)
 			}
 			output = append(output, record)
 		}
@@ -331,4 +326,15 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 
 	_, err = cfg.Writer.Write(data)
 	return err
+}
+
+func jsonCellValue(table *common.Table, rowIndex, colIndex int, typed bool) interface{} {
+	cell := table.Rows[rowIndex][colIndex]
+	if typed && table.Raw != nil && rowIndex < len(table.Raw) && colIndex < len(table.Raw[rowIndex]) {
+		return table.Raw[rowIndex][colIndex]
+	}
+	if typed {
+		return common.InferType(cell)
+	}
+	return cell
 }

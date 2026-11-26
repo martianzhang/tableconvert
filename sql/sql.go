@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
@@ -169,7 +170,12 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	for j, row := range table.Rows {
 		values := make([]string, columnCount)
 		for i, cell := range row {
-			values[i] = formatSQLValue(cell, dialect, cfg)
+			var raw interface{}
+			hasRaw := table.Raw != nil && j < len(table.Raw) && i < len(table.Raw[j])
+			if hasRaw {
+				raw = table.Raw[j][i]
+			}
+			values[i] = formatSQLValue(cell, dialect, cfg, raw, hasRaw)
 		}
 		if allInOne {
 			if j == 0 {
@@ -201,32 +207,42 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	return nil
 }
 
-func formatSQLValue(cell, dialect string, cfg *common.Config) string {
+func formatSQLValue(cell, dialect string, cfg *common.Config, raw interface{}, hasRaw bool) string {
 	if !cfg.GetParseTypes() {
 		return common.SQLValueEscapeDialectWithNull(cell, dialect, cfg.SQLNull)
 	}
-	switch value := common.InferType(cell).(type) {
+	value := common.InferType(cell)
+	if hasRaw {
+		value = raw
+	}
+	switch typed := value.(type) {
 	case nil:
 		return "NULL"
+	case json.Number:
+		return typed.String()
+	case int:
+		return strconv.Itoa(typed)
 	case int64:
-		return strconv.FormatInt(value, 10)
+		return strconv.FormatInt(typed, 10)
 	case float64:
-		return strconv.FormatFloat(value, 'g', -1, 64)
+		return strconv.FormatFloat(typed, 'g', -1, 64)
 	case bool:
 		switch dialect {
 		case "mssql", "oracle":
-			if value {
+			if typed {
 				return "1"
 			}
 			return "0"
 		default:
-			if value {
+			if typed {
 				return "TRUE"
 			}
 			return "FALSE"
 		}
+	case string:
+		return common.SQLValueEscapeDialectWithNull(typed, dialect, cfg.SQLNull)
 	default:
-		return common.SQLValueEscapeDialectWithNull(cell, dialect, cfg.SQLNull)
+		return common.SQLValueEscapeDialectWithNull(common.JSONCompactString(typed), dialect, cfg.SQLNull)
 	}
 }
 

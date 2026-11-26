@@ -469,3 +469,38 @@ func TestMarshalParseTypesStrict(t *testing.T) {
 	assert.Nil(t, output[0]["missing"])
 	assert.Equal(t, 1.5, output[0]["amount"])
 }
+
+func TestMarshalRawRowsRoundTrip(t *testing.T) {
+	input := `[{"id":1,"ok":true,"x":null,"nested":{"a":1},"arr":[1,2],"big":9007199254740993,"f":1.50}]`
+	cfgIn := &common.Config{Extension: map[string]string{}, Reader: strings.NewReader(input)}
+	table := &common.Table{}
+	require.NoError(t, Unmarshal(cfgIn, table))
+
+	var buf strings.Builder
+	cfgOut := &common.Config{From: "json", Extension: map[string]string{}, Writer: &buf}
+	require.NoError(t, Marshal(cfgOut, table))
+
+	output := buf.String()
+	assert.Contains(t, output, `"id": 1`)
+	assert.Contains(t, output, `"ok": true`)
+	assert.Contains(t, output, `"x": null`)
+	assert.Contains(t, output, `"nested": {`)
+	assert.Contains(t, output, `"big": 9007199254740993`)
+	assert.Contains(t, output, `"f": 1.50`)
+}
+
+func TestMarshalRawRowsDroppedAfterUppercase(t *testing.T) {
+	input := `[{"id":1,"name":"alice"}]`
+	cfgIn := &common.Config{Extension: map[string]string{}, Reader: strings.NewReader(input)}
+	table := &common.Table{}
+	require.NoError(t, Unmarshal(cfgIn, table))
+	common.Uppercase(table)
+
+	var buf strings.Builder
+	cfgOut := &common.Config{From: "json", Extension: map[string]string{}, Writer: &buf}
+	require.NoError(t, Marshal(cfgOut, table))
+
+	output := buf.String()
+	assert.Contains(t, output, `"ID": "1"`)
+	assert.Contains(t, output, `"NAME": "ALICE"`)
+}

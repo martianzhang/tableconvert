@@ -57,6 +57,8 @@ func Transpose(table *Table) {
 
 	table.Headers = newHeaders
 	table.Rows = newRows
+	table.RawRows = nil
+	table.Raw = nil
 }
 
 // DeleteEmptyRows removes rows that are completely empty (all cells are empty strings)
@@ -65,8 +67,10 @@ func DeleteEmptyRows(table *Table) {
 		return
 	}
 
+	oldRowCount := len(table.Rows)
 	nonEmptyRows := make([][]string, 0, len(table.Rows))
-	for _, row := range table.Rows {
+	kept := make([]int, 0, len(table.Rows))
+	for rowIndex, row := range table.Rows {
 		isEmpty := true
 		for _, cell := range row {
 			if strings.TrimSpace(cell) != "" {
@@ -76,9 +80,11 @@ func DeleteEmptyRows(table *Table) {
 		}
 		if !isEmpty {
 			nonEmptyRows = append(nonEmptyRows, row)
+			kept = append(kept, rowIndex)
 		}
 	}
 	table.Rows = nonEmptyRows
+	filterRawRows(table, kept, oldRowCount)
 }
 
 // DeduplicateRows removes duplicate rows (rows with identical values in all columns)
@@ -87,10 +93,12 @@ func DeduplicateRows(table *Table) {
 		return
 	}
 
+	oldRowCount := len(table.Rows)
 	seen := make(map[string]bool)
 	uniqueRows := make([][]string, 0, len(table.Rows))
+	kept := make([]int, 0, len(table.Rows))
 
-	for _, row := range table.Rows {
+	for rowIndex, row := range table.Rows {
 		// Length-prefix each cell so different rows cannot collide even when
 		// cells contain the separator (including NUL).
 		var key strings.Builder
@@ -102,9 +110,39 @@ func DeduplicateRows(table *Table) {
 		if !seen[key.String()] {
 			seen[key.String()] = true
 			uniqueRows = append(uniqueRows, row)
+			kept = append(kept, rowIndex)
 		}
 	}
 	table.Rows = uniqueRows
+	filterRawRows(table, kept, oldRowCount)
+}
+
+// filterRawRows keeps the raw rows/values aligned when a transformation
+// removes rows. The oldRowCount guard protects against callers that populated
+// Raw with a different shape.
+func filterRawRows(table *Table, kept []int, oldRowCount int) {
+	if table.RawRows != nil {
+		if len(table.RawRows) == oldRowCount {
+			next := make([]interface{}, 0, len(kept))
+			for _, index := range kept {
+				next = append(next, table.RawRows[index])
+			}
+			table.RawRows = next
+		} else {
+			table.RawRows = nil
+		}
+	}
+	if table.Raw != nil {
+		if len(table.Raw) == oldRowCount {
+			next := make([][]interface{}, 0, len(kept))
+			for _, index := range kept {
+				next = append(next, table.Raw[index])
+			}
+			table.Raw = next
+		} else {
+			table.Raw = nil
+		}
+	}
 }
 
 // Uppercase converts all cell values to uppercase
@@ -122,6 +160,8 @@ func Uppercase(table *Table) {
 			table.Rows[i][j] = strings.ToUpper(table.Rows[i][j])
 		}
 	}
+	table.RawRows = nil
+	table.Raw = nil
 }
 
 // Lowercase converts all cell values to lowercase
@@ -139,6 +179,8 @@ func Lowercase(table *Table) {
 			table.Rows[i][j] = strings.ToLower(table.Rows[i][j])
 		}
 	}
+	table.RawRows = nil
+	table.Raw = nil
 }
 
 // Capitalize converts the first letter of each cell value to uppercase
@@ -167,4 +209,6 @@ func Capitalize(table *Table) {
 			table.Rows[i][j] = capitalizeFirst(table.Rows[i][j])
 		}
 	}
+	table.RawRows = nil
+	table.Raw = nil
 }
