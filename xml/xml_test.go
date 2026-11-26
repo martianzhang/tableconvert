@@ -363,7 +363,7 @@ func TestUnmarshalErrorCases(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to decode XML")
 	})
 
-	t.Run("mismatched column count", func(t *testing.T) {
+	t.Run("mismatched column count is padded", func(t *testing.T) {
 		xmlData := `
 <dataset>
 	<record>
@@ -378,9 +378,9 @@ func TestUnmarshalErrorCases(t *testing.T) {
 			Reader: strings.NewReader(xmlData),
 		}
 		table := &common.Table{}
-		err := Unmarshal(cfg, table)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "data row has 1 columns, but header has 2")
+		require.NoError(t, Unmarshal(cfg, table))
+		assert.Equal(t, []string{"name", "age"}, table.Headers)
+		assert.Equal(t, [][]string{{"John", "30"}, {"Jane", ""}}, table.Rows)
 	})
 }
 
@@ -568,4 +568,65 @@ func TestUnmarshalWithEmptyData(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []string{"name", "age"}, table.Headers)
 	assert.Equal(t, [][]string{{"", "30"}}, table.Rows)
+}
+
+func TestUnmarshalAutoDetectRecords(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		headers []string
+		rows    [][]string
+	}{
+		{
+			name:    "generic item elements",
+			input:   `<root><item><a>1</a><b>2</b></item><item><a>3</a><b>4</b></item></root>`,
+			headers: []string{"a", "b"},
+			rows:    [][]string{{"1", "2"}, {"3", "4"}},
+		},
+		{
+			name:    "single item element",
+			input:   `<root><item><a>1</a><b>2</b></item></root>`,
+			headers: []string{"a", "b"},
+			rows:    [][]string{{"1", "2"}},
+		},
+		{
+			name:    "root fields",
+			input:   `<root><a>1</a><b>2</b></root>`,
+			headers: []string{"a", "b"},
+			rows:    [][]string{{"1", "2"}},
+		},
+		{
+			name:    "repeated scalar elements",
+			input:   `<root><value>1</value><value>2</value></root>`,
+			headers: []string{"value"},
+			rows:    [][]string{{"1"}, {"2"}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			table := &common.Table{}
+			require.NoError(t, Unmarshal(&common.Config{Reader: strings.NewReader(tt.input)}, table))
+			assert.Equal(t, tt.headers, table.Headers)
+			assert.Equal(t, tt.rows, table.Rows)
+		})
+	}
+}
+
+func TestUnmarshalExplicitRowElementMissing(t *testing.T) {
+	table := &common.Table{}
+	cfg := &common.Config{
+		Reader:    strings.NewReader(`<root><item><a>1</a></item></root>`),
+		Extension: map[string]string{"row-element": "record"},
+	}
+	err := Unmarshal(cfg, table)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no <record> elements")
+}
+
+func TestUnmarshalAmbiguousRepeatedRows(t *testing.T) {
+	table := &common.Table{}
+	input := `<root><a><x>1</x></a><a><x>2</x></a><b><y>3</y></b><b><y>4</y></b></root>`
+	err := Unmarshal(&common.Config{Reader: strings.NewReader(input)}, table)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "multiple repeated row elements")
 }

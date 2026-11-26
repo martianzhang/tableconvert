@@ -393,8 +393,13 @@ tableconvert data.csv output.twiki --first-row-header
 |-----------|---------|----------------|-------------|
 | `minify` | `false` | `true`, `false` | Minify XML output |
 | `root-element` | `dataset` | Any string | Root element tag |
-| `row-element` | `record` | Any string | Row element tag |
+| `row-element` | auto | Any string | Row element tag; auto-detects repeated child elements when omitted |
 | `declaration` | `false` | `true`, `false` | Include XML declaration |
+
+**Input behavior:**
+- If `--row-element` is specified, only direct children with that name are rows; no match is an error.
+- Otherwise, `tableconvert` auto-detects the repeated child element (e.g. `<item>`, `<record>`), or treats the root as one record when its children are fields.
+- Header names are the union of field names; missing fields are padded.
 
 **Example:**
 ```bash

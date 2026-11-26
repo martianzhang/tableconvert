@@ -88,40 +88,144 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 		return nil // Empty XML is a valid empty table.
 	}
 
-	// Only direct children matching row-element are records. This avoids
-	// treating metadata elements as table rows.
-	rowElement := cfg.GetExtensionString("row-element", "record")
-	var records []xmlNode
-	for _, child := range root.Children {
-		if child.Name.Local == rowElement {
-			records = append(records, child)
-		}
+	rowElement := cfg.GetExtensionString("row-element", "")
+	records, err := selectXMLRecords(root, rowElement)
+	if err != nil {
+		return err
 	}
 	if len(records) == 0 {
 		return nil
 	}
 
-	for _, field := range records[0].Children {
-		table.Headers = append(table.Headers, field.Name.Local)
-	}
-
-	headerCount := len(table.Headers)
-	for rowIdx, record := range records {
-		dataRow := make([]string, 0, len(record.Children))
-		for _, field := range record.Children {
-			dataRow = append(dataRow, strings.TrimSpace(field.fullText()))
-		}
-		if len(dataRow) != headerCount {
-			return &common.ParseError{
-				LineNumber: rowIdx + 1,
-				Message:    fmt.Sprintf("data row has %d columns, but header has %d", len(dataRow), headerCount),
-				Line:       fmt.Sprintf("row %d", rowIdx+1),
+	headerIndex := make(map[string]int)
+	for _, record := range records {
+		for _, field := range recordFields(record) {
+			name := field.Name.Local
+			if _, exists := headerIndex[name]; !exists {
+				headerIndex[name] = len(table.Headers)
+				table.Headers = append(table.Headers, name)
 			}
 		}
-		table.Rows = append(table.Rows, dataRow)
 	}
 
+	for _, record := range records {
+		row := make([]string, len(table.Headers))
+		for _, field := range recordFields(record) {
+			index := headerIndex[field.Name.Local]
+			if row[index] == "" {
+				row[index] = strings.TrimSpace(field.fullText())
+			}
+		}
+		table.Rows = append(table.Rows, row)
+	}
 	return nil
+}
+
+// recordFields returns a record's field elements. A scalar record (for example
+// <record>42</record>) is represented as a synthetic "value" column.
+func recordFields(record xmlNode) []xmlNode {
+	if len(record.Children) > 0 {
+		return record.Children
+	}
+	if strings.TrimSpace(record.Text) != "" {
+		return []xmlNode{{Name: xml.Name{Local: "value"}, Text: record.Text}}
+	}
+	return nil
+}
+
+func selectXMLRecords(root *xmlNode, explicitRowElement string) ([]xmlNode, error) {
+	if len(root.Children) == 0 {
+		return nil, nil // <root></root> is an empty table.
+	}
+
+	if explicitRowElement != "" {
+		var records []xmlNode
+		for _, child := range root.Children {
+			if child.Name.Local == explicitRowElement {
+				records = append(records, child)
+			}
+		}
+		if len(records) == 0 {
+			return nil, fmt.Errorf("no <%s> elements found under <%s>; check --row-element", explicitRowElement, root.Name.Local)
+		}
+		return records, nil
+	}
+
+	type group struct {
+		name  string
+		nodes []xmlNode
+	}
+	groups := make([]group, 0)
+	groupIndex := make(map[string]int)
+	for _, child := range root.Children {
+		if len(child.Children) == 0 {
+			continue
+		}
+		if index, ok := groupIndex[child.Name.Local]; ok {
+			groups[index].nodes = append(groups[index].nodes, child)
+			continue
+		}
+		groupIndex[child.Name.Local] = len(groups)
+		groups = append(groups, group{name: child.Name.Local, nodes: []xmlNode{child}})
+	}
+
+	if len(groups) == 1 {
+		return groups[0].nodes, nil
+	}
+	if len(groups) > 1 {
+		repeated := make([]group, 0)
+		for _, entry := range groups {
+			if len(entry.nodes) > 1 {
+				repeated = append(repeated, entry)
+			}
+		}
+		if len(repeated) == 1 {
+			return repeated[0].nodes, nil
+		}
+		if len(repeated) > 1 {
+			names := make([]string, 0, len(repeated))
+			for _, entry := range repeated {
+				names = append(names, entry.name)
+			}
+			return nil, fmt.Errorf("multiple repeated row elements under <%s> (%s); use --row-element", root.Name.Local, strings.Join(names, ", "))
+		}
+		// Prefer conventional record element names when metadata and a record
+		// list coexist (e.g. <meta>...</meta><record>...</record>).
+		for _, preferred := range []string{"record", "row", "item", "entry"} {
+			for _, entry := range groups {
+				if entry.name == preferred {
+					return entry.nodes, nil
+				}
+			}
+		}
+		// Several single child elements are fields of one root record.
+		return []xmlNode{*root}, nil
+	}
+
+	// No child has nested elements. If they share one name, each child is a
+	// value row; otherwise the root itself is a single record.
+	allSame := true
+	firstName := root.Children[0].Name.Local
+	for _, child := range root.Children[1:] {
+		if child.Name.Local != firstName {
+			allSame = false
+			break
+		}
+	}
+	if allSame && len(root.Children) > 1 {
+		records := make([]xmlNode, len(root.Children))
+		for i, child := range root.Children {
+			records[i] = xmlNode{
+				Name: child.Name,
+				Children: []xmlNode{{
+					Name: xml.Name{Local: "value"},
+					Text: child.Text,
+				}},
+			}
+		}
+		return records, nil
+	}
+	return []xmlNode{*root}, nil
 }
 
 // Marshal converts table data to XML format
