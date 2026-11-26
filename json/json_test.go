@@ -256,28 +256,13 @@ func TestColumnFormatRoundTrip(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Parse output
-	var output []map[string]interface{}
+	var output map[string][]interface{}
 	err = json.Unmarshal([]byte(buf.String()), &output)
 	assert.NoError(t, err)
 
-	// Verify structure
-	assert.Equal(t, 2, len(output))
-	// Output order may vary due to map iteration, so check both possibilities
-	hasCol1 := false
-	hasCol2 := false
-	for _, obj := range output {
-		if col, ok := obj["col1"]; ok {
-			hasCol1 = true
-			arr, _ := col.([]interface{})
-			assert.Equal(t, 3, len(arr))
-		}
-		if col, ok := obj["col2"]; ok {
-			hasCol2 = true
-			arr, _ := col.([]interface{})
-			assert.Equal(t, 3, len(arr))
-		}
-	}
-	assert.True(t, hasCol1 && hasCol2, "Should have both col1 and col2")
+	assert.Len(t, output, 2)
+	assert.Len(t, output["col1"], 3)
+	assert.Len(t, output["col2"], 3)
 }
 
 func TestObjectFormatEmptyRows(t *testing.T) {
@@ -525,4 +510,58 @@ func TestUnmarshalFormatCaseInsensitive(t *testing.T) {
 	require.NoError(t, Unmarshal(cfg, table))
 	assert.Equal(t, []string{"a", "b"}, table.Headers)
 	assert.Equal(t, [][]string{{"1", "2"}}, table.Rows)
+}
+
+func TestUnmarshalColumnObjectShape(t *testing.T) {
+	input := `{"col1":[1,2],"col2":["a","b"]}`
+	cfg := &common.Config{
+		Extension: map[string]string{"format": "column"},
+		Reader:    strings.NewReader(input),
+	}
+	table := &common.Table{}
+	require.NoError(t, Unmarshal(cfg, table))
+	assert.Equal(t, []string{"col1", "col2"}, table.Headers)
+	assert.Equal(t, [][]string{{"1", "a"}, {"2", "b"}}, table.Rows)
+}
+
+func TestMarshalColumnArrayLegacyShape(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"a", "b"},
+		Rows:    [][]string{{"1", "2"}},
+	}
+	var buf strings.Builder
+	cfg := &common.Config{
+		Extension: map[string]string{"format": "column-array", "minify": "true"},
+		Writer:    &buf,
+	}
+	require.NoError(t, Marshal(cfg, table))
+	assert.JSONEq(t, `[{"a":["1"]},{"b":["2"]}]`, buf.String())
+}
+
+func TestMarshalIndentAndRoot(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"a"},
+		Rows:    [][]string{{"1"}},
+	}
+	var buf strings.Builder
+	cfg := &common.Config{
+		Extension: map[string]string{"indent": "4", "root": "data"},
+		Writer:    &buf,
+	}
+	require.NoError(t, Marshal(cfg, table))
+	assert.Contains(t, buf.String(), "\n    \"data\": [")
+	var output map[string][]map[string]interface{}
+	require.NoError(t, json.Unmarshal([]byte(buf.String()), &output))
+	assert.Equal(t, "1", output["data"][0]["a"])
+}
+
+func TestMarshalIndentZeroMinifies(t *testing.T) {
+	table := &common.Table{Headers: []string{"a"}, Rows: [][]string{{"1"}}}
+	var buf strings.Builder
+	cfg := &common.Config{
+		Extension: map[string]string{"indent": "0"},
+		Writer:    &buf,
+	}
+	require.NoError(t, Marshal(cfg, table))
+	assert.Equal(t, `[{"a":"1"}]`, buf.String())
 }

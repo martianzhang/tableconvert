@@ -101,7 +101,7 @@ func validateOptionValue(key, value string) error {
 			return nil
 		}
 		switch strings.ToLower(value) {
-		case "object", "2d", "column", "keyed":
+		case "object", "2d", "column", "column-array", "keyed":
 			return nil
 		}
 		return fmt.Errorf("invalid --format %q (use object, 2d, column, or keyed)", value)

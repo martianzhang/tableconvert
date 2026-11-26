@@ -46,7 +46,9 @@ var FormatParamsRegistry = map[string][]FormatParam{
 		{Name: "thead", DefaultValue: "false", AllowedValues: "true, false", Description: "Include thead and tbody tags"},
 	},
 	"json": {
-		{Name: "format", DefaultValue: "object", AllowedValues: "object, 2d, column, keyed", Description: "JSON Format"},
+		{Name: "format", DefaultValue: "object", AllowedValues: "object, 2d, column, column-array, keyed", Description: "JSON Format"},
+		{Name: "indent", DefaultValue: "2", AllowedValues: "0-8", Description: "Indent size; 0 minifies"},
+		{Name: "root", DefaultValue: "", AllowedValues: "", Description: "Wrap output in a root object name"},
 		{Name: "minify", DefaultValue: "false", AllowedValues: "true, false", Description: "Minify JSON"},
 		{Name: "parse-types", DefaultValue: "false", AllowedValues: "true, false", Description: "Convert values to numbers/bools/null"},
 		{Name: "parsing-json", DefaultValue: "false", AllowedValues: "true, false", Description: "Alias for --parse-types"},

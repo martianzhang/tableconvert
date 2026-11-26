@@ -141,8 +141,10 @@ tableconvert data.csv output.html --thead
 
 | Parameter | Default | Allowed Values | Description |
 |-----------|---------|----------------|-------------|
-| `format` | `object` | `object`, `2d`, `column`, `keyed` | JSON output format |
-| `minify` | `false` | `true`, `false` | Minify JSON output |
+| `format` | `object` | `object`, `2d`, `column`, `column-array`, `keyed` | JSON output format |
+| `indent` | `2` | `0-8` | Indent size; `0` minifies |
+| `root` | `` | Any string | Wrap the output in a root object, e.g. `{"data":...}` |
+| `minify` | `false` | `true`, `false` | Minify JSON output (overrides `indent`) |
 | `parse-types` | `false` | `true`, `false` | Convert values to numbers/bools/null on output (alias: `parsing-json`) |
 | `parsing-json` | `false` | `true`, `false` | Alias for `parse-types` |
 | `json-path` | `` | Dot/bracket path | Select the row array from a wrapper object (e.g. `data.items`) |
@@ -152,7 +154,8 @@ tableconvert data.csv output.html --thead
 **JSON Format Options:**
 - `object`: Array of objects (recommended)
 - `2d`: 2D array (rows and columns)
-- `column`: Column-oriented format
+- `column`: Column-oriented object: `{"a":[...],"b":[...]}`
+- `column-array`: Legacy column array: `[{"a":[...]},{"b":[...]}]`
 - `keyed`: Keyed by first column
 
 **Nested JSON:**
@@ -175,6 +178,12 @@ tableconvert data.csv output.json --format=2d
 
 # Minified output
 tableconvert data.csv output.json --minify
+
+# Column-oriented object
+tableconvert data.csv output.json --format=column
+
+# Root object and 4-space indentation
+tableconvert data.csv output.json --root=data --indent=4
 ```
 
 ---

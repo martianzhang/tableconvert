@@ -1,1 +1,1 @@
-[{"FIELD":["user_id","username","password"]},{"TYPE":["smallint(5)","varchar(10)","varchar(100)"]},{"NULL":["NO","NO","NO"]},{"KEY":["PRI","",""]},{"DEFAULT":[null,null,""]},{"EXTRA":["auto_increment","",""]}]
+{"DEFAULT":[null,null,""],"EXTRA":["auto_increment","",""],"FIELD":["user_id","username","password"],"KEY":["PRI","",""],"NULL":["NO","NO","NO"],"TYPE":["smallint(5)","varchar(10)","varchar(100)"]}

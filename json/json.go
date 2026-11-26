@@ -73,43 +73,73 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 		}
 
 	case "column":
-		var input []map[string]interface{}
-		if err := decodeJSON(data, &input); err != nil {
+		root, err := common.DecodeOrderedJSON(data)
+		if err != nil {
 			return err
 		}
 
 		columnData := make(map[string][]interface{})
-		var numRows int
-		for _, obj := range input {
-			for k, v := range obj {
-				switch arr := v.(type) {
-				case []interface{}:
-					columnData[k] = arr
-					if len(arr) > numRows {
-						numRows = len(arr)
+		headerOrder := make([]string, 0)
+		addColumns := func(object *common.OrderedObject) error {
+			for _, key := range object.Keys {
+				arr, ok := object.Values[key].([]interface{})
+				if !ok {
+					return fmt.Errorf("invalid column format for key %s", key)
+				}
+				if _, exists := columnData[key]; !exists {
+					headerOrder = append(headerOrder, key)
+				}
+				columnData[key] = arr
+			}
+			return nil
+		}
+
+		switch value := root.(type) {
+		case *common.OrderedObject:
+			if err := addColumns(value); err != nil {
+				return err
+			}
+		case []interface{}:
+			for _, item := range value {
+				switch object := item.(type) {
+				case *common.OrderedObject:
+					if err := addColumns(object); err != nil {
+						return err
+					}
+				case map[string]interface{}:
+					keys := make([]string, 0, len(object))
+					for key := range object {
+						keys = append(keys, key)
+					}
+					sort.Strings(keys)
+					ordered := &common.OrderedObject{Keys: keys, Values: object}
+					if err := addColumns(ordered); err != nil {
+						return err
 					}
 				default:
-					return fmt.Errorf("invalid column format for key %s", k)
+					return fmt.Errorf("invalid column format: expected an object")
 				}
 			}
+		default:
+			return fmt.Errorf("invalid column format: expected an object or an array of objects")
 		}
 
-		// Set headers (sorted for determinism)
-		for k := range columnData {
-			table.Headers = append(table.Headers, k)
+		table.Headers = headerOrder
+		numRows := 0
+		for _, column := range columnData {
+			if len(column) > numRows {
+				numRows = len(column)
+			}
 		}
-		sort.Strings(table.Headers)
-
-		// Fill rows
 		for i := 0; i < numRows; i++ {
 			row := make([]string, len(table.Headers))
 			for j, header := range table.Headers {
-				col := columnData[header]
-				if i < len(col) {
-					if col[i] == nil {
+				column := columnData[header]
+				if i < len(column) {
+					if column[i] == nil {
 						row[j] = "NULL"
 					} else {
-						row[j] = common.JSONScalarString(col[i])
+						row[j] = common.JSONScalarString(column[i])
 					}
 				}
 			}
@@ -207,22 +237,18 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	format := strings.ToLower(cfg.GetExtensionString("format", ""))
 	parsing := cfg.GetParseTypes()
 	typed := parsing || (common.IsJSONSource(cfg.From) && table.Raw != nil)
-	minify := cfg.GetExtensionBool("minify", false)
 
-	var data []byte
-	var err error
+	var output interface{}
 	switch format {
 	// 2D Array
 	case "2d":
-		var output [][]interface{}
-		// Header
+		rowsOutput := make([][]interface{}, 0, len(table.Rows)+1)
 		headers := make([]interface{}, len(table.Headers))
 		for i, header := range table.Headers {
 			headers[i] = header
 		}
-		output = append(output, headers)
+		rowsOutput = append(rowsOutput, headers)
 
-		// Rows
 		for rowIndex, row := range table.Rows {
 			if len(row) != len(table.Headers) {
 				return fmt.Errorf("row length %d does not match header length %d", len(row), len(table.Headers))
@@ -231,15 +257,11 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			for i := range table.Headers {
 				record[i] = jsonCellValue(table, rowIndex, i, typed)
 			}
-			output = append(output, record)
+			rowsOutput = append(rowsOutput, record)
 		}
+		output = rowsOutput
 
-		if minify {
-			data, err = json.Marshal(output)
-		} else {
-			data, err = json.MarshalIndent(output, "", "  ")
-		}
-	// Column Array
+	// Column-oriented object: {"a":[...],"b":[...]}
 	case "column":
 		columns := make(map[string][]interface{}, len(table.Headers))
 		for _, header := range table.Headers {
@@ -254,54 +276,59 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 				columns[header] = append(columns[header], jsonCellValue(table, rowIndex, i, typed))
 			}
 		}
-		// convert map[string][]interface{} to []map[string]interface{}
-		var output []map[string]interface{}
+		output = columns
+
+	// Legacy column array: [{"a":[...]},{"b":[...]}]
+	case "column-array":
+		columns := make(map[string][]interface{}, len(table.Headers))
 		for _, header := range table.Headers {
-			output = append(output, map[string]interface{}{header: columns[header]})
+			columns[header] = []interface{}{}
 		}
-		if minify {
-			data, err = json.Marshal(output)
-		} else {
-			data, err = json.MarshalIndent(output, "", "  ")
+		for rowIndex, row := range table.Rows {
+			if len(row) != len(table.Headers) {
+				return fmt.Errorf("row length %d does not match header length %d", len(row), len(table.Headers))
+			}
+			for i := range row {
+				header := table.Headers[i]
+				columns[header] = append(columns[header], jsonCellValue(table, rowIndex, i, typed))
+			}
 		}
+		legacy := make([]map[string]interface{}, 0, len(table.Headers))
+		for _, header := range table.Headers {
+			legacy = append(legacy, map[string]interface{}{header: columns[header]})
+		}
+		output = legacy
+
 	// Keyed by first column
 	case "keyed":
 		if len(table.Headers) == 0 {
-			data, err = json.Marshal(map[string]interface{}{})
+			output = map[string]interface{}{}
 			break
 		}
-		output := make(map[string]map[string]interface{}, len(table.Rows))
+		keyed := make(map[string]map[string]interface{}, len(table.Rows))
 		for rowIndex, row := range table.Rows {
 			if len(row) != len(table.Headers) {
 				return fmt.Errorf("row length %d does not match header length %d", len(row), len(table.Headers))
 			}
 			key := row[0]
-			if _, exists := output[key]; exists {
+			if _, exists := keyed[key]; exists {
 				return fmt.Errorf("duplicate key %q in keyed JSON output", key)
 			}
 			record := make(map[string]interface{}, len(table.Headers)-1)
 			for i := 1; i < len(table.Headers); i++ {
 				record[table.Headers[i]] = jsonCellValue(table, rowIndex, i, typed)
 			}
-			output[key] = record
+			keyed[key] = record
 		}
-		if minify {
-			data, err = json.Marshal(output)
-		} else {
-			data, err = json.MarshalIndent(output, "", "  ")
-		}
+		output = keyed
+
 	// Array of Object
 	default:
 		if len(table.RawRows) == len(table.Rows) && common.IsJSONSource(cfg.From) {
-			output := common.ToPlainJSON(table.RawRows)
-			if minify {
-				data, err = json.Marshal(output)
-			} else {
-				data, err = json.MarshalIndent(output, "", "  ")
-			}
+			output = common.ToPlainJSON(table.RawRows)
 			break
 		}
-		output := make([]map[string]interface{}, 0, len(table.Rows))
+		objects := make([]map[string]interface{}, 0, len(table.Rows))
 		for rowIndex := range table.Rows {
 			row := table.Rows[rowIndex]
 			if len(row) != len(table.Headers) {
@@ -311,22 +338,31 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			for i, header := range table.Headers {
 				record[header] = jsonCellValue(table, rowIndex, i, typed)
 			}
-			output = append(output, record)
+			objects = append(objects, record)
 		}
-		// minify json output
-		if minify {
-			data, err = json.Marshal(output)
-		} else {
-			data, err = json.MarshalIndent(output, "", "  ")
-		}
+		output = objects
 	}
-	// deal with json marshal error
+
+	data, err := marshalJSONOutput(cfg, output)
 	if err != nil {
 		return err
 	}
-
 	_, err = cfg.Writer.Write(data)
 	return err
+}
+
+func marshalJSONOutput(cfg *common.Config, output interface{}) ([]byte, error) {
+	if root := strings.TrimSpace(cfg.GetExtensionString("root", "")); root != "" {
+		output = map[string]interface{}{root: output}
+	}
+	if cfg.GetExtensionBool("minify", false) {
+		return json.Marshal(output)
+	}
+	indent := cfg.GetExtensionInt("indent", 2)
+	if indent <= 0 {
+		return json.Marshal(output)
+	}
+	return json.MarshalIndent(output, "", strings.Repeat(" ", indent))
 }
 
 func jsonCellValue(table *common.Table, rowIndex, colIndex int, typed bool) interface{} {
