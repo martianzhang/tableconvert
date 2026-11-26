@@ -26,7 +26,7 @@ This page lists current boundaries so you can choose the right workaround.
 ## Data size
 
 - CSV/JSON/SQL inputs are currently read into memory, and `Table` is fully in-memory. Very large files can exhaust memory.
-- Streaming and `--max-rows` / `--max-bytes` guards are not implemented yet.
+- Use `--max-bytes` / `--max-rows` as guards. Full streaming is not implemented yet.
 
 ## SQL
 

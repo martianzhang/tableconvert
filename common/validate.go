@@ -189,7 +189,7 @@ func validateOptionValue(key, value string) error {
 		}
 		return fmt.Errorf("invalid --flatten-arrays %q (use json or index)", value)
 
-	case "indent", "head", "tail", "skip-rows", "header-row":
+	case "indent", "head", "tail", "skip-rows", "header-row", "max-rows", "max-bytes":
 		if value == "" {
 			return nil
 		}

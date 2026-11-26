@@ -21,10 +21,18 @@ func performAllSheets(cfg *common.Config) error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
+	if err := cfg.ApplyInputLimit(); err != nil {
+		return err
+	}
 
 	sheets, err := excel.UnmarshalAll(cfg)
 	if err != nil {
 		return err
+	}
+	for i := range sheets {
+		if err := cfg.EnforceRowLimit(&sheets[i].Table); err != nil {
+			return err
+		}
 	}
 	if cfg.DryRun {
 		fmt.Fprintf(os.Stderr, "=== DRY RUN MODE (all sheets) ===\n")

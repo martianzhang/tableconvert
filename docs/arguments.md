@@ -25,6 +25,8 @@ These transformations work with **all formats**:
 | `--trim` | Trim whitespace from headers/cells | `tableconvert data.csv output.csv --trim` |
 | `--skip-rows=N` | Skip physical rows before the header (CSV/TSV/Excel) | `tableconvert report.csv out.json --skip-rows=2` |
 | `--header-row=N` | 1-based header row after skipping (CSV/TSV/Excel) | `tableconvert report.csv out.json --header-row=3` |
+| `--max-bytes=N` | Reject input larger than N bytes (0 = unlimited) | `tableconvert big.csv out.json --max-bytes=10485760` |
+| `--max-rows=N` | Reject tables with more than N rows (0 = unlimited) | `tableconvert big.csv out.json --max-rows=100000` |
 
 **Transformation order:** transpose → delete-empty → deduplicate → replace → filter → rename → columns → sort → head/tail → trim → case transformations. `--header-row` / `--skip-rows` are applied while parsing CSV/TSV/Excel, before normalization.
 

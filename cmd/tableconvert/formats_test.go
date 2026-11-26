@@ -58,3 +58,29 @@ func TestNewINIFormat(t *testing.T) {
 	assert.Contains(t, buf.String(), "[server]")
 	assert.Contains(t, buf.String(), "host = localhost")
 }
+
+func TestInputLimits(t *testing.T) {
+	var buf bytes.Buffer
+	cfg := &common.Config{
+		From:      "csv",
+		To:        "json",
+		Reader:    strings.NewReader("a\n1\n2\n"),
+		Writer:    &buf,
+		Extension: map[string]string{"max-rows": "1"},
+	}
+	err := performConversion(cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "max-rows")
+
+	buf.Reset()
+	cfg = &common.Config{
+		From:      "csv",
+		To:        "json",
+		Reader:    strings.NewReader("a\n1\n2\n"),
+		Writer:    &buf,
+		Extension: map[string]string{"max-bytes": "3"},
+	}
+	err = performConversion(cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "max-bytes")
+}

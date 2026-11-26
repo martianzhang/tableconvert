@@ -346,6 +346,9 @@ func performDryRun(cfg *common.Config) error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
+	if err := cfg.ApplyInputLimit(); err != nil {
+		return err
+	}
 	if err := cfg.EnsureTextIO(); err != nil {
 		return err
 	}
@@ -365,6 +368,9 @@ func performDryRun(cfg *common.Config) error {
 
 	if err := common.NormalizeTable(&table, cfg.GetExtensionBool("strict-columns", false)); err != nil {
 		return fmt.Errorf("error normalizing table: %w", err)
+	}
+	if err := cfg.EnforceRowLimit(&table); err != nil {
+		return err
 	}
 
 	// Apply transformations

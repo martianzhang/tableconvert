@@ -185,6 +185,8 @@ var GlobalTransformParams = []FormatParam{
 	{Name: "head", DefaultValue: "", AllowedValues: "integer >= 0", Description: "Keep the first N rows"},
 	{Name: "tail", DefaultValue: "", AllowedValues: "integer >= 0", Description: "Keep the last N rows"},
 	{Name: "trim", DefaultValue: "false", AllowedValues: "true, false", Description: "Trim whitespace from headers and cells"},
+	{Name: "max-bytes", DefaultValue: "", AllowedValues: "integer >= 0", Description: "Reject input larger than N bytes (0 = unlimited)"},
+	{Name: "max-rows", DefaultValue: "", AllowedValues: "integer >= 0", Description: "Reject tables with more than N rows (0 = unlimited)"},
 }
 
 // GetFormatParams returns the parameters for a specific format

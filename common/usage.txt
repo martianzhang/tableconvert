@@ -36,6 +36,8 @@ DATA TRANSFORMATIONS:
   --columns=1,3-5,name      Select/reorder columns
   --head=N / --tail=N       Keep first/last N rows
   --trim                    Trim whitespace from headers and cells
+  --max-bytes=N             Reject input larger than N bytes (0 = unlimited)
+  --max-rows=N              Reject tables with more than N rows (0 = unlimited)
 
 BATCH PROCESSING:
   --batch|-b={PATTERN}      Process multiple files matching a pattern

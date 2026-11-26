@@ -80,6 +80,9 @@ func PerformConversionWithRegistry(registry *FormatRegistry, cfg *Config) error 
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
+	if err := cfg.ApplyInputLimit(); err != nil {
+		return err
+	}
 
 	// Parse input
 	var table Table
@@ -103,6 +106,9 @@ func PerformConversionWithRegistry(registry *FormatRegistry, cfg *Config) error 
 
 	if err := NormalizeTable(&table, cfg.GetExtensionBool("strict-columns", false)); err != nil {
 		return &ConversionError{Stage: "normalize", Format: cfg.From, Err: err}
+	}
+	if err := cfg.EnforceRowLimit(&table); err != nil {
+		return &ConversionError{Stage: "limit", Format: cfg.From, Err: err}
 	}
 
 	// Apply transformations

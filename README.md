@@ -163,6 +163,7 @@ tableconvert data.csv output.php --template=templates/php_array.tmpl
 - `--head=N` / `--tail=N` - Keep first/last N rows
 - `--trim` - Trim whitespace
 - `--skip-rows=N` / `--header-row=N` - Skip rows / choose header row for CSV, TSV, Excel
+- `--max-bytes=N` / `--max-rows=N` - Guard against unexpectedly large input
 
 **Auto-Detection:**
 When `--from` or `--to` are omitted, formats are detected from file extensions:
