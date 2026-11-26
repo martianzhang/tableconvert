@@ -132,6 +132,13 @@ tableconvert --sheet-index=2 report.xlsx output.csv
 | `div` | `false` | `true`, `false` | Wrap in `<div>` instead of `<table>` |
 | `minify` | `false` | `true`, `false` | Minify HTML output |
 | `thead` | `false` | `true`, `false` | Include `<thead>` and `<tbody>` tags |
+| `table-index` | `1` | integer >= 1 | Select the Nth `<table>` on input |
+| `url` | `` | http(s) URL | Fetch HTML input from a URL |
+
+**Input behavior:**
+- `colspan` / `rowspan` are expanded by repeating the top-left value across the range.
+- `<thead>` / `<th>` take priority over the first-column heuristic.
+- Use `--table-index=N` when a page has multiple tables; out-of-range fails with the table count.
 
 **Examples:**
 ```bash
@@ -143,6 +150,12 @@ tableconvert data.csv output.html --div
 
 # With proper thead/tbody structure
 tableconvert data.csv output.html --thead
+
+# Read the second table from a page
+tableconvert --from=html --to=csv --table-index=2 page.html output.csv
+
+# Fetch HTML directly
+tableconvert --from=html --to=csv --url=https://example.com/report output.csv
 ```
 
 ---

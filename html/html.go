@@ -3,7 +3,11 @@ package html
 import (
 	"fmt"
 	"html/template"
+	"io"
+	"net/http"
+	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/martianzhang/tableconvert/common"
@@ -100,32 +104,42 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	table.Headers = nil
 	table.Rows = nil
 
+	reader := cfg.Reader
+	if rawURL := cfg.GetExtensionString("url", ""); rawURL != "" {
+		body, err := fetchHTML(rawURL)
+		if err != nil {
+			return err
+		}
+		defer body.Close()
+		reader = body
+	}
+
 	// Parse the HTML
-	doc, err := html.Parse(cfg.Reader)
+	doc, err := html.Parse(reader)
 	if err != nil {
 		return fmt.Errorf("Unmarshal: failed to parse HTML: %w", err)
 	}
 
-	// Find the first table
-	var tableNode *html.Node
-	var findTable func(*html.Node)
-	findTable = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "table" {
-			tableNode = n
-			return
-		}
-		for c := n.FirstChild; c != nil && tableNode == nil; c = c.NextSibling {
-			findTable(c)
-		}
-	}
-	findTable(doc)
-
-	if tableNode == nil {
+	tables := collectTables(doc)
+	if len(tables) == 0 {
 		if divTable := findDivTable(doc); divTable != nil {
 			return parseDivTable(divTable, table)
 		}
 		return fmt.Errorf("Unmarshal: no table found in HTML content")
 	}
+
+	tableNumber := 1
+	if raw := strings.TrimSpace(cfg.GetExtensionString("table-index", "")); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed < 1 {
+			return fmt.Errorf("Unmarshal: invalid --table-index %q (use a 1-based table number)", raw)
+		}
+		tableNumber = parsed
+	}
+	if tableNumber > len(tables) {
+		return fmt.Errorf("Unmarshal: --table-index=%d out of range (%d tables found)", tableNumber, len(tables))
+	}
+	tableNode := tables[tableNumber-1]
 
 	// Check if first-column-header is explicitly set in config
 	if cfg.GetExtensionBool("first-column-header", false) {
@@ -314,9 +328,10 @@ func findFirstElement(root *html.Node, tag string) *html.Node {
 	return found
 }
 
-// collectRows collects all rows from the table (excluding nested tables).
+// collectRows collects all rows from the table (excluding nested tables) and
+// expands colspan/rowspan so every logical column is represented.
 func collectRows(tableNode *html.Node) [][]string {
-	var rows [][]string
+	var rowNodes []*html.Node
 	var walk func(*html.Node)
 	walk = func(n *html.Node) {
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
@@ -324,21 +339,126 @@ func collectRows(tableNode *html.Node) [][]string {
 				continue // don't merge rows from a nested table
 			}
 			if c.Type == html.ElementNode && c.Data == "tr" {
-				var row []string
-				for cell := c.FirstChild; cell != nil; cell = cell.NextSibling {
-					if cell.Type == html.ElementNode && (cell.Data == "td" || cell.Data == "th") {
-						row = append(row, strings.TrimSpace(nodeText(cell)))
-					}
-				}
-				if len(row) > 0 {
-					rows = append(rows, row)
-				}
+				rowNodes = append(rowNodes, c)
+				continue
 			}
 			walk(c)
 		}
 	}
 	walk(tableNode)
+
+	pending := make(map[int]rowSpan)
+	rows := make([][]string, 0, len(rowNodes))
+	for _, rowNode := range rowNodes {
+		var cells []*html.Node
+		for cell := rowNode.FirstChild; cell != nil; cell = cell.NextSibling {
+			if cell.Type == html.ElementNode && (cell.Data == "td" || cell.Data == "th") {
+				cells = append(cells, cell)
+			}
+		}
+
+		row := make([]string, 0)
+		cellIndex := 0
+		for col := 0; ; col++ {
+			if active, ok := pending[col]; ok {
+				ensureColumns(&row, col)
+				row[col] = active.value
+				if active.remaining <= 1 {
+					delete(pending, col)
+				} else {
+					active.remaining--
+					pending[col] = active
+				}
+				continue
+			}
+			if cellIndex >= len(cells) {
+				if !hasPendingAtOrAfter(pending, col) {
+					break
+				}
+				continue
+			}
+			cell := cells[cellIndex]
+			cellIndex++
+			value := strings.TrimSpace(nodeText(cell))
+			colspan := spanValue(cell, "colspan")
+			rowspan := spanValue(cell, "rowspan")
+			for offset := 0; offset < colspan; offset++ {
+				ensureColumns(&row, col+offset)
+				row[col+offset] = value
+				if rowspan > 1 {
+					pending[col+offset] = rowSpan{value: value, remaining: rowspan - 1}
+				}
+			}
+			col += colspan - 1
+		}
+		if len(row) > 0 {
+			rows = append(rows, row)
+		}
+	}
 	return rows
+}
+
+func collectTables(root *html.Node) []*html.Node {
+	var tables []*html.Node
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			if c.Type == html.ElementNode && c.Data == "table" {
+				tables = append(tables, c)
+				continue
+			}
+			walk(c)
+		}
+	}
+	walk(root)
+	return tables
+}
+
+func ensureColumns(row *[]string, index int) {
+	for len(*row) <= index {
+		*row = append(*row, "")
+	}
+}
+
+type rowSpan struct {
+	value     string
+	remaining int
+}
+
+func hasPendingAtOrAfter(pending map[int]rowSpan, col int) bool {
+	for key := range pending {
+		if key >= col {
+			return true
+		}
+	}
+	return false
+}
+
+func spanValue(node *html.Node, key string) int {
+	for _, attr := range node.Attr {
+		if strings.EqualFold(attr.Key, key) {
+			if value, err := strconv.Atoi(attr.Val); err == nil && value > 0 {
+				return value
+			}
+		}
+	}
+	return 1
+}
+
+func fetchHTML(rawURL string) (io.ReadCloser, error) {
+	client := &http.Client{Timeout: 30 * time.Second}
+	response, err := client.Get(rawURL)
+	if err != nil {
+		return nil, fmt.Errorf("Unmarshal: failed to fetch %s: %w", rawURL, err)
+	}
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		response.Body.Close()
+		return nil, fmt.Errorf("Unmarshal: failed to fetch %s: HTTP %s", rawURL, response.Status)
+	}
+	return struct {
+		io.Reader
+		io.Closer
+	}{Reader: io.LimitReader(response.Body, 10<<20), Closer: response.Body}, nil
 }
 
 // nodeText returns the visible text content of a node, including text nested

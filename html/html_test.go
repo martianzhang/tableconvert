@@ -3,6 +3,8 @@ package html
 import (
 	"bytes"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -740,4 +742,74 @@ func TestIsFirstColumnHeader(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestUnmarshalTableIndex(t *testing.T) {
+	input := `<html><body>
+<table><tr><th>first</th></tr><tr><td>1</td></tr></table>
+<table><tr><th>second</th></tr><tr><td>2</td></tr></table>
+</body></html>`
+
+	table := &common.Table{}
+	cfg := &common.Config{
+		Reader:    strings.NewReader(input),
+		Extension: map[string]string{"table-index": "2"},
+	}
+	require.NoError(t, Unmarshal(cfg, table))
+	assert.Equal(t, []string{"second"}, table.Headers)
+	assert.Equal(t, [][]string{{"2"}}, table.Rows)
+
+	cfg.Extension["table-index"] = "3"
+	assert.Error(t, Unmarshal(cfg, &common.Table{}))
+}
+
+func TestUnmarshalColspanRowspan(t *testing.T) {
+	input := `<table>
+<tr><th>A</th><th>B</th><th>C</th></tr>
+<tr><td rowspan="2">X</td><td colspan="2">Y</td></tr>
+<tr><td>Z</td><td>W</td></tr>
+</table>`
+	table := &common.Table{}
+	require.NoError(t, Unmarshal(&common.Config{Reader: strings.NewReader(input)}, table))
+	assert.Equal(t, []string{"A", "B", "C"}, table.Headers)
+	assert.Equal(t, [][]string{{"X", "Y", "Y"}, {"X", "Z", "W"}}, table.Rows)
+}
+
+func TestUnmarshalTheadPriority(t *testing.T) {
+	input := `<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>Alice</td><td>30</td></tr></tbody></table>`
+	table := &common.Table{}
+	require.NoError(t, Unmarshal(&common.Config{Reader: strings.NewReader(input)}, table))
+	assert.Equal(t, []string{"Name", "Age"}, table.Headers)
+	assert.Equal(t, [][]string{{"Alice", "30"}}, table.Rows)
+}
+
+func TestUnmarshalFromURL(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<table><tr><th>a</th></tr><tr><td>1</td></tr></table>`))
+	}))
+	defer server.Close()
+
+	table := &common.Table{}
+	cfg := &common.Config{
+		Reader:    strings.NewReader(""),
+		Extension: map[string]string{"url": server.URL},
+	}
+	require.NoError(t, Unmarshal(cfg, table))
+	assert.Equal(t, []string{"a"}, table.Headers)
+	assert.Equal(t, [][]string{{"1"}}, table.Rows)
+}
+
+func TestUnmarshalFromURLHTTPError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "nope", http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	table := &common.Table{}
+	cfg := &common.Config{
+		Reader:    strings.NewReader(""),
+		Extension: map[string]string{"url": server.URL},
+	}
+	assert.Error(t, Unmarshal(cfg, table))
 }

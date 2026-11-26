@@ -52,6 +52,8 @@ var FormatParamsRegistry = map[string][]FormatParam{
 		{Name: "div", DefaultValue: "false", AllowedValues: "true, false", Description: "Convert into div table"},
 		{Name: "minify", DefaultValue: "false", AllowedValues: "true, false", Description: "Minify HTML table"},
 		{Name: "thead", DefaultValue: "false", AllowedValues: "true, false", Description: "Include thead and tbody tags"},
+		{Name: "table-index", DefaultValue: "1", AllowedValues: "integer >= 1", Description: "Select the Nth table on input"},
+		{Name: "url", DefaultValue: "", AllowedValues: "http(s) URL", Description: "Fetch HTML input from a URL"},
 	},
 	"json": {
 		{Name: "format", DefaultValue: "object", AllowedValues: "object, 2d, column, column-array, keyed", Description: "JSON Format"},

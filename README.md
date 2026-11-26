@@ -111,6 +111,10 @@ tableconvert data.csv output.json --format=object --minify
 # HTML table with div wrapper and minification
 tableconvert data.csv output.html --div --minify --thead
 
+# Read a specific table or fetch a page
+tableconvert --from=html --to=csv --table-index=2 page.html output.csv
+tableconvert --from=html --to=csv --url=https://example.com/report output.csv
+
 # SQL with multiple rows in one INSERT
 tableconvert data.csv output.sql --one-insert --table=products
 

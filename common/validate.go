@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -195,6 +196,26 @@ func validateOptionValue(key, value string) error {
 		number, err := strconv.Atoi(value)
 		if err != nil || number < 0 {
 			return fmt.Errorf("invalid --%s %q (use a non-negative integer)", key, value)
+		}
+		return nil
+
+	case "table-index":
+		if value == "" {
+			return nil
+		}
+		number, err := strconv.Atoi(value)
+		if err != nil || number < 1 {
+			return fmt.Errorf("invalid --table-index %q (use a 1-based positive number)", value)
+		}
+		return nil
+
+	case "url":
+		if value == "" {
+			return nil
+		}
+		parsed, err := url.ParseRequestURI(value)
+		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+			return fmt.Errorf("invalid --url %q (use an http(s) URL)", value)
 		}
 		return nil
 
