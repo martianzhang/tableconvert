@@ -565,3 +565,20 @@ func TestUnmarshalInsertWithComplexLiterals(t *testing.T) {
 	assert.Equal(t, "true", table.Rows[0][2])
 	assert.Equal(t, "NULL", table.Rows[0][3])
 }
+
+func TestMarshalParseTypes(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"id", "ok", "missing", "zip"},
+		Rows:    [][]string{{"1", "true", "null", "007"}},
+	}
+	var buf bytes.Buffer
+	cfg := &common.Config{
+		Writer: &buf,
+		Extension: map[string]string{
+			"table":       "t",
+			"parse-types": "true",
+		},
+	}
+	require.NoError(t, Marshal(cfg, table))
+	assert.Contains(t, buf.String(), "VALUES (1, TRUE, NULL, '007')")
+}

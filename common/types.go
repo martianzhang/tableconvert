@@ -41,6 +41,11 @@ const (
 	TableFormatTWiki     = "twiki"
 )
 
+var (
+	integerPattern = regexp.MustCompile(`^[+-]?(0|[1-9][0-9]*)$`)
+	floatPattern   = regexp.MustCompile(`^[+-]?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?$`)
+)
+
 // Define a mapping from file extensions to table formats
 var extensions = map[string]string{
 	".xlsx":      TableFormatExcel,
@@ -179,17 +184,22 @@ func isXML(content string) bool {
 		strings.Contains(content, "</")
 }
 
-// InferType attempts to convert a string value to a more specific type (bool, int64, float64, nil)
-// If no conversion is successful, it returns the original string.
+// InferType attempts to convert a string value to a more specific type (bool, int64, float64, nil).
+// It is intentionally conservative: values with leading zeros, phone numbers,
+// long IDs, or more than 15 digits stay strings so data such as ZIP codes and
+// account numbers is not silently corrupted.
 func InferType(value string) interface{} {
 	trimmedValue := strings.TrimSpace(value)
+	if trimmedValue == "" {
+		return value
+	}
 
-	// 1. Check for explicit null (case-insensitive)
-	if strings.ToLower(trimmedValue) == "null" {
+	// 1. Explicit null (case-insensitive).
+	if strings.EqualFold(trimmedValue, "null") {
 		return nil
 	}
 
-	// 2. Check for boolean (case-insensitive)
+	// 2. Boolean (case-insensitive).
 	lowerValue := strings.ToLower(trimmedValue)
 	if lowerValue == "true" {
 		return true
@@ -198,29 +208,35 @@ func InferType(value string) interface{} {
 		return false
 	}
 
-	// 3. Check for integer
-	// Use ParseInt for potentially larger numbers and better base control
-	if intVal, err := strconv.ParseInt(trimmedValue, 10, 64); err == nil {
-		// Optional: Double-check if the string representation truly matches
-		// to avoid interpreting things like "0xf" as integers if that's not desired.
-		// Here, we assume a valid ParseInt result means it's an integer.
-		return intVal
+	// 3. Integer. Reject leading zeros and numbers that lose precision when
+	// represented as a float64 (more than 15 significant digits).
+	if integerPattern.MatchString(trimmedValue) && digitCount(trimmedValue) <= 15 {
+		if intVal, err := strconv.ParseInt(trimmedValue, 10, 64); err == nil {
+			return intVal
+		}
 	}
 
-	// 4. Check for float
-	// It must contain ".", "e", or "E" to be considered float by some stricter definitions,
-	// but ParseFloat is more general. We'll parse anything that looks like a float.
-	if floatVal, err := strconv.ParseFloat(trimmedValue, 64); err == nil {
-		// Check if it's actually an integer represented as float (e.g., "123.0")
-		// If you want "123.0" to become integer 123, you might need extra logic here.
-		// For simplicity, we'll let ParseFloat decide.
-		return floatVal
+	// 4. Float. Require a decimal point or exponent so "123" is handled above.
+	if floatPattern.MatchString(trimmedValue) &&
+		strings.ContainsAny(trimmedValue, ".eE") &&
+		digitCount(trimmedValue) <= 15 {
+		if floatVal, err := strconv.ParseFloat(trimmedValue, 64); err == nil {
+			return floatVal
+		}
 	}
 
-	// 5. Default: return the original string (or trimmed, depending on preference)
-	// Returning the original 'value' preserves leading/trailing whitespace if needed.
-	// If you always want trimmed strings, return 'trimmedValue'.
+	// 5. Default: keep the original string.
 	return value
+}
+
+func digitCount(value string) int {
+	count := 0
+	for _, r := range value {
+		if r >= '0' && r <= '9' {
+			count++
+		}
+	}
+	return count
 }
 
 func InferPrintType(s string) string {

@@ -3,6 +3,7 @@ package sql
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/martianzhang/tableconvert/common"
@@ -168,7 +169,7 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	for j, row := range table.Rows {
 		values := make([]string, columnCount)
 		for i, cell := range row {
-			values[i] = common.SQLValueEscapeDialectWithNull(cell, dialect, cfg.SQLNull)
+			values[i] = formatSQLValue(cell, dialect, cfg)
 		}
 		if allInOne {
 			if j == 0 {
@@ -198,6 +199,35 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	}
 
 	return nil
+}
+
+func formatSQLValue(cell, dialect string, cfg *common.Config) string {
+	if !cfg.GetParseTypes() {
+		return common.SQLValueEscapeDialectWithNull(cell, dialect, cfg.SQLNull)
+	}
+	switch value := common.InferType(cell).(type) {
+	case nil:
+		return "NULL"
+	case int64:
+		return strconv.FormatInt(value, 10)
+	case float64:
+		return strconv.FormatFloat(value, 'g', -1, 64)
+	case bool:
+		switch dialect {
+		case "mssql", "oracle":
+			if value {
+				return "1"
+			}
+			return "0"
+		default:
+			if value {
+				return "TRUE"
+			}
+			return "FALSE"
+		}
+	default:
+		return common.SQLValueEscapeDialectWithNull(cell, dialect, cfg.SQLNull)
+	}
 }
 
 // Escape identifier (like column and table names)

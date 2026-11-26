@@ -55,7 +55,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 }
 
 func Marshal(cfg *common.Config, table *common.Table) error {
-	parsing := cfg.GetExtensionBool("parsing-json", false)
+	parsing := cfg.GetParseTypes()
 
 	writer := bufio.NewWriter(cfg.Writer)
 	defer writer.Flush()

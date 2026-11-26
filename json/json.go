@@ -202,7 +202,7 @@ func decodeJSONRoot(data []byte, cfg *common.Config) ([]interface{}, error) {
 
 func Marshal(cfg *common.Config, table *common.Table) error {
 	format := cfg.GetExtensionString("format", "")
-	parsing := cfg.GetExtensionBool("parsing-json", false)
+	parsing := cfg.GetParseTypes()
 	minify := cfg.GetExtensionBool("minify", false)
 
 	var data []byte

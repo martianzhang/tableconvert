@@ -14,12 +14,12 @@ func TestGetFormatParams(t *testing.T) {
 	}{
 		{"markdown format", "markdown", 5},
 		{"csv format", "csv", 3}, // first-column-header, bom, delimiter
-		{"json format", "json", 6},
+		{"json format", "json", 7},
 		{"latex format", "latex", 11},
 		{"excel format", "excel", 4}, // first-column-header, sheet-name, auto-width, text-format
 		{"html format", "html", 4},   // first-column-header, div, minify, thead
 		{"ascii format", "ascii", 1},
-		{"sql format", "sql", 4},
+		{"sql format", "sql", 5},
 		{"xml format", "xml", 4},
 		{"unknown format", "unknown", 0},
 	}

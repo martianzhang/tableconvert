@@ -448,3 +448,24 @@ func TestUnmarshalNestedObjectAsCompactJSON(t *testing.T) {
 	assert.Equal(t, []string{"meta.a", "meta.b"}, table.Headers)
 	assert.Equal(t, [][]string{{"1", `[2,3]`}}, table.Rows)
 }
+
+func TestMarshalParseTypesStrict(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"zip", "id", "ok", "missing", "amount"},
+		Rows:    [][]string{{"007", "9007199254740993", "true", "null", "1.50"}},
+	}
+	var buf strings.Builder
+	cfg := &common.Config{
+		Writer:    &buf,
+		Extension: map[string]string{"parse-types": "true"},
+	}
+	require.NoError(t, Marshal(cfg, table))
+
+	var output []map[string]interface{}
+	require.NoError(t, json.Unmarshal([]byte(buf.String()), &output))
+	assert.Equal(t, "007", output[0]["zip"])
+	assert.Equal(t, "9007199254740993", output[0]["id"])
+	assert.Equal(t, true, output[0]["ok"])
+	assert.Nil(t, output[0]["missing"])
+	assert.Equal(t, 1.5, output[0]["amount"])
+}

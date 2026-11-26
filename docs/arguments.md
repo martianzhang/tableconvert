@@ -123,7 +123,8 @@ tableconvert data.csv output.html --thead
 |-----------|---------|----------------|-------------|
 | `format` | `object` | `object`, `2d`, `column`, `keyed` | JSON output format |
 | `minify` | `false` | `true`, `false` | Minify JSON output |
-| `parsing-json` | `false` | `true`, `false` | Parse values as JSON types on output |
+| `parse-types` | `false` | `true`, `false` | Convert values to numbers/bools/null on output (alias: `parsing-json`) |
+| `parsing-json` | `false` | `true`, `false` | Alias for `parse-types` |
 | `json-path` | `` | Dot/bracket path | Select the row array from a wrapper object (e.g. `data.items`) |
 | `flatten-arrays` | `json` | `json`, `index` | Serialize arrays into one cell, or expand to `tags[0]`, `tags[1]` |
 | `sort-headers` | `false` | `true`, `false` | Sort headers alphabetically instead of first-seen order |
@@ -160,7 +161,8 @@ tableconvert data.csv output.json --minify
 
 | Parameter | Default | Allowed Values | Description |
 |-----------|---------|----------------|-------------|
-| `parsing-json` | `false` | `true`, `false` | Parse values as JSON types on output |
+| `parse-types` | `false` | `true`, `false` | Convert values to numbers/bools/null on output (alias: `parsing-json`) |
+| `parsing-json` | `false` | `true`, `false` | Alias for `parse-types` |
 | `flatten-arrays` | `json` | `json`, `index` | Serialize arrays into one cell, or expand to indexed columns |
 | `sort-headers` | `false` | `true`, `false` | Sort headers alphabetically instead of first-seen order |
 
@@ -327,6 +329,7 @@ tableconvert data.csv output.php --template=php_array.tmpl
 | Parameter | Default | Allowed Values | Description |
 |-----------|---------|----------------|-------------|
 | `one-insert` | `false` | `true`, `false` | Multiple rows in one INSERT |
+| `parse-types` | `false` | `true`, `false` | Emit numbers/bools/null as SQL literals |
 | `replace` | `false` | `true`, `false` | Use REPLACE instead of INSERT |
 | `dialect` | `mysql` | `none`, `mysql`, `oracle`, `mssql`, `postgresql` | SQL dialect |
 | `table` | `` | Any string | Table name |

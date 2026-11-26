@@ -615,6 +615,19 @@ func (c *Config) GetExtensionBool(key string, defaultValue bool) bool {
 	}
 }
 
+// GetParseTypes reports whether output values should be converted to JSON
+// types. --parse-types is the preferred name; --parsing-json is kept as an
+// alias for compatibility.
+func (c *Config) GetParseTypes() bool {
+	if c.Extension == nil {
+		return false
+	}
+	if _, ok := c.Extension["parse-types"]; ok {
+		return c.GetExtensionBool("parse-types", false)
+	}
+	return c.GetExtensionBool("parsing-json", false)
+}
+
 // GetExtensionString gets a string value from Extension with default
 func (c *Config) GetExtensionString(key string, defaultValue string) string {
 	if c.Extension == nil {

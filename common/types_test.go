@@ -2,7 +2,6 @@ package common
 
 import (
 	"io"
-	"math"
 	"strings"
 	"testing"
 
@@ -544,15 +543,15 @@ func TestInferTypeEdgeCases(t *testing.T) {
 		input    string
 		expected interface{}
 	}{
-		{"very large integer", "999999999999999999999999", float64(1e+24)}, // Too large for int64, becomes float
+		{"very large integer", "999999999999999999999999", "999999999999999999999999"}, // Precision would be lost
 		{"negative zero", "-0", int64(0)},
 		{"positive zero", "+0", int64(0)},
 		{"scientific large", "1e100", 1e100},
 		{"scientific negative", "-1.5e-3", -0.0015},
-		{"hex number", "0x10", "0x10"}, // Not supported, stays string
-		{"octal number", "0123", int64(123)},
+		{"hex number", "0x10", "0x10"},        // Not supported, stays string
+		{"octal number", "0123", "0123"},      // Leading zero means string
 		{"binary number", "0b1010", "0b1010"}, // Not supported
-		{"infinity", "Infinity", math.Inf(1)},
+		{"infinity", "Infinity", "Infinity"},  // Not a JSON number
 		{"null with spaces", "  null  ", nil},
 		{"true with spaces", "  true  ", true},
 	}
@@ -564,12 +563,8 @@ func TestInferTypeEdgeCases(t *testing.T) {
 		})
 	}
 
-	// Special test for NaN since NaN != NaN in Go
 	t.Run("NaN", func(t *testing.T) {
-		result := InferType("NaN")
-		resultFloat, ok := result.(float64)
-		assert.True(t, ok, "NaN should be returned as float64")
-		assert.True(t, math.IsNaN(resultFloat), "Result should be NaN")
+		assert.Equal(t, "NaN", InferType("NaN"))
 	})
 }
 

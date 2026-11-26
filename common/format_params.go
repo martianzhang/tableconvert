@@ -39,18 +39,21 @@ var FormatParamsRegistry = map[string][]FormatParam{
 	"json": {
 		{Name: "format", DefaultValue: "object", AllowedValues: "object, 2d, column, keyed", Description: "JSON Format"},
 		{Name: "minify", DefaultValue: "false", AllowedValues: "true, false", Description: "Minify JSON"},
-		{Name: "parsing-json", DefaultValue: "false", AllowedValues: "true, false", Description: "Parse values as JSON types"},
+		{Name: "parse-types", DefaultValue: "false", AllowedValues: "true, false", Description: "Convert values to numbers/bools/null"},
+		{Name: "parsing-json", DefaultValue: "false", AllowedValues: "true, false", Description: "Alias for --parse-types"},
 		{Name: "json-path", DefaultValue: "", AllowedValues: "", Description: "Dot/bracket path to the row array (e.g. data.items)"},
 		{Name: "flatten-arrays", DefaultValue: "json", AllowedValues: "json, index", Description: "How nested arrays become columns"},
 		{Name: "sort-headers", DefaultValue: "false", AllowedValues: "true, false", Description: "Sort headers alphabetically"},
 	},
 	"jsonl": {
-		{Name: "parsing-json", DefaultValue: "false", AllowedValues: "true, false", Description: "Parse values as JSON types"},
+		{Name: "parse-types", DefaultValue: "false", AllowedValues: "true, false", Description: "Convert values to numbers/bools/null"},
+		{Name: "parsing-json", DefaultValue: "false", AllowedValues: "true, false", Description: "Alias for --parse-types"},
 		{Name: "flatten-arrays", DefaultValue: "json", AllowedValues: "json, index", Description: "How nested arrays become columns"},
 		{Name: "sort-headers", DefaultValue: "false", AllowedValues: "true, false", Description: "Sort headers alphabetically"},
 	},
 	"jsonlines": {
-		{Name: "parsing-json", DefaultValue: "false", AllowedValues: "true, false", Description: "Parse values as JSON types"},
+		{Name: "parse-types", DefaultValue: "false", AllowedValues: "true, false", Description: "Convert values to numbers/bools/null"},
+		{Name: "parsing-json", DefaultValue: "false", AllowedValues: "true, false", Description: "Alias for --parse-types"},
 		{Name: "flatten-arrays", DefaultValue: "json", AllowedValues: "json, index", Description: "How nested arrays become columns"},
 		{Name: "sort-headers", DefaultValue: "false", AllowedValues: "true, false", Description: "Sort headers alphabetically"},
 	},
@@ -103,6 +106,7 @@ var FormatParamsRegistry = map[string][]FormatParam{
 	},
 	"sql": {
 		{Name: "one-insert", DefaultValue: "false", AllowedValues: "true, false", Description: "Insert multiple rows at once"},
+		{Name: "parse-types", DefaultValue: "false", AllowedValues: "true, false", Description: "Emit numbers/bools/null as SQL literals"},
 		{Name: "replace", DefaultValue: "false", AllowedValues: "true, false", Description: "Use REPLACE instead of INSERT"},
 		{Name: "dialect", DefaultValue: "mysql", AllowedValues: "none, mysql, oracle, mssql, postgresql", Description: "identity escape SQL Dialect, none for no escape"},
 		{Name: "table", DefaultValue: "", AllowedValues: "", Description: "Table Name"},
