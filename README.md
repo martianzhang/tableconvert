@@ -147,6 +147,7 @@ tableconvert data.csv output.php --template=php_array.tmpl
 - `--uppercase` - Convert to UPPERCASE
 - `--lowercase` - Convert to lowercase
 - `--capitalize` - Capitalize first letter of each cell
+- `--strict-columns` - Fail on ragged rows or empty/duplicate headers instead of normalizing
 
 **Auto-Detection:**
 When `--from` or `--to` are omitted, formats are detected from file extensions:

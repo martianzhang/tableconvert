@@ -14,6 +14,9 @@ These transformations work with **all formats**:
 | `--uppercase` | Convert all text to UPPERCASE | `tableconvert data.csv output.md --uppercase` |
 | `--lowercase` | Convert all text to lowercase | `tableconvert data.csv output.md --lowercase` |
 | `--capitalize` | Capitalize first letter of each cell | `tableconvert data.csv output.md --capitalize` |
+| `--strict-columns` | Fail on ragged rows or empty/duplicate headers instead of normalizing | `tableconvert data.csv output.json --strict-columns` |
+
+By default, short rows are padded, long rows extend the table with `Column N` headers, and duplicate/empty headers are renamed (`a`, `a_2`, `Column 3`). Use `--strict-columns` to fail instead.
 
 ---
 

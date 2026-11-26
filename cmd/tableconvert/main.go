@@ -319,6 +319,10 @@ func performDryRun(cfg *common.Config) error {
 		return fmt.Errorf("error parsing input: %w", err)
 	}
 
+	if err := common.NormalizeTable(&table, cfg.GetExtensionBool("strict-columns", false)); err != nil {
+		return fmt.Errorf("error normalizing table: %w", err)
+	}
+
 	// Apply transformations
 	cfg.ApplyTransformations(&table)
 

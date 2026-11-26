@@ -131,6 +131,7 @@ var GlobalTransformParams = []FormatParam{
 	{Name: "uppercase", DefaultValue: "false", AllowedValues: "true, false", Description: "Convert all text to UPPERCASE"},
 	{Name: "lowercase", DefaultValue: "false", AllowedValues: "true, false", Description: "Convert all text to lowercase"},
 	{Name: "capitalize", DefaultValue: "false", AllowedValues: "true, false", Description: "Capitalize the first letter of each cell"},
+	{Name: "strict-columns", DefaultValue: "false", AllowedValues: "true, false", Description: "Fail on ragged rows or empty/duplicate headers instead of normalizing"},
 }
 
 // GetFormatParams returns the parameters for a specific format

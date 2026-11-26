@@ -93,6 +93,10 @@ func PerformConversionWithRegistry(registry *FormatRegistry, cfg *Config) error 
 		return &ConversionError{Stage: "unmarshal", Format: cfg.From, Err: err}
 	}
 
+	if err := NormalizeTable(&table, cfg.GetExtensionBool("strict-columns", false)); err != nil {
+		return &ConversionError{Stage: "normalize", Format: cfg.From, Err: err}
+	}
+
 	// Apply transformations
 	cfg.ApplyTransformations(&table)
 
