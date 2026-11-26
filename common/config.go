@@ -268,6 +268,15 @@ func isBooleanFlag(key string) bool {
 	return false
 }
 
+func isRepeatableFlag(key string) bool {
+	switch key {
+	case "replace", "filter":
+		return true
+	default:
+		return false
+	}
+}
+
 func isBooleanLiteral(value string) bool {
 	switch strings.ToLower(value) {
 	case "true", "false", "yes", "no", "y", "n", "1", "0":
@@ -305,7 +314,16 @@ func ParseConfig(args []string) (Config, error) {
 					}
 				}
 			}
-			configs[canonicalFlagName(key)] = value
+			canonical := canonicalFlagName(key)
+			if isRepeatableFlag(canonical) {
+				if previous, ok := configs[canonical]; ok {
+					configs[canonical] = previous + "\x00" + value
+				} else {
+					configs[canonical] = value
+				}
+				continue
+			}
+			configs[canonical] = value
 		} else {
 			// Positional argument (file path)
 			positionalArgs = append(positionalArgs, arg)
@@ -775,6 +793,25 @@ func (c *Config) GetParseTypes() bool {
 	return c.GetExtensionBool("parsing-json", false)
 }
 
+// GetExtensionList returns repeated option values in command-line order.
+func (c *Config) GetExtensionList(key string) []string {
+	if c.Extension == nil {
+		return nil
+	}
+	raw, ok := c.Extension[key]
+	if !ok || raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, "\x00")
+	values := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if part != "" {
+			values = append(values, part)
+		}
+	}
+	return values
+}
+
 // GetExtensionString gets a string value from Extension with default
 func (c *Config) GetExtensionString(key string, defaultValue string) string {
 	if c.Extension == nil {
@@ -823,30 +860,70 @@ func GetProjectRootPath() (string, error) {
 	return strings.TrimSuffix(rootPath, "/") + "/", nil
 }
 
-// ApplyTransformations applies data transformations to the table based on configuration.
-// Transformations are applied in a specific order: transpose -> delete-empty -> deduplicate -> case transformations
-func (c *Config) ApplyTransformations(table *Table) {
+// ApplyTransformations applies data transformations in the documented order.
+func (c *Config) ApplyTransformations(table *Table) error {
 	if table == nil {
-		return
+		return nil
 	}
 
-	// 1. Transpose (columns to rows, rows to columns)
 	if c.GetExtensionBool("transpose", false) {
 		Transpose(table)
 	}
-
-	// 2. Delete empty rows
 	if c.GetExtensionBool("delete-empty", false) {
 		DeleteEmptyRows(table)
 	}
-
-	// 3. Deduplicate rows
 	if c.GetExtensionBool("deduplicate", false) {
 		DeduplicateRows(table)
 	}
+	if specs := c.GetExtensionList("replace"); len(specs) > 0 {
+		if err := ReplaceCells(table, specs, c.GetExtensionString("replace-column", "")); err != nil {
+			return err
+		}
+	}
+	if specs := c.GetExtensionList("filter"); len(specs) > 0 {
+		if err := FilterRows(table, specs); err != nil {
+			return err
+		}
+	}
+	if spec := c.GetExtensionString("rename", ""); spec != "" {
+		if err := RenameHeaders(table, spec); err != nil {
+			return err
+		}
+	}
+	if spec := c.GetExtensionString("columns", ""); spec != "" {
+		if err := SelectColumns(table, spec); err != nil {
+			return err
+		}
+	}
+	if spec := c.GetExtensionString("sort", ""); spec != "" {
+		if err := SortRows(table, spec); err != nil {
+			return err
+		}
+	}
 
-	// 4. Case transformations (uppercase, lowercase, capitalize)
-	// Note: These are mutually exclusive, priority: uppercase > lowercase > capitalize
+	head, headSet, err := c.optionalNonNegativeInt("head")
+	if err != nil {
+		return err
+	}
+	tail, tailSet, err := c.optionalNonNegativeInt("tail")
+	if err != nil {
+		return err
+	}
+	if headSet || tailSet {
+		headValue, tailValue := -1, -1
+		if headSet {
+			headValue = head
+		}
+		if tailSet {
+			tailValue = tail
+		}
+		LimitRows(table, headValue, tailValue)
+	}
+	if c.GetExtensionBool("trim", false) {
+		TrimCells(table)
+	}
+
+	// Case transformations are mutually exclusive; priority: uppercase > lowercase > capitalize.
 	if c.GetExtensionBool("uppercase", false) {
 		Uppercase(table)
 	} else if c.GetExtensionBool("lowercase", false) {
@@ -854,6 +931,7 @@ func (c *Config) ApplyTransformations(table *Table) {
 	} else if c.GetExtensionBool("capitalize", false) {
 		Capitalize(table)
 	}
+	return nil
 }
 
 // BatchFile represents a single file in batch processing

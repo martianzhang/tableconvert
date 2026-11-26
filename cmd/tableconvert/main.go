@@ -333,7 +333,9 @@ func performDryRun(cfg *common.Config) error {
 	}
 
 	// Apply transformations
-	cfg.ApplyTransformations(&table)
+	if err := cfg.ApplyTransformations(&table); err != nil {
+		return fmt.Errorf("error applying transformations: %w", err)
+	}
 
 	// Show dry-run summary
 	fmt.Fprintf(os.Stderr, "=== DRY RUN MODE ===\n")

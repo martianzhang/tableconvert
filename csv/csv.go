@@ -43,9 +43,22 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 		}
 	}
 
+	skipRows := cfg.GetExtensionInt("skip-rows", 0)
+	headerRow := cfg.GetExtensionInt("header-row", 0)
+
 	// Handle first-column-header option
 	firstColHeader := cfg.GetExtensionBool("first-column-header", false)
 	if firstColHeader {
+		if headerRow > 0 {
+			return fmt.Errorf("--header-row cannot be combined with --first-column-header")
+		}
+		if skipRows < 0 || skipRows > len(records) {
+			return fmt.Errorf("--skip-rows=%d exceeds input rows (%d)", skipRows, len(records))
+		}
+		records = records[skipRows:]
+		if len(records) == 0 {
+			return &common.ParseError{LineNumber: 0, Message: "empty CSV file", Line: ""}
+		}
 		// Find max column count across all records
 		maxCols := 0
 		for _, record := range records {
@@ -94,9 +107,12 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 			table.Rows = rows
 		}
 	} else {
-		// Default behavior: first row is headers
-		table.Headers = records[0]
-		table.Rows = records[1:]
+		headers, data, err := common.SelectHeaderRows(records, skipRows, headerRow)
+		if err != nil {
+			return err
+		}
+		table.Headers = headers
+		table.Rows = data
 	}
 
 	return nil

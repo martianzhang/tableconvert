@@ -29,6 +29,13 @@ DATA TRANSFORMATIONS:
   --lowercase               Convert all text to lowercase
   --capitalize              Capitalize the first letter of each cell
   --strict-columns          Fail on ragged rows or empty/duplicate headers
+  --sort=col:asc,...        Stable sort by columns or 1-based indexes
+  --replace=regex=>value    Regexp replacement (repeatable)
+  --filter=col=regexp       Keep matching rows (repeatable)
+  --rename=old=new,...      Rename columns
+  --columns=1,3-5,name      Select/reorder columns
+  --head=N / --tail=N       Keep first/last N rows
+  --trim                    Trim whitespace from headers and cells
 
 BATCH PROCESSING:
   --batch|-b={PATTERN}      Process multiple files matching a pattern

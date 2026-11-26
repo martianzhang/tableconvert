@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTranspose(t *testing.T) {
@@ -358,7 +359,7 @@ func TestApplyTransformations(t *testing.T) {
 		},
 	}
 
-	cfg.ApplyTransformations(table)
+	require.NoError(t, cfg.ApplyTransformations(table))
 
 	// After transformations:
 	// 1. Delete empty rows: removes row 2
@@ -392,7 +393,7 @@ func TestApplyTransformationsOrder(t *testing.T) {
 		},
 	}
 
-	cfg.ApplyTransformations(table)
+	require.NoError(t, cfg.ApplyTransformations(table))
 
 	// After transpose:
 	// Headers: ["", "Row_1", "Row_2", "Row_3"]
@@ -432,7 +433,7 @@ func TestApplyTransformationsCasePriority(t *testing.T) {
 		},
 	}
 
-	cfg.ApplyTransformations(table)
+	require.NoError(t, cfg.ApplyTransformations(table))
 
 	// Uppercase should win
 	assert.Equal(t, []string{"A"}, table.Headers)

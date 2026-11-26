@@ -487,3 +487,31 @@ func TestTSVFromExtension(t *testing.T) {
 	assert.Equal(t, []string{"a", "b"}, table.Headers)
 	assert.Equal(t, [][]string{{"1", "2"}}, table.Rows)
 }
+
+func TestUnmarshalHeaderOptions(t *testing.T) {
+	input := "Report title\nGenerated today\nname,age\nAlice,30\nBob,25\n"
+
+	cfg := &common.Config{
+		Extension: map[string]string{"skip-rows": "2"},
+		Reader:    strings.NewReader(input),
+	}
+	table := &common.Table{}
+	require.NoError(t, Unmarshal(cfg, table))
+	assert.Equal(t, []string{"name", "age"}, table.Headers)
+	assert.Equal(t, [][]string{{"Alice", "30"}, {"Bob", "25"}}, table.Rows)
+
+	cfg = &common.Config{
+		Extension: map[string]string{"header-row": "3"},
+		Reader:    strings.NewReader(input),
+	}
+	table = &common.Table{}
+	require.NoError(t, Unmarshal(cfg, table))
+	assert.Equal(t, []string{"name", "age"}, table.Headers)
+	assert.Equal(t, [][]string{{"Alice", "30"}, {"Bob", "25"}}, table.Rows)
+
+	cfg = &common.Config{
+		Extension: map[string]string{"first-column-header": "true", "header-row": "1"},
+		Reader:    strings.NewReader(input),
+	}
+	assert.Error(t, Unmarshal(cfg, &common.Table{}))
+}

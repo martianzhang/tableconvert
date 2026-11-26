@@ -19,6 +19,10 @@ This page lists current boundaries so you can choose the right workaround.
 - JSON → JSON/JSONL preserves nested values, `null`, and number text only when no destructive transformation is applied. `transpose` and case transformations fall back to the string/flattened view.
 - Nested objects are flattened to dot paths for tabular formats; arrays are compact JSON strings unless `--flatten-arrays=index` is used.
 
+## Header options
+
+- `--skip-rows` / `--header-row` are currently implemented for CSV, TSV, and Excel. Other formats use their native header rules.
+
 ## Data size
 
 - CSV/JSON/SQL inputs are currently read into memory, and `Table` is fully in-memory. Very large files can exhaust memory.

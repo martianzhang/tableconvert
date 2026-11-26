@@ -51,8 +51,18 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	}
 	rows = expanded
 
+	skipRows := cfg.GetExtensionInt("skip-rows", 0)
+	headerRow := cfg.GetExtensionInt("header-row", 0)
+
 	useFirstColAsHeader := cfg.GetExtensionBool("first-column-header", false)
 	if useFirstColAsHeader {
+		if headerRow > 0 {
+			return fmt.Errorf("--header-row cannot be combined with --first-column-header")
+		}
+		if skipRows < 0 || skipRows > len(rows) {
+			return fmt.Errorf("--skip-rows=%d exceeds input rows (%d)", skipRows, len(rows))
+		}
+		rows = rows[skipRows:]
 		if len(rows) > 0 {
 			// 1. Process headers and calculate max number of data columns
 			maxDataCols := 0
@@ -79,17 +89,14 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 			}
 		}
 	} else {
-		// Process headers
-		if len(rows) > 0 {
-			table.Headers = rows[0]
+		headers, data, err := common.SelectHeaderRows(rows, skipRows, headerRow)
+		if err != nil {
+			return err
 		}
-
-		// Process data rows
-		for i := 1; i < len(rows); i++ {
-			row := rows[i]
+		table.Headers = headers
+		for _, row := range data {
 			// Ensure each row has the same number of columns as headers
 			if len(row) < len(table.Headers) {
-				// Fill missing cells with empty strings
 				row = append(row, make([]string, len(table.Headers)-len(row))...)
 			}
 			table.Rows = append(table.Rows, row)

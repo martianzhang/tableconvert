@@ -188,6 +188,16 @@ func validateOptionValue(key, value string) error {
 		}
 		return fmt.Errorf("invalid --flatten-arrays %q (use json or index)", value)
 
+	case "head", "tail", "skip-rows", "header-row":
+		if value == "" {
+			return nil
+		}
+		number, err := strconv.Atoi(value)
+		if err != nil || number < 0 {
+			return fmt.Errorf("invalid --%s %q (use a non-negative integer)", key, value)
+		}
+		return nil
+
 	case "sheet-index":
 		if value == "" {
 			return nil

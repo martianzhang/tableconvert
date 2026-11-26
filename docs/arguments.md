@@ -15,6 +15,18 @@ These transformations work with **all formats**:
 | `--lowercase` | Convert all text to lowercase | `tableconvert data.csv output.md --lowercase` |
 | `--capitalize` | Capitalize first letter of each cell | `tableconvert data.csv output.md --capitalize` |
 | `--strict-columns` | Fail on ragged rows or empty/duplicate headers instead of normalizing | `tableconvert data.csv output.json --strict-columns` |
+| `--sort=col[:asc\|desc],...` | Stable sort by columns/1-based indexes | `tableconvert data.csv output.csv --sort=age:desc,name` |
+| `--replace=regex=>replacement` | Regexp replacement (repeatable) | `tableconvert data.csv output.csv --replace='^A=>X'` |
+| `--replace-column=COL` | Limit `--replace` to one column | `tableconvert data.csv output.csv --replace='a=>b' --replace-column=name` |
+| `--filter=COL=regexp` | Keep matching rows (repeatable, AND) | `tableconvert data.csv output.csv --filter='age=^3'` |
+| `--rename=old=new,...` | Rename columns (name or 1-based index) | `tableconvert data.csv output.csv --rename=name=Name,2=Age` |
+| `--columns=1,3-5,name` | Select/reorder columns | `tableconvert data.csv output.csv --columns=name,3-4` |
+| `--head=N` / `--tail=N` | Keep first/last N rows | `tableconvert data.csv output.csv --head=10` |
+| `--trim` | Trim whitespace from headers/cells | `tableconvert data.csv output.csv --trim` |
+| `--skip-rows=N` | Skip physical rows before the header (CSV/TSV/Excel) | `tableconvert report.csv out.json --skip-rows=2` |
+| `--header-row=N` | 1-based header row after skipping (CSV/TSV/Excel) | `tableconvert report.csv out.json --header-row=3` |
+
+**Transformation order:** transpose → delete-empty → deduplicate → replace → filter → rename → columns → sort → head/tail → trim → case transformations. `--header-row` / `--skip-rows` are applied while parsing CSV/TSV/Excel, before normalization.
 
 By default, short rows are padded, long rows extend the table with `Column N` headers, and duplicate/empty headers are renamed (`a`, `a_2`, `Column 3`). Use `--strict-columns` to fail instead.
 

@@ -13,10 +13,10 @@ func TestGetFormatParams(t *testing.T) {
 		expected int // expected number of parameters
 	}{
 		{"markdown format", "markdown", 5},
-		{"csv format", "csv", 3}, // first-column-header, bom, delimiter
+		{"csv format", "csv", 5}, // first-column-header, bom, delimiter
 		{"json format", "json", 9},
 		{"latex format", "latex", 11},
-		{"excel format", "excel", 6}, // first-column-header, sheet-name, sheet-index, expand-merged, auto-width, text-format
+		{"excel format", "excel", 8}, // first-column-header, sheet-name, sheet-index, expand-merged, auto-width, text-format
 		{"html format", "html", 4},   // first-column-header, div, minify, thead
 		{"ascii format", "ascii", 1},
 		{"sql format", "sql", 5},

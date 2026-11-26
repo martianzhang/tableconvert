@@ -106,7 +106,9 @@ func PerformConversionWithRegistry(registry *FormatRegistry, cfg *Config) error 
 	}
 
 	// Apply transformations
-	cfg.ApplyTransformations(&table)
+	if err := cfg.ApplyTransformations(&table); err != nil {
+		return &ConversionError{Stage: "transform", Format: cfg.From, Err: err}
+	}
 
 	// Generate output
 	marshalFn, ok := registry.GetMarshalFunc(cfg.To)

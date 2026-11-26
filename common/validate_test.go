@@ -11,11 +11,11 @@ func TestValidateRejectsUnknownOption(t *testing.T) {
 	cfg := &Config{
 		From:      "csv",
 		To:        "json",
-		Extension: map[string]string{"sort": "name"},
+		Extension: map[string]string{"bogus": "name"},
 	}
 	err := cfg.Validate()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unknown option --sort")
+	assert.Contains(t, err.Error(), "unknown option --bogus")
 }
 
 func TestValidateSuggestsOption(t *testing.T) {

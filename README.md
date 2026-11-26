@@ -151,6 +151,14 @@ tableconvert data.csv output.php --template=templates/php_array.tmpl
 - `--lowercase` - Convert to lowercase
 - `--capitalize` - Capitalize first letter of each cell
 - `--strict-columns` - Fail on ragged rows or empty/duplicate headers instead of normalizing
+- `--sort=col:asc,...` - Stable sort by one or more columns
+- `--replace=regex=>replacement` - Regexp replacement (repeatable)
+- `--filter=col=regexp` - Keep matching rows (repeatable)
+- `--rename=old=new,...` - Rename columns
+- `--columns=1,3-5,name` - Select/reorder columns
+- `--head=N` / `--tail=N` - Keep first/last N rows
+- `--trim` - Trim whitespace
+- `--skip-rows=N` / `--header-row=N` - Skip rows / choose header row for CSV, TSV, Excel
 
 **Auto-Detection:**
 When `--from` or `--to` are omitted, formats are detected from file extensions:
