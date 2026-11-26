@@ -29,3 +29,13 @@ func TestMarshal(t *testing.T) {
 	assert.Contains(t, buf.String(), "host = localhost")
 	assert.Contains(t, buf.String(), "port = 8080")
 }
+
+func TestMarshalEmptySection(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"section", "key", "value"},
+		Rows:    [][]string{{"", "key", "value"}},
+	}
+	var buf strings.Builder
+	require.NoError(t, Marshal(&common.Config{Writer: &buf}, table))
+	assert.Contains(t, buf.String(), "key = value")
+}

@@ -74,6 +74,9 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		if key == "" {
 			continue
 		}
+		if sectionName == "" {
+			sectionName = "DEFAULT"
+		}
 		section, err := file.NewSection(sectionName)
 		if err != nil {
 			return err
