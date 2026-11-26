@@ -467,6 +467,8 @@ tableconvert data.csv output.xml --minify
 |-----------|---------|----------------|-------------|
 | `format` | `object` | `object`, `column` | Array of row objects, or column-oriented object |
 | `indent` | `2` | integer >= 1 | Indentation width |
+| `flow` | `false` | `true`, `false` | Use YAML flow style |
+| `quote` | `` | `single`, `double` | String quote style |
 | `flatten-arrays` | `json` | `json`, `index` | Nested array handling |
 | `sort-headers` | `false` | `true`, `false` | Sort headers alphabetically |
 | `parse-types` | `false` | `true`, `false` | Convert values to YAML numbers/bools/null |

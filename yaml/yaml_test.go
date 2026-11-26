@@ -41,3 +41,15 @@ func TestMarshalObjectAndColumn(t *testing.T) {
 	assert.Contains(t, buf.String(), "a:")
 	assert.Contains(t, buf.String(), "- \"1\"")
 }
+
+func TestMarshalFlowAndQuote(t *testing.T) {
+	table := &common.Table{Headers: []string{"a", "b"}, Rows: [][]string{{"1", "2"}}}
+	var buf strings.Builder
+	cfg := &common.Config{
+		Writer:    &buf,
+		Extension: map[string]string{"flow": "true", "quote": "double"},
+	}
+	require.NoError(t, Marshal(cfg, table))
+	assert.Contains(t, buf.String(), "{")
+	assert.Contains(t, buf.String(), "\"1\"")
+}

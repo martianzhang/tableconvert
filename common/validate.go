@@ -179,6 +179,16 @@ func validateOptionValue(key, value string) error {
 		}
 		return fmt.Errorf("invalid --borders %q (use 4 header bits and 4 row bits, e.g. 1111,1111)", value)
 
+	case "quote":
+		if value == "" {
+			return nil
+		}
+		switch strings.ToLower(value) {
+		case "single", "double":
+			return nil
+		}
+		return fmt.Errorf("invalid --quote %q (use single or double)", value)
+
 	case "flatten-arrays":
 		if value == "" {
 			return nil

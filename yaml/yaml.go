@@ -3,6 +3,7 @@ package yaml
 import (
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
 	"github.com/martianzhang/tableconvert/common"
@@ -80,7 +81,13 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	if indent > 0 {
 		encoder.SetIndent(indent)
 	}
-	if err := encoder.Encode(value); err != nil {
+	flow := cfg.GetExtensionBool("flow", false)
+	quote := strings.ToLower(strings.TrimSpace(cfg.GetExtensionString("quote", "")))
+	if flow || quote != "" {
+		if err := encoder.Encode(toYAMLNode(value, flow, quote)); err != nil {
+			return err
+		}
+	} else if err := encoder.Encode(value); err != nil {
 		return err
 	}
 	return encoder.Close()
@@ -193,4 +200,60 @@ func recordsFromYAML(root interface{}) []interface{} {
 	default:
 		return []interface{}{node}
 	}
+}
+
+func toYAMLNode(value interface{}, flow bool, quote string) *yamlv3.Node {
+	switch node := value.(type) {
+	case map[string]interface{}:
+		mapping := &yamlv3.Node{Kind: yamlv3.MappingNode}
+		if flow {
+			mapping.Style = yamlv3.FlowStyle
+		}
+		keys := make([]string, 0, len(node))
+		for key := range node {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			mapping.Content = append(mapping.Content, scalarNode(key, quote), toYAMLNode(node[key], flow, quote))
+		}
+		return mapping
+	case map[string][]interface{}:
+		converted := make(map[string]interface{}, len(node))
+		for key, values := range node {
+			converted[key] = values
+		}
+		return toYAMLNode(converted, flow, quote)
+	case []map[string]interface{}:
+		sequence := &yamlv3.Node{Kind: yamlv3.SequenceNode}
+		if flow {
+			sequence.Style = yamlv3.FlowStyle
+		}
+		for _, item := range node {
+			sequence.Content = append(sequence.Content, toYAMLNode(item, flow, quote))
+		}
+		return sequence
+	case []interface{}:
+		sequence := &yamlv3.Node{Kind: yamlv3.SequenceNode}
+		if flow {
+			sequence.Style = yamlv3.FlowStyle
+		}
+		for _, item := range node {
+			sequence.Content = append(sequence.Content, toYAMLNode(item, flow, quote))
+		}
+		return sequence
+	default:
+		return scalarNode(fmt.Sprint(node), quote)
+	}
+}
+
+func scalarNode(value, quote string) *yamlv3.Node {
+	node := &yamlv3.Node{Kind: yamlv3.ScalarNode, Value: value}
+	switch strings.ToLower(quote) {
+	case "double":
+		node.Style = yamlv3.DoubleQuotedStyle
+	case "single":
+		node.Style = yamlv3.SingleQuotedStyle
+	}
+	return node
 }

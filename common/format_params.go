@@ -137,6 +137,8 @@ var FormatParamsRegistry = map[string][]FormatParam{
 	"yaml": {
 		{Name: "format", DefaultValue: "object", AllowedValues: "object, column", Description: "YAML output shape"},
 		{Name: "indent", DefaultValue: "2", AllowedValues: "integer >= 1", Description: "Indent size"},
+		{Name: "flow", DefaultValue: "false", AllowedValues: "true, false", Description: "Use YAML flow style"},
+		{Name: "quote", DefaultValue: "", AllowedValues: "single, double", Description: "String quote style"},
 		{Name: "flatten-arrays", DefaultValue: "json", AllowedValues: "json, index", Description: "How nested arrays become columns"},
 		{Name: "sort-headers", DefaultValue: "false", AllowedValues: "true, false", Description: "Sort headers alphabetically"},
 		{Name: "parse-types", DefaultValue: "false", AllowedValues: "true, false", Description: "Convert values to numbers/bools/null"},
