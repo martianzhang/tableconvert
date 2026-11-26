@@ -171,6 +171,9 @@ When `--from` or `--to` are omitted, formats are detected from file extensions:
 - `.md`, `.markdown` → markdown, `.xlsx` → excel (legacy `.xls` is not supported)
 - `.html`, `.htm` → html, `.xml` → xml, `.sql` → sql
 - `.tex`, `.latex` → latex, `.wiki` → mediawiki
+- `.yaml`, `.yml` → yaml, `.toml` → toml, `.ini` → ini
+- `.adoc`, `.asciidoc`, `.jira`, `.bbcode`, `.rst`, `.textile` → documentation formats
+- `.php`, `.rb`, `.py` → PHP / Ruby / Pandas code
 - `.tmpl`, `.template` → tmpl
 
 **Format-Specific Parameters:**
