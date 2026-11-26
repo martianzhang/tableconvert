@@ -121,3 +121,28 @@ func TestParseConfigAllowUnknown(t *testing.T) {
 	assert.True(t, cfg.AllowUnknown)
 	assert.NoError(t, cfg.Validate())
 }
+
+func TestValidateMoreEnumValues(t *testing.T) {
+	valid := []Config{
+		{From: "csv", To: "json", Extension: map[string]string{"delimiter": "tab"}},
+		{From: "csv", To: "json", Extension: map[string]string{"format": "2D"}},
+		{From: "csv", To: "sql", Extension: map[string]string{"dialect": "POSTGRESQL"}},
+		{From: "csv", To: "markdown", Extension: map[string]string{"align": "l, c, r"}},
+		{From: "csv", To: "latex", Extension: map[string]string{"borders": "0000,1101"}},
+		{From: "csv", To: "ascii", Extension: map[string]string{"style": "PLUS"}},
+		{From: "excel", To: "csv", Extension: map[string]string{"sheet-index": "2"}},
+	}
+	for _, cfg := range valid {
+		assert.NoError(t, cfg.Validate(), cfg.Extension)
+	}
+
+	invalid := []Config{
+		{From: "csv", To: "markdown", Extension: map[string]string{"align": "l,x"}},
+		{From: "csv", To: "latex", Extension: map[string]string{"borders": "1111"}},
+		{From: "excel", To: "csv", Extension: map[string]string{"sheet-index": "0"}},
+		{From: "csv", To: "csv", Extension: map[string]string{"output-encoding": "auto"}},
+	}
+	for _, cfg := range invalid {
+		assert.Error(t, cfg.Validate(), cfg.Extension)
+	}
+}

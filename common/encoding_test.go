@@ -83,3 +83,49 @@ func TestIsTextFormat(t *testing.T) {
 	assert.False(t, IsTextFormat("excel"))
 	assert.False(t, IsTextFormat("xlsx"))
 }
+
+func TestEnsureTextIO(t *testing.T) {
+	input := encodeWith(t, simplifiedchinese.GBK, "name\n张三\n")
+	var buf bytes.Buffer
+	cfg := &Config{
+		From:      "csv",
+		To:        "csv",
+		Reader:    bytes.NewReader(input),
+		Writer:    &buf,
+		Extension: map[string]string{"encoding": "gbk", "output-encoding": "gbk"},
+	}
+
+	require.NoError(t, cfg.EnsureTextIO())
+	require.NoError(t, cfg.EnsureTextIO()) // idempotent
+
+	decoded, err := io.ReadAll(cfg.Reader)
+	require.NoError(t, err)
+	assert.Equal(t, "name\n张三\n", string(decoded))
+
+	_, err = cfg.Writer.Write([]byte("name\n张三\n"))
+	require.NoError(t, err)
+	cfg.closeOutputTransform()
+
+	reader := transform.NewReader(bytes.NewReader(buf.Bytes()), simplifiedchinese.GBK.NewDecoder())
+	got, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, "name\n张三\n", string(got))
+}
+
+func TestDecodeReaderUTF16BEBOM(t *testing.T) {
+	data := encodeWith(t, unicode.UTF16(unicode.BigEndian, unicode.UseBOM), "name,age\n张三,30\n")
+	reader, err := DecodeReader(bytes.NewReader(data), "utf-16be")
+	require.NoError(t, err)
+	got, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, "name,age\n张三,30\n", string(got))
+}
+
+func TestDecodeReaderAutoUTF16BOM(t *testing.T) {
+	data := encodeWith(t, unicode.UTF16(unicode.LittleEndian, unicode.UseBOM), "a,b\n1,2\n")
+	reader, err := DecodeReader(bytes.NewReader(data), "auto")
+	require.NoError(t, err)
+	got, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, "a,b\n1,2\n", string(got))
+}

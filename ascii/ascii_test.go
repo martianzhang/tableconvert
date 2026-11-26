@@ -9,6 +9,7 @@ import (
 	"github.com/martianzhang/tableconvert/common"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUnmarshal(t *testing.T) {
@@ -250,4 +251,15 @@ func TestMarshal_CustomStyleTable(t *testing.T) {
 	// Assertions
 	assert.Nil(t, err)
 	assert.Equal(t, expected, buf.String())
+}
+
+func TestMarshalStyleCaseInsensitive(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"h"},
+		Rows:    [][]string{{"v"}},
+	}
+	var upper, lower bytes.Buffer
+	require.NoError(t, Marshal(&common.Config{Writer: &upper, Extension: map[string]string{"style": "PLUS"}}, table))
+	require.NoError(t, Marshal(&common.Config{Writer: &lower, Extension: map[string]string{"style": "plus"}}, table))
+	assert.Equal(t, lower.String(), upper.String())
 }

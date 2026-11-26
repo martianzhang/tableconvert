@@ -504,3 +504,25 @@ func TestMarshalRawRowsDroppedAfterUppercase(t *testing.T) {
 	assert.Contains(t, output, `"ID": "1"`)
 	assert.Contains(t, output, `"NAME": "ALICE"`)
 }
+
+func TestUnmarshalJSONPathError(t *testing.T) {
+	cfg := &common.Config{
+		Extension: map[string]string{"json-path": "data.missing"},
+		Reader:    strings.NewReader(`{"data":[]}`),
+	}
+	table := &common.Table{}
+	err := Unmarshal(cfg, table)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "JSON path")
+}
+
+func TestUnmarshalFormatCaseInsensitive(t *testing.T) {
+	cfg := &common.Config{
+		Extension: map[string]string{"format": "2D"},
+		Reader:    strings.NewReader(`[["a","b"],[1,2]]`),
+	}
+	table := &common.Table{}
+	require.NoError(t, Unmarshal(cfg, table))
+	assert.Equal(t, []string{"a", "b"}, table.Headers)
+	assert.Equal(t, [][]string{{"1", "2"}}, table.Rows)
+}

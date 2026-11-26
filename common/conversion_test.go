@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewFormatRegistry(t *testing.T) {
@@ -505,4 +506,72 @@ func TestConversionErrorWrapping(t *testing.T) {
 
 	// Test that errors.Is works correctly
 	assert.ErrorIs(t, convErr, baseErr)
+}
+
+func TestPerformConversionNormalizesRaggedRows(t *testing.T) {
+	registry := NewFormatRegistry()
+	var captured Table
+	registry.RegisterFormat("ragged",
+		func(cfg *Config, table *Table) error {
+			table.Headers = []string{"a", "b"}
+			table.Rows = [][]string{{"1"}, {"2", "3", "4"}}
+			return nil
+		},
+		func(cfg *Config, table *Table) error {
+			captured = *table
+			return nil
+		},
+	)
+
+	cfg := &Config{
+		From:      "ragged",
+		To:        "ragged",
+		Reader:    strings.NewReader(""),
+		Writer:    &bytes.Buffer{},
+		Extension: map[string]string{},
+	}
+	require.NoError(t, PerformConversionWithRegistry(registry, cfg))
+	assert.Equal(t, []string{"a", "b", "Column 3"}, captured.Headers)
+	assert.Equal(t, [][]string{{"1", "", ""}, {"2", "3", "4"}}, captured.Rows)
+}
+
+func TestPerformConversionStrictColumns(t *testing.T) {
+	registry := NewFormatRegistry()
+	registry.RegisterFormat("ragged",
+		func(cfg *Config, table *Table) error {
+			table.Headers = []string{"a"}
+			table.Rows = [][]string{{"1", "2"}}
+			return nil
+		},
+		func(cfg *Config, table *Table) error { return nil },
+	)
+
+	cfg := &Config{
+		From:      "ragged",
+		To:        "ragged",
+		Reader:    strings.NewReader(""),
+		Writer:    &bytes.Buffer{},
+		Extension: map[string]string{"strict-columns": "true"},
+	}
+	err := PerformConversionWithRegistry(registry, cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "row 1 has 2 columns")
+}
+
+func TestPerformConversionRejectsUnknownOption(t *testing.T) {
+	registry := NewFormatRegistry()
+	registry.RegisterFormat("test",
+		func(cfg *Config, table *Table) error { return nil },
+		func(cfg *Config, table *Table) error { return nil },
+	)
+	cfg := &Config{
+		From:      "test",
+		To:        "test",
+		Reader:    strings.NewReader(""),
+		Writer:    &bytes.Buffer{},
+		Extension: map[string]string{"bogus": "1"},
+	}
+	err := PerformConversionWithRegistry(registry, cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown option --bogus")
 }

@@ -73,6 +73,18 @@ func TestUnmarshalWithDifferentDelimiters(t *testing.T) {
 			},
 		},
 		{
+			name:      "lowercase tab delimiter",
+			delimiter: "tab",
+			input:     "name\tage\tcity\nAlice\t30\tNew York\nBob\t25\tLos Angeles\n",
+			expected: &common.Table{
+				Headers: []string{"name", "age", "city"},
+				Rows: [][]string{
+					{"Alice", "30", "New York"},
+					{"Bob", "25", "Los Angeles"},
+				},
+			},
+		},
+		{
 			name:      "semicolon delimiter",
 			delimiter: "SEMICOLON",
 			input:     "name;age;city\nAlice;30;New York\nBob;25;Los Angeles\n",

@@ -988,3 +988,12 @@ func TestGetBatchFiles(t *testing.T) {
 		}
 	})
 }
+
+func TestParseConfigListSheets(t *testing.T) {
+	cfg, err := ParseConfig([]string{"--list-sheets", "report.xlsx"})
+	require.NoError(t, err)
+	assert.True(t, cfg.ListSheets)
+	assert.Equal(t, "excel", cfg.From)
+	assert.Empty(t, cfg.To)
+	assert.Empty(t, cfg.Result)
+}

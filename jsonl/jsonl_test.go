@@ -173,3 +173,10 @@ func TestMarshalRawRowsRoundTrip(t *testing.T) {
 	assert.Contains(t, output, `"big":9007199254740993`)
 	assert.Contains(t, output, `"f":1.50`)
 }
+
+func TestUnmarshalScalarLines(t *testing.T) {
+	table := &common.Table{}
+	require.NoError(t, Unmarshal(&common.Config{Reader: strings.NewReader("1\n2\n")}, table))
+	assert.Equal(t, []string{"value"}, table.Headers)
+	assert.Equal(t, [][]string{{"1"}, {"2"}}, table.Rows)
+}

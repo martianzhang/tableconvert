@@ -2,6 +2,7 @@ package excel
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -573,4 +574,72 @@ func TestListSheets(t *testing.T) {
 	sheets, err := ListSheets(&common.Config{File: path})
 	require.NoError(t, err)
 	assert.Equal(t, []string{first, "Second"}, sheets)
+}
+
+func TestUnmarshalSheetNameOverridesIndex(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "sheets.xlsx")
+
+	f := excelize.NewFile()
+	first := f.GetSheetName(0)
+	_, err := f.NewSheet("Second")
+	require.NoError(t, err)
+	require.NoError(t, f.SetCellValue(first, "A1", "first"))
+	require.NoError(t, f.SetCellValue(first, "A2", "1"))
+	require.NoError(t, f.SetCellValue("Second", "A1", "second"))
+	require.NoError(t, f.SetCellValue("Second", "A2", "2"))
+	require.NoError(t, f.SaveAs(path))
+	require.NoError(t, f.Close())
+
+	table := &common.Table{}
+	cfg := &common.Config{
+		From: "xlsx",
+		File: path,
+		Extension: map[string]string{
+			"sheet-name":  "Second",
+			"sheet-index": "1",
+		},
+	}
+	require.NoError(t, Unmarshal(cfg, table))
+	assert.Equal(t, []string{"second"}, table.Headers)
+	assert.Equal(t, [][]string{{"2"}}, table.Rows)
+}
+
+func TestListSheetsLegacyXLS(t *testing.T) {
+	_, err := ListSheets(&common.Config{File: "legacy.xls"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "legacy .xls input is not supported")
+}
+
+func TestUnmarshalMergedCellsWarningWhenDisabled(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "merged-warning.xlsx")
+
+	f := excelize.NewFile()
+	sheet := f.GetSheetName(0)
+	require.NoError(t, f.SetCellValue(sheet, "A1", "Name"))
+	require.NoError(t, f.SetCellValue(sheet, "A2", "Alice"))
+	require.NoError(t, f.MergeCell(sheet, "A2", "B2"))
+	require.NoError(t, f.SaveAs(path))
+	require.NoError(t, f.Close())
+
+	oldStderr := os.Stderr
+	reader, writer, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stderr = writer
+	defer func() { os.Stderr = oldStderr }()
+
+	table := &common.Table{}
+	cfg := &common.Config{
+		From:      "xlsx",
+		File:      path,
+		Extension: map[string]string{"expand-merged": "false"},
+	}
+	require.NoError(t, Unmarshal(cfg, table))
+	require.NoError(t, writer.Close())
+	os.Stderr = oldStderr
+
+	output, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Contains(t, string(output), "not expanded")
 }

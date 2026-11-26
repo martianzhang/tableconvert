@@ -2,6 +2,7 @@ package sql
 
 import (
 	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -581,4 +582,26 @@ func TestMarshalParseTypes(t *testing.T) {
 	}
 	require.NoError(t, Marshal(cfg, table))
 	assert.Contains(t, buf.String(), "VALUES (1, TRUE, NULL, '007')")
+}
+
+func TestMarshalParseTypesUsesRawValues(t *testing.T) {
+	table := &common.Table{
+		Headers: []string{"id", "missing", "ok"},
+		Rows:    [][]string{{"9007199254740993", "NULL", "true"}},
+		Raw: [][]interface{}{{
+			json.Number("9007199254740993"),
+			nil,
+			true,
+		}},
+	}
+	var buf bytes.Buffer
+	cfg := &common.Config{
+		Writer: &buf,
+		Extension: map[string]string{
+			"table":       "t",
+			"parse-types": "true",
+		},
+	}
+	require.NoError(t, Marshal(cfg, table))
+	assert.Contains(t, buf.String(), "VALUES (9007199254740993, NULL, TRUE)")
 }

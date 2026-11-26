@@ -65,3 +65,16 @@ func TestNormalizeTableStrict(t *testing.T) {
 func TestNormalizeTableNil(t *testing.T) {
 	require.NoError(t, NormalizeTable(nil, false))
 }
+
+func TestNormalizeTableDropsRawRowsWhenHeadersChange(t *testing.T) {
+	table := &Table{
+		Headers: []string{"a", "a"},
+		Rows:    [][]string{{"1", "2"}},
+		RawRows: []interface{}{"row"},
+		Raw:     [][]interface{}{{int64(1), int64(2)}},
+	}
+	require.NoError(t, NormalizeTable(table, false))
+	assert.Nil(t, table.RawRows)
+	assert.Equal(t, []string{"a", "a_2"}, table.Headers)
+	assert.Equal(t, [][]interface{}{{int64(1), int64(2)}}, table.Raw)
+}
