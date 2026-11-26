@@ -81,7 +81,7 @@ mysql -t -e "SELECT * FROM users" | tableconvert --from=mysql --to=markdown > us
 mysql -t -e "DESCRIBE users" | tableconvert --from=mysql --to=markdown > users_schema.md
 
 # Convert CSV to Excel with styling
-tableconvert data.csv report.xlsx --auto-width --bold-header
+tableconvert data.csv report.xlsx --auto-width
 
 # Batch convert all CSV files to JSON
 tableconvert --batch="data/*.csv" --to=json --output-dir=json_output
@@ -151,7 +151,7 @@ tableconvert data.csv output.php --template=php_array.tmpl
 **Auto-Detection:**
 When `--from` or `--to` are omitted, formats are detected from file extensions:
 - `.csv` → csv, `.json` → json, `.jsonl` → jsonl
-- `.md`, `.markdown` → markdown, `.xlsx`, `.xls` → excel
+- `.md`, `.markdown` → markdown, `.xlsx` → excel (legacy `.xls` is not supported)
 - `.html`, `.htm` → html, `.xml` → xml, `.sql` → sql
 - `.tex`, `.latex` → latex, `.wiki` → mediawiki
 - `.tmpl`, `.template` → tmpl
@@ -194,7 +194,7 @@ Once configured, you can ask your AI assistant:
 | **JSON** | `.json` | ✅ | ✅ | JavaScript Object Notation |
 | **JSONL** | `.jsonl`, `.jsonlines` | ✅ | ✅ | JSON Lines format |
 | **Markdown** | `.md`, `.markdown` | ✅ | ✅ | GitHub/Markdown tables |
-| **Excel** | `.xlsx`, `.xls` | ✅ | ✅（write `.xlsx` only） | Microsoft Excel files |
+| **Excel** | `.xlsx` | ✅ | ✅ | Microsoft Excel files (legacy `.xls` unsupported) |
 | **HTML** | `.html`, `.htm` | ✅ | ✅ | HTML tables |
 | **XML** | `.xml` | ✅ | ✅ | XML data format |
 | **SQL** | `.sql` | ✅ | ✅ | SQL INSERT statements |

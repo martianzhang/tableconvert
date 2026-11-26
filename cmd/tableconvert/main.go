@@ -258,6 +258,17 @@ func performConversion(cfg *common.Config) (err error) {
 		fmt.Fprintf(os.Stderr, "# Extra Configs: %v\n", cfg.Extension)
 	}
 
+	if cfg.ListSheets {
+		sheets, err := excel.ListSheets(cfg)
+		if err != nil {
+			return err
+		}
+		for _, sheet := range sheets {
+			fmt.Fprintln(os.Stdout, sheet)
+		}
+		return nil
+	}
+
 	// Handle dry-run mode
 	if cfg.DryRun {
 		return performDryRun(cfg)

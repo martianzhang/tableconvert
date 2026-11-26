@@ -2,7 +2,9 @@ package excel
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/martianzhang/tableconvert/common"
@@ -19,36 +21,19 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 		return fmt.Errorf("Unmarshal: output table cannot be nil")
 	}
 
-	// Prefer a real file path when available (normal CLI use), but fall back to
-	// the configured Reader so batch mode and in-memory callers work.
-	var f *excelize.File
-	var err error
-	if cfg.File != "" {
-		f, err = excelize.OpenFile(cfg.File)
-	} else if cfg.Reader != nil {
-		f, err = excelize.OpenReader(cfg.Reader)
-	} else {
-		return fmt.Errorf("Unmarshal: Excel input requires File or Reader")
+	if cfg.File != "" && strings.EqualFold(filepath.Ext(cfg.File), ".xls") {
+		return fmt.Errorf("legacy .xls input is not supported; save as .xlsx or export CSV")
 	}
+
+	f, err := openWorkbook(cfg)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	// Get the requested sheet, defaulting to the first one.
-	sheetName := cfg.GetExtensionString("sheet-name", "")
-	if sheetName == "" {
-		sheetName = f.GetSheetName(0)
-	}
-	if sheetName == "" {
-		return fmt.Errorf("empty Excel file: no sheets found")
-	}
-	sheetIndex, err := f.GetSheetIndex(sheetName)
+	sheetName, err := selectSheet(f, cfg)
 	if err != nil {
 		return err
-	}
-	if sheetIndex < 0 {
-		return fmt.Errorf("Excel sheet %q not found", sheetName)
 	}
 
 	// Get all rows
@@ -56,6 +41,15 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	if err != nil {
 		return err
 	}
+
+	// Excelize does not expand merged cells in GetRows. Replicate the top-left
+	// value across each merged range, otherwise every other cell is silently
+	// empty.
+	expanded, err := expandMergedCells(f, sheetName, rows, cfg.GetExtensionBool("expand-merged", true))
+	if err != nil {
+		return err
+	}
+	rows = expanded
 
 	useFirstColAsHeader := cfg.GetExtensionBool("first-column-header", false)
 	if useFirstColAsHeader {
@@ -103,6 +97,137 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	}
 
 	return nil
+}
+
+// ListSheets returns the worksheet names in workbook order.
+func ListSheets(cfg *common.Config) ([]string, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("ListSheets: config cannot be nil")
+	}
+	if cfg.File != "" && strings.EqualFold(filepath.Ext(cfg.File), ".xls") {
+		return nil, fmt.Errorf("legacy .xls input is not supported; save as .xlsx or export CSV")
+	}
+	f, err := openWorkbook(cfg)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return f.GetSheetList(), nil
+}
+
+func openWorkbook(cfg *common.Config) (*excelize.File, error) {
+	if cfg.File != "" {
+		return excelize.OpenFile(cfg.File)
+	}
+	if cfg.Reader != nil {
+		return excelize.OpenReader(cfg.Reader)
+	}
+	return nil, fmt.Errorf("Excel input requires File or Reader")
+}
+
+func selectSheet(f *excelize.File, cfg *common.Config) (string, error) {
+	sheetName := cfg.GetExtensionString("sheet-name", "")
+	if sheetName != "" {
+		index, err := f.GetSheetIndex(sheetName)
+		if err != nil {
+			return "", err
+		}
+		if index < 0 {
+			return "", fmt.Errorf("Excel sheet %q not found", sheetName)
+		}
+		return sheetName, nil
+	}
+
+	if rawIndex := cfg.GetExtensionString("sheet-index", ""); rawIndex != "" {
+		index, err := strconv.Atoi(rawIndex)
+		if err != nil {
+			return "", fmt.Errorf("invalid --sheet-index %q: expected a number", rawIndex)
+		}
+		sheets := f.GetSheetList()
+		if index < 1 || index > len(sheets) {
+			return "", fmt.Errorf("--sheet-index %d out of range (workbook has %d sheets)", index, len(sheets))
+		}
+		return sheets[index-1], nil
+	}
+
+	sheetName = f.GetSheetName(0)
+	if sheetName == "" {
+		return "", fmt.Errorf("empty Excel file: no sheets found")
+	}
+	return sheetName, nil
+}
+
+func expandMergedCells(f *excelize.File, sheetName string, rows [][]string, expand bool) ([][]string, error) {
+	merges, err := f.GetMergeCells(sheetName)
+	if err != nil {
+		return nil, err
+	}
+	if len(merges) == 0 {
+		return rows, nil
+	}
+	if !expand {
+		fmt.Fprintf(os.Stderr, "warning: %d merged cell range(s) in sheet %q are not expanded; values may be empty (use --expand-merged=true)\n", len(merges), sheetName)
+		return rows, nil
+	}
+
+	maxRow := len(rows)
+	maxCol := 0
+	for _, row := range rows {
+		if len(row) > maxCol {
+			maxCol = len(row)
+		}
+	}
+
+	type rangeCoords struct {
+		startRow, startCol, endRow, endCol int
+		value                              string
+	}
+	ranges := make([]rangeCoords, 0, len(merges))
+	for _, merge := range merges {
+		startCol, startRow, err := excelize.CellNameToCoordinates(merge.GetStartAxis())
+		if err != nil {
+			return nil, err
+		}
+		endCol, endRow, err := excelize.CellNameToCoordinates(merge.GetEndAxis())
+		if err != nil {
+			return nil, err
+		}
+		value := merge.GetCellValue()
+		if value != "" {
+			if endRow > maxRow {
+				maxRow = endRow
+			}
+			if endCol > maxCol {
+				maxCol = endCol
+			}
+		}
+		ranges = append(ranges, rangeCoords{startRow, startCol, endRow, endCol, value})
+	}
+
+	if maxRow == 0 || maxCol == 0 {
+		return rows, nil
+	}
+	matrix := make([][]string, maxRow)
+	for i := range matrix {
+		matrix[i] = make([]string, maxCol)
+	}
+	for i, row := range rows {
+		if i >= len(matrix) {
+			break
+		}
+		copy(matrix[i], row)
+	}
+	for _, r := range ranges {
+		if r.value == "" {
+			continue
+		}
+		for row := r.startRow; row <= r.endRow && row <= maxRow; row++ {
+			for col := r.startCol; col <= r.endCol && col <= maxCol; col++ {
+				matrix[row-1][col-1] = r.value
+			}
+		}
+	}
+	return matrix, nil
 }
 
 func Marshal(cfg *common.Config, table *common.Table) error {

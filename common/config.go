@@ -248,7 +248,7 @@ func canonicalFlagName(key string) string {
 
 func isBooleanFlag(key string) bool {
 	switch canonicalFlagName(key) {
-	case "verbose", "recursive", "dry-run", "mcp", "help", "help-formats":
+	case "verbose", "recursive", "dry-run", "mcp", "help", "help-formats", "list-sheets":
 		return true
 	}
 	for _, params := range FormatParamsRegistry {
@@ -345,6 +345,8 @@ func ParseConfig(args []string) (Config, error) {
 			os.Exit(0)
 		case "mcp":
 			cfg.MCPMode = parseBool(v, true) // empty -> true, unknown -> false
+		case "list-sheets":
+			cfg.ListSheets = parseBool(v, true)
 		default:
 			cfg.Extension[k] = v
 		}
@@ -392,6 +394,16 @@ func ParseConfig(args []string) (Config, error) {
 		if cfg.To != "" && cfg.Verbose {
 			fmt.Fprintf(os.Stderr, "# Auto-detected output format: %s\n", cfg.To)
 		}
+	}
+
+	if cfg.ListSheets {
+		if cfg.From != "excel" && cfg.From != "xlsx" {
+			return cfg, fmt.Errorf("--list-sheets requires an Excel input (.xlsx)")
+		}
+		if cfg.File == "" {
+			return cfg, fmt.Errorf("--list-sheets requires an input file")
+		}
+		return cfg, nil
 	}
 
 	// Check if required parameters are provided
@@ -545,6 +557,7 @@ type Config struct {
 	Recursive  bool   // Recursive directory traversal
 	OutputDir  string // Output directory for batch mode
 	DryRun     bool   // Dry run mode - preview without writing
+	ListSheets bool   // List Excel worksheet names and exit
 	Reader     io.Reader
 	Writer     io.Writer
 	InputFile  *os.File

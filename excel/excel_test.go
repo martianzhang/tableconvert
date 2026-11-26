@@ -3,6 +3,7 @@ package excel
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/martianzhang/tableconvert/common"
@@ -489,4 +490,87 @@ func TestUnmarshalWithVariableColumnCount(t *testing.T) {
 
 	assert.Equal(t, table.Headers, table2.Headers)
 	assert.Equal(t, table.Rows, table2.Rows)
+}
+
+func TestUnmarshalMergedCellsExpanded(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "merged.xlsx")
+
+	f := excelize.NewFile()
+	sheet := f.GetSheetName(0)
+	require.NoError(t, f.SetCellValue(sheet, "A1", "Name"))
+	require.NoError(t, f.SetCellValue(sheet, "B1", "Info"))
+	require.NoError(t, f.SetCellValue(sheet, "C1", "Age"))
+	require.NoError(t, f.SetCellValue(sheet, "A2", "Alice"))
+	require.NoError(t, f.MergeCell(sheet, "A2", "B2"))
+	require.NoError(t, f.SetCellValue(sheet, "C2", "30"))
+	require.NoError(t, f.SaveAs(path))
+	require.NoError(t, f.Close())
+
+	table := &common.Table{}
+	cfg := &common.Config{From: "xlsx", File: path}
+	require.NoError(t, Unmarshal(cfg, table))
+	assert.Equal(t, []string{"Name", "Info", "Age"}, table.Headers)
+	assert.Equal(t, [][]string{{"Alice", "Alice", "30"}}, table.Rows)
+
+	table2 := &common.Table{}
+	cfg2 := &common.Config{
+		From:      "xlsx",
+		File:      path,
+		Extension: map[string]string{"expand-merged": "false"},
+	}
+	require.NoError(t, Unmarshal(cfg2, table2))
+	assert.Equal(t, []string{"Name", "Info", "Age"}, table2.Headers)
+	assert.Equal(t, []string{"Alice", "", "30"}, table2.Rows[0])
+}
+
+func TestUnmarshalSheetIndex(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "sheets.xlsx")
+
+	f := excelize.NewFile()
+	first := f.GetSheetName(0)
+	_, err := f.NewSheet("Second")
+	require.NoError(t, err)
+	require.NoError(t, f.SetCellValue(first, "A1", "first"))
+	require.NoError(t, f.SetCellValue(first, "A2", "1"))
+	require.NoError(t, f.SetCellValue("Second", "A1", "second"))
+	require.NoError(t, f.SetCellValue("Second", "A2", "2"))
+	require.NoError(t, f.SaveAs(path))
+	require.NoError(t, f.Close())
+
+	table := &common.Table{}
+	cfg := &common.Config{
+		From:      "xlsx",
+		File:      path,
+		Extension: map[string]string{"sheet-index": "2"},
+	}
+	require.NoError(t, Unmarshal(cfg, table))
+	assert.Equal(t, []string{"second"}, table.Headers)
+	assert.Equal(t, [][]string{{"2"}}, table.Rows)
+}
+
+func TestUnmarshalLegacyXLS(t *testing.T) {
+	table := &common.Table{}
+	cfg := &common.Config{From: "excel", File: "legacy.xls"}
+	err := Unmarshal(cfg, table)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "legacy .xls input is not supported")
+}
+
+func TestListSheets(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "sheets.xlsx")
+
+	f := excelize.NewFile()
+	first := f.GetSheetName(0)
+	_, err := f.NewSheet("Second")
+	require.NoError(t, err)
+	require.NoError(t, f.SetCellValue(first, "A1", "x"))
+	require.NoError(t, f.SaveAs(path))
+	require.NoError(t, f.Close())
+
+	sheets, err := ListSheets(&common.Config{File: path})
+	require.NoError(t, err)
+	assert.Equal(t, []string{first, "Second"}, sheets)
 }

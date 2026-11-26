@@ -67,14 +67,26 @@ tableconvert data.json output.csv --delimiter=SEMICOLON
 
 ### Excel (XLSX)
 
-**Usage:** `tableconvert data.csv output.xlsx --auto-width --bold-header`
+**Usage:** `tableconvert data.csv output.xlsx --auto-width`
 
 | Parameter | Default | Allowed Values | Description |
 |-----------|---------|----------------|-------------|
 | `first-column-header` | `false` | `true`, `false` | Use first column as headers |
-| `sheet-name` | `Sheet1` | Any string | Excel sheet name |
+| `sheet-name` | `Sheet1` | Any string | Excel sheet name (input/output) |
+| `sheet-index` | `` | 1-based number | Read the Nth sheet when `sheet-name` is empty |
+| `expand-merged` | `true` | `true`, `false` | Expand merged cells on input |
 | `auto-width` | `false` | `true`, `false` | Auto-adjust column widths |
-| `text-format` | `true` | `true`, `false` | Force text format for all cells |
+| `text-format` | `true` | `true`, `false` | Force text format for all cells (intentionally kept) |
+
+**Input format:** Excel input/output supports `.xlsx` only. Legacy `.xls` files must be saved as `.xlsx` or exported to CSV first; `tableconvert` returns a clear error instead of attempting to parse them.
+
+**List sheets:**
+
+```bash
+tableconvert --list-sheets report.xlsx
+# Sheet1
+# Sales Data
+```
 
 **Examples:**
 ```bash
@@ -86,6 +98,9 @@ tableconvert data.csv output.xlsx --sheet-name="Sales Data"
 
 # Headers from first column
 tableconvert data.csv output.xlsx --first-column-header=true
+
+# Read the second worksheet by index
+tableconvert --sheet-index=2 report.xlsx output.csv
 ```
 
 ---
