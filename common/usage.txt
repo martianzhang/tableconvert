@@ -48,7 +48,8 @@ FORMAT-SPECIFIC OPTIONS:
     --align=l,c,r           For markdown: column alignment (left/center/right)
     --style=box             For ascii: table style (box, plus, dot, bubble)
     --delimiter=TAB         For csv: value delimiter (COMMA, TAB, SEMICOLON, etc.)
-    --format=object         For json: output format (object, 2d, column, keyed)
+    --format=object         For json/yaml/toml: output shape (object, column, ...)
+    --toml-table=row        For toml: array-of-tables name
     --minify=true           For html/json/xml: minify output
     --table=mytable         For sql: table name for INSERT statements
     --template=file.tmpl    For tmpl: template file path
@@ -59,7 +60,10 @@ FORMAT-SPECIFIC OPTIONS:
     --expand-merged         For excel: expand merged cells (default true)
     --parse-types           For json/sql: emit numbers/booleans/null
     --json-path=data.items  For json: select the row array in a wrapper object
-    --flatten-arrays=index  For json: expand arrays into tags[0], tags[1]
+    --flatten-arrays=index  For json/yaml/toml: expand arrays into tags[0], tags[1]
+
+SUPPORTED WRITE-ONLY FORMATS:
+    bbcode, jira, asciidoc, rst, textile, php, ruby, pandas
 
 EXAMPLES:
   # Basic conversion with auto-detection

@@ -9,20 +9,31 @@ import (
 	"path/filepath"
 
 	"github.com/martianzhang/tableconvert/ascii"
+	"github.com/martianzhang/tableconvert/asciidoc"
+	"github.com/martianzhang/tableconvert/bbcode"
 	"github.com/martianzhang/tableconvert/common"
 	"github.com/martianzhang/tableconvert/csv"
 	"github.com/martianzhang/tableconvert/excel"
 	"github.com/martianzhang/tableconvert/html"
+	"github.com/martianzhang/tableconvert/ini"
+	"github.com/martianzhang/tableconvert/jira"
 	"github.com/martianzhang/tableconvert/json"
 	"github.com/martianzhang/tableconvert/jsonl"
 	"github.com/martianzhang/tableconvert/latex"
 	"github.com/martianzhang/tableconvert/markdown"
 	"github.com/martianzhang/tableconvert/mediawiki"
 	"github.com/martianzhang/tableconvert/mysql"
+	"github.com/martianzhang/tableconvert/pandas"
+	"github.com/martianzhang/tableconvert/php"
+	"github.com/martianzhang/tableconvert/rst"
+	"github.com/martianzhang/tableconvert/ruby"
 	"github.com/martianzhang/tableconvert/sql"
+	"github.com/martianzhang/tableconvert/textile"
 	"github.com/martianzhang/tableconvert/tmpl"
+	"github.com/martianzhang/tableconvert/toml"
 	"github.com/martianzhang/tableconvert/twiki"
 	"github.com/martianzhang/tableconvert/xml"
+	"github.com/martianzhang/tableconvert/yaml"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -250,6 +261,21 @@ func registerFormats() {
 
 	// XML
 	formatRegistry.RegisterFormat("xml", xml.Unmarshal, xml.Marshal)
+
+	// YAML / TOML / INI
+	formatRegistry.RegisterFormat("yaml", yaml.Unmarshal, yaml.Marshal)
+	formatRegistry.RegisterFormat("toml", toml.Unmarshal, toml.Marshal)
+	formatRegistry.RegisterFormat("ini", ini.Unmarshal, ini.Marshal)
+
+	// Write-only documentation/code formats
+	formatRegistry.RegisterWriteOnlyFormat("bbcode", bbcode.Marshal)
+	formatRegistry.RegisterWriteOnlyFormat("jira", jira.Marshal)
+	formatRegistry.RegisterWriteOnlyFormat("asciidoc", asciidoc.Marshal)
+	formatRegistry.RegisterWriteOnlyFormat("rst", rst.Marshal)
+	formatRegistry.RegisterWriteOnlyFormat("textile", textile.Marshal)
+	formatRegistry.RegisterWriteOnlyFormat("php", php.Marshal)
+	formatRegistry.RegisterWriteOnlyFormat("ruby", ruby.Marshal)
+	formatRegistry.RegisterWriteOnlyFormat("pandas", pandas.Marshal)
 }
 
 // performConversion performs the core table conversion logic

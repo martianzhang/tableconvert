@@ -93,8 +93,15 @@ func TestFormatParamsStructure(t *testing.T) {
 }
 
 func TestFormatParamsRegistryComplete(t *testing.T) {
+	parameterless := map[string]bool{
+		"ini": true, "bbcode": true, "jira": true, "asciidoc": true,
+		"rst": true, "textile": true, "php": true, "ruby": true, "pandas": true,
+	}
 	// Verify that all formats in the registry have proper parameters
 	for format, params := range FormatParamsRegistry {
+		if parameterless[format] {
+			continue
+		}
 		assert.NotEmpty(t, params, "Format %s should have parameters", format)
 
 		for _, param := range params {

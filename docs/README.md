@@ -43,6 +43,11 @@ tableconvert --help-format=markdown
 | **XML** | [arguments.md#xml](arguments.md#xml) | Data interchange |
 | **MediaWiki** | [wiki.md](wiki.md) | Wikipedia/Wikis |
 | **TWiki** | [wiki.md](wiki.md) | Corporate wikis |
+| **YAML** | [arguments.md#yaml](arguments.md#yaml) | Configuration/data |
+| **TOML** | [arguments.md#toml](arguments.md#toml) | Configuration/data |
+| **INI** | [arguments.md#ini](arguments.md#ini) | Configuration/data |
+| **BBCode / Jira / AsciiDoc / reST / Textile** | [arguments.md#documentation-formats](arguments.md#documentation-formats) | Docs and wikis |
+| **PHP / Ruby / Pandas** | [arguments.md#code-formats](arguments.md#code-formats) | Code literals |
 | **Template** | [arguments.md#template](arguments.md#template) | Custom formats |
 
 ### Problem Solving

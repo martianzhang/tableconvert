@@ -35,6 +35,17 @@ var textFormats = map[string]bool{
 	"tracwiki":  true,
 	"twiki":     true,
 	"xml":       true,
+	"yaml":      true,
+	"toml":      true,
+	"ini":       true,
+	"bbcode":    true,
+	"jira":      true,
+	"asciidoc":  true,
+	"rst":       true,
+	"textile":   true,
+	"php":       true,
+	"ruby":      true,
+	"pandas":    true,
 }
 
 // IsTextFormat reports whether format is decoded/encoded as text. Excel is the

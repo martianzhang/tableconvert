@@ -6,7 +6,7 @@
 
 ## ✨ Key Features
 
-- **🔄 Multi-format Support**: 15 formats including MySQL, Markdown, CSV, TSV, JSON, Excel, HTML, XML, SQL, LaTeX, MediaWiki, TWiki, and custom templates
+- **🔄 Multi-format Support**: 26 formats including MySQL, Markdown, CSV, TSV, JSON, Excel, HTML, XML, SQL, LaTeX, MediaWiki, TWiki, and custom templates
 - **🔒 Offline & Secure**: All processing happens locally - your data never leaves your machine
 - **⚡ Batch Processing**: Convert multiple files at once with glob patterns
 - **🔧 Data Transformations**: Built-in support for transpose, deduplication, case conversion, and more
@@ -218,6 +218,17 @@ Once configured, you can ask your AI assistant:
 | **LaTeX** | `.tex`, `.latex` | ✅ | ✅ | LaTeX table format |
 | **MediaWiki** | `.wiki` | ✅ | ✅ | MediaWiki tables |
 | **TWiki** | `.twiki` | ✅ | ✅ | TWiki/TracWiki format |
+| **YAML** | `.yaml`, `.yml` | ✅ | ✅ | YAML arrays/columns |
+| **TOML** | `.toml` | ✅ | ✅ | TOML array-of-tables |
+| **INI** | `.ini` | ✅ | ✅ | section/key/value rows |
+| **BBCode** | `.bbcode`, `.bb` | ❌ | ✅ | BBCode tables |
+| **Jira** | `.jira` | ❌ | ✅ | Jira wiki tables |
+| **AsciiDoc** | `.adoc`, `.asciidoc` | ❌ | ✅ | AsciiDoc tables |
+| **reStructuredText** | `.rst` | ❌ | ✅ | Grid tables |
+| **Textile** | `.textile` | ❌ | ✅ | Textile tables |
+| **PHP** | `.php` | ❌ | ✅ | PHP array literal |
+| **Ruby** | `.rb` | ❌ | ✅ | Ruby array literal |
+| **Pandas** | `.py` | ❌ | ✅ | pandas DataFrame code |
 | **ASCII** | - | ❌ | ✅ | ASCII art tables |
 | **Template** | `.tmpl`, `.template` | ❌ | ✅ | Custom templates |
 

@@ -457,6 +457,77 @@ tableconvert data.csv output.xml --minify
 
 ---
 
+### YAML
+
+**Usage:** `tableconvert data.csv output.yaml --format=object`
+
+| Parameter | Default | Allowed Values | Description |
+|-----------|---------|----------------|-------------|
+| `format` | `object` | `object`, `column` | Array of row objects, or column-oriented object |
+| `indent` | `2` | integer >= 1 | Indentation width |
+| `flatten-arrays` | `json` | `json`, `index` | Nested array handling |
+| `sort-headers` | `false` | `true`, `false` | Sort headers alphabetically |
+| `parse-types` | `false` | `true`, `false` | Convert values to YAML numbers/bools/null |
+
+Input accepts an array of objects, a column-oriented object, or a 2D array (first row as headers).
+
+### TOML
+
+**Usage:** `tableconvert data.csv output.toml --toml-table=row`
+
+| Parameter | Default | Allowed Values | Description |
+|-----------|---------|----------------|-------------|
+| `format` | `object` | `object`, `column` | Array-of-tables or column-oriented table |
+| `toml-table` | `row` | Any string | Name used for `[[row]]` on output/input |
+| `flatten-arrays` | `json` | `json`, `index` | Nested array handling |
+| `parse-types` | `false` | `true`, `false` | Convert values to numbers/bools/null |
+
+Input accepts `[[row]]` arrays of tables and column-oriented tables.
+
+### INI
+
+INI uses a three-column `section` / `key` / `value` model. Input expands sections into rows; output requires those three columns and groups rows by section.
+
+```bash
+tableconvert config.csv output.ini
+# config.csv:
+# section,key,value
+# server,host,localhost
+# server,port,8080
+```
+
+---
+
+### Documentation Formats
+
+These formats are write-only:
+
+- **BBCode:** `.bbcode`, `.bb`
+- **Jira:** `.jira`
+- **AsciiDoc:** `.adoc`, `.asciidoc`
+- **reStructuredText:** `.rst`
+- **Textile:** `.textile`
+
+```bash
+tableconvert data.csv output.bbcode
+tableconvert data.csv output.adoc
+tableconvert data.csv output.rst
+```
+
+### Code Formats
+
+These formats are write-only code literals:
+
+- **PHP:** `.php`
+- **Ruby:** `.rb`
+- **Pandas DataFrame:** `.py`
+
+```bash
+tableconvert data.csv output.php
+tableconvert data.csv output.rb
+tableconvert data.csv output.py
+```
+
 ## 🌐 Encoding
 
 Text formats are decoded as UTF-8 by default (an optional UTF-8 BOM is stripped).

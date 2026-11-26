@@ -51,6 +51,9 @@ const (
 	TableFormatTSV       = "tsv"
 	TableFormatJSONL     = "jsonl"
 	TableFormatMySQL     = "mysql"
+	TableFormatYAML      = "yaml"
+	TableFormatTOML      = "toml"
+	TableFormatINI       = "ini"
 )
 
 var (
@@ -83,6 +86,20 @@ var extensions = map[string]string{
 	".tmpl":      "tmpl",
 	".template":  "tmpl",
 	".ascii":     TableFormatASCII,
+	".yaml":      TableFormatYAML,
+	".yml":       TableFormatYAML,
+	".toml":      TableFormatTOML,
+	".ini":       TableFormatINI,
+	".bbcode":    "bbcode",
+	".bb":        "bbcode",
+	".jira":      "jira",
+	".adoc":      "asciidoc",
+	".asciidoc":  "asciidoc",
+	".rst":       "rst",
+	".textile":   "textile",
+	".php":       "php",
+	".rb":        "ruby",
+	".py":        "pandas",
 }
 
 // DetectTableFormatByExtension detects the table format by the file extension.

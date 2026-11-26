@@ -27,11 +27,17 @@ func ShowFormatsHelp() {
 	fmt.Fprintln(os.Stderr, "")
 
 	// Get all formats in a consistent order (including aliases)
-	formats := []string{"ascii", "csv", "tsv", "excel", "xlsx", "html", "json", "jsonl", "jsonlines", "latex", "markdown", "md", "mediawiki", "mysql", "sql", "tmpl", "template", "twiki", "tracwiki", "xml"}
+	formats := []string{"ascii", "bbcode", "csv", "tsv", "excel", "xlsx", "html", "json", "jsonl", "jsonlines", "latex", "markdown", "md", "mediawiki", "mysql", "sql", "tmpl", "template", "twiki", "tracwiki", "xml", "yaml", "toml", "ini", "jira", "asciidoc", "rst", "textile", "php", "ruby", "pandas"}
 
 	for _, format := range formats {
 		params := GetFormatParams(format)
-		if len(params) > 0 {
+		if len(params) == 0 {
+			fmt.Fprintf(os.Stderr, "## %s\n\n", format)
+			fmt.Fprintln(os.Stderr, "No format-specific parameters.")
+			fmt.Fprintln(os.Stderr, "")
+			continue
+		}
+		{
 			fmt.Fprintf(os.Stderr, "## %s\n\n", format)
 
 			// Calculate column widths for this format
@@ -148,12 +154,15 @@ func ShowFormatHelp(format string) {
 		format = "tmpl"
 	}
 
-	params := GetFormatParams(format)
-
-	if len(params) == 0 {
+	params, exists := FormatParamsRegistry[format]
+	if !exists {
 		fmt.Fprintf(os.Stderr, "Unknown format: %s\n\n", format)
 		fmt.Fprintln(os.Stderr, "Use --help-formats to see all supported formats.")
 		os.Exit(1)
+	}
+	if len(params) == 0 {
+		fmt.Fprintf(os.Stderr, "Format %s has no format-specific parameters.\n", strings.ToUpper(format))
+		return
 	}
 
 	fmt.Fprintf(os.Stderr, "Format-Specific Parameters for %s:\n", strings.ToUpper(format))
@@ -583,7 +592,7 @@ func detectFormatFromExtension(filename string) string {
 
 // getSupportedFormats returns a sorted list of supported formats
 func getSupportedFormats() []string {
-	formats := []string{"ascii", "csv", "tsv", "excel", "html", "json", "jsonl", "latex", "markdown", "mediawiki", "mysql", "sql", "tmpl", "twiki", "xml", "xlsx", "jsonlines", "md", "template", "tracwiki"}
+	formats := []string{"ascii", "bbcode", "csv", "tsv", "excel", "html", "json", "jsonl", "latex", "markdown", "mediawiki", "mysql", "sql", "tmpl", "twiki", "xml", "xlsx", "jsonlines", "md", "template", "tracwiki", "yaml", "toml", "ini", "jira", "asciidoc", "rst", "textile", "php", "ruby", "pandas"}
 	return formats
 }
 
@@ -1184,6 +1193,28 @@ func (c *Config) changeExtension(path, format string) string {
 		ext = ".tmpl"
 	case "ascii":
 		ext = ".txt"
+	case "yaml", "yml":
+		ext = ".yaml"
+	case "toml":
+		ext = ".toml"
+	case "ini":
+		ext = ".ini"
+	case "bbcode":
+		ext = ".bbcode"
+	case "jira":
+		ext = ".jira"
+	case "asciidoc":
+		ext = ".adoc"
+	case "rst":
+		ext = ".rst"
+	case "textile":
+		ext = ".textile"
+	case "php":
+		ext = ".php"
+	case "ruby":
+		ext = ".rb"
+	case "pandas":
+		ext = ".py"
 	default:
 		// Keep original extension
 		return path
