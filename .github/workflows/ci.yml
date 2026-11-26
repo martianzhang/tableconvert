@@ -169,7 +169,7 @@ jobs:
 
           # Generate checksums
           echo "Generating checksums..."
-          cd release && sha256sum tableconvert-* > checksums.txt
+          (cd release && sha256sum tableconvert-* > checksums.txt)
 
           # Create release info file
           cat > release/RELEASE_INFO.txt << EOF
