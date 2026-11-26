@@ -14,7 +14,7 @@ func TestGetFormatParams(t *testing.T) {
 	}{
 		{"markdown format", "markdown", 5},
 		{"csv format", "csv", 3}, // first-column-header, bom, delimiter
-		{"json format", "json", 3},
+		{"json format", "json", 6},
 		{"latex format", "latex", 11},
 		{"excel format", "excel", 4}, // first-column-header, sheet-name, auto-width, text-format
 		{"html format", "html", 4},   // first-column-header, div, minify, thead

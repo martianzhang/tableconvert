@@ -39,13 +39,20 @@ var FormatParamsRegistry = map[string][]FormatParam{
 	"json": {
 		{Name: "format", DefaultValue: "object", AllowedValues: "object, 2d, column, keyed", Description: "JSON Format"},
 		{Name: "minify", DefaultValue: "false", AllowedValues: "true, false", Description: "Minify JSON"},
-		{Name: "parsing-json", DefaultValue: "false", AllowedValues: "true, false", Description: "Parsing JSON"},
+		{Name: "parsing-json", DefaultValue: "false", AllowedValues: "true, false", Description: "Parse values as JSON types"},
+		{Name: "json-path", DefaultValue: "", AllowedValues: "", Description: "Dot/bracket path to the row array (e.g. data.items)"},
+		{Name: "flatten-arrays", DefaultValue: "json", AllowedValues: "json, index", Description: "How nested arrays become columns"},
+		{Name: "sort-headers", DefaultValue: "false", AllowedValues: "true, false", Description: "Sort headers alphabetically"},
 	},
 	"jsonl": {
-		{Name: "parsing-json", DefaultValue: "false", AllowedValues: "true, false", Description: "Parsing JSON"},
+		{Name: "parsing-json", DefaultValue: "false", AllowedValues: "true, false", Description: "Parse values as JSON types"},
+		{Name: "flatten-arrays", DefaultValue: "json", AllowedValues: "json, index", Description: "How nested arrays become columns"},
+		{Name: "sort-headers", DefaultValue: "false", AllowedValues: "true, false", Description: "Sort headers alphabetically"},
 	},
 	"jsonlines": {
-		{Name: "parsing-json", DefaultValue: "false", AllowedValues: "true, false", Description: "Parsing JSON"},
+		{Name: "parsing-json", DefaultValue: "false", AllowedValues: "true, false", Description: "Parse values as JSON types"},
+		{Name: "flatten-arrays", DefaultValue: "json", AllowedValues: "json, index", Description: "How nested arrays become columns"},
+		{Name: "sort-headers", DefaultValue: "false", AllowedValues: "true, false", Description: "Sort headers alphabetically"},
 	},
 	"latex": {
 		{Name: "bold-first-column", DefaultValue: "false", AllowedValues: "true, false", Description: "Bold first column"},

@@ -50,7 +50,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 			if header == nil {
 				table.Headers[i] = "NULL"
 			} else {
-				table.Headers[i] = fmt.Sprint(header)
+				table.Headers[i] = common.JSONScalarString(header)
 			}
 		}
 		// Extract rows
@@ -61,7 +61,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 					if row[i] == nil {
 						stringRow[i] = "NULL"
 					} else {
-						stringRow[i] = fmt.Sprint(row[i])
+						stringRow[i] = common.JSONScalarString(row[i])
 					}
 				} else {
 					// Handle missing values
@@ -108,7 +108,7 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 					if col[i] == nil {
 						row[j] = "NULL"
 					} else {
-						row[j] = fmt.Sprint(col[i])
+						row[j] = common.JSONScalarString(col[i])
 					}
 				}
 			}
@@ -151,47 +151,53 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 			row[0] = key
 			for i, header := range headers[1:] {
 				if val, ok := input[key][header]; ok && val != nil {
-					row[i+1] = fmt.Sprint(val)
+					row[i+1] = common.JSONScalarString(val)
 				}
 			}
 			table.Rows = append(table.Rows, row)
 		}
 
 	default: // Array of Object
-		var input []map[string]interface{}
-		if err := decodeJSON(data, &input); err != nil {
+		root, err := decodeJSONRoot(data, cfg)
+		if err != nil {
 			return err
 		}
-
-		// Collect all headers and sort them for deterministic order
-		headerSet := make(map[string]struct{})
-		for _, obj := range input {
-			for key := range obj {
-				headerSet[key] = struct{}{}
-			}
-		}
-		// Sort all headers
-		for key := range headerSet {
-			table.Headers = append(table.Headers, key)
-		}
-		sort.Strings(table.Headers)
-
-		for _, obj := range input {
-			row := make([]string, len(table.Headers))
-			for i, header := range table.Headers {
-				if val, ok := obj[header]; ok {
-					if val == nil {
-						row[i] = "NULL"
-					} else {
-						row[i] = fmt.Sprint(val)
-					}
-				}
-			}
-			table.Rows = append(table.Rows, row)
-		}
+		headers, rows := common.FlattenJSONRecords(
+			root,
+			common.JSONFlattenOptions{Arrays: cfg.GetExtensionString("flatten-arrays", "json")},
+			cfg.GetExtensionBool("sort-headers", false),
+		)
+		table.Headers = headers
+		table.Rows = rows
 	}
 
 	return nil
+}
+
+// decodeJSONRoot decodes a JSON document and returns the rows selected by
+// --json-path. A top-level object is treated as one row, so typical API
+// payloads like {"id":1} work without wrapping them in an array.
+func decodeJSONRoot(data []byte, cfg *common.Config) ([]interface{}, error) {
+	root, err := common.DecodeOrderedJSON(data)
+	if err != nil {
+		return nil, err
+	}
+	if path := cfg.GetExtensionString("json-path", ""); path != "" {
+		root, err = common.JSONPathValue(root, path)
+		if err != nil {
+			return nil, err
+		}
+	}
+	switch value := root.(type) {
+	case []interface{}:
+		return value, nil
+	case *common.OrderedObject, map[string]interface{}:
+		return []interface{}{value}, nil
+	default:
+		// Scalar roots become a one-column table; FlattenJSONRecords handles
+		// the "value" column.
+		return []interface{}{value}, nil
+	}
 }
 
 func Marshal(cfg *common.Config, table *common.Table) error {

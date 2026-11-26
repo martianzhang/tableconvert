@@ -2,10 +2,8 @@ package jsonl
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"sort"
 
 	"github.com/martianzhang/tableconvert/common"
 )
@@ -13,7 +11,7 @@ import (
 func Unmarshal(cfg *common.Config, table *common.Table) error {
 	scanner := bufio.NewScanner(common.StripUTF8BOM(cfg.Reader))
 	scanner.Buffer(make([]byte, 64*1024), 16*1024*1024)
-	var records []map[string]interface{}
+	var records []interface{}
 
 	lineNumber := 0
 	for scanner.Scan() {
@@ -23,17 +21,19 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 			continue // skip empty lines
 		}
 
-		var record map[string]interface{}
-		decoder := json.NewDecoder(bytes.NewReader([]byte(line)))
-		decoder.UseNumber()
-		if err := decoder.Decode(&record); err != nil {
+		value, err := common.DecodeOrderedJSON([]byte(line))
+		if err != nil {
 			return &common.ParseError{
 				LineNumber: lineNumber,
 				Message:    fmt.Sprintf("invalid JSON: %v", err),
 				Line:       line,
 			}
 		}
-		records = append(records, record)
+		if array, ok := value.([]interface{}); ok {
+			records = append(records, array...)
+			continue
+		}
+		records = append(records, value)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -44,35 +44,11 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 		return nil // An empty JSONL file is an empty table.
 	}
 
-	// Collect all unique keys from all records to form headers
-	headerMap := make(map[string]bool)
-	for _, record := range records {
-		for key := range record {
-			headerMap[key] = true
-		}
-	}
-
-	// Convert map to sorted slice of headers for deterministic order
-	headers := make([]string, 0, len(headerMap))
-	for key := range headerMap {
-		headers = append(headers, key)
-	}
-	sort.Strings(headers)
-
-	// Convert records to rows
-	rows := make([][]string, len(records))
-	for i, record := range records {
-		row := make([]string, len(headers))
-		for j, header := range headers {
-			if val, ok := record[header]; ok {
-				row[j] = fmt.Sprintf("%v", val)
-			} else {
-				row[j] = "" // empty string for missing fields
-			}
-		}
-		rows[i] = row
-	}
-
+	headers, rows := common.FlattenJSONRecords(
+		records,
+		common.JSONFlattenOptions{Arrays: cfg.GetExtensionString("flatten-arrays", "json")},
+		cfg.GetExtensionBool("sort-headers", false),
+	)
 	table.Headers = headers
 	table.Rows = rows
 	return nil

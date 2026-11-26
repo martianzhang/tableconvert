@@ -10,6 +10,7 @@ import (
 	"github.com/martianzhang/tableconvert/common"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUnmarshalDefaultFormatBasicCase(t *testing.T) {
@@ -120,9 +121,8 @@ func TestColumnFormatUnmarshal(t *testing.T) {
 	assert.Equal(t, "c", table.Rows[2][1])
 }
 
-// TestDefaultFormatDeterministicHeaders tests header order determinism (Bug 2 fix)
-func TestDefaultFormatDeterministicHeaders(t *testing.T) {
-	// Run multiple times to ensure deterministic order
+// TestDefaultFormatFirstSeenHeaders tests that headers follow the source key order.
+func TestDefaultFormatFirstSeenHeaders(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		input := `[{"z": 1, "a": 2, "m": 3}]`
 		cfg := &common.Config{
@@ -133,9 +133,21 @@ func TestDefaultFormatDeterministicHeaders(t *testing.T) {
 		err := Unmarshal(cfg, table)
 
 		assert.NoError(t, err)
-		// Headers should always be sorted
-		assert.Equal(t, []string{"a", "m", "z"}, table.Headers)
+		assert.Equal(t, []string{"z", "a", "m"}, table.Headers)
 	}
+}
+
+func TestDefaultFormatSortHeaders(t *testing.T) {
+	input := `[{"z": 1, "a": 2, "m": 3}]`
+	cfg := &common.Config{
+		Extension: map[string]string{"sort-headers": "true"},
+		Reader:    strings.NewReader(input),
+	}
+	table := &common.Table{}
+	err := Unmarshal(cfg, table)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"a", "m", "z"}, table.Headers)
 }
 
 // Test2dFormatMissingValues tests handling of missing values (Bug 4 fix)
@@ -290,8 +302,8 @@ func TestUnmarshalPreservesNumberPrecision(t *testing.T) {
 	table := &common.Table{}
 	err := Unmarshal(&common.Config{Reader: strings.NewReader(input)}, table)
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"big", "id"}, table.Headers)
-	assert.Equal(t, [][]string{{"9007199254740993", "1234567"}}, table.Rows)
+	assert.Equal(t, []string{"id", "big"}, table.Headers)
+	assert.Equal(t, [][]string{{"1234567", "9007199254740993"}}, table.Rows)
 }
 
 func TestKeyedFormat(t *testing.T) {
@@ -376,4 +388,63 @@ func Test2dFormatRoundTrip(t *testing.T) {
 	assert.Equal(t, []interface{}{"1", "2"}, output[0])
 	assert.Equal(t, []interface{}{"3", "4"}, output[1])
 	assert.Equal(t, []interface{}{"5", "6"}, output[2])
+}
+
+func TestUnmarshalNestedObjectFlattens(t *testing.T) {
+	input := `[{"id":1,"user":{"name":"Alice"},"tags":["a","b"]}]`
+	cfg := &common.Config{Extension: map[string]string{}, Reader: strings.NewReader(input)}
+	table := &common.Table{}
+	require.NoError(t, Unmarshal(cfg, table))
+
+	assert.Equal(t, []string{"id", "user.name", "tags"}, table.Headers)
+	assert.Equal(t, [][]string{{"1", "Alice", `["a","b"]`}}, table.Rows)
+}
+
+func TestUnmarshalNestedArrayIndexFlattens(t *testing.T) {
+	input := `[{"id":1,"tags":["a","b"]}]`
+	cfg := &common.Config{
+		Extension: map[string]string{"flatten-arrays": "index"},
+		Reader:    strings.NewReader(input),
+	}
+	table := &common.Table{}
+	require.NoError(t, Unmarshal(cfg, table))
+
+	assert.Equal(t, []string{"id", "tags[0]", "tags[1]"}, table.Headers)
+	assert.Equal(t, [][]string{{"1", "a", "b"}}, table.Rows)
+}
+
+func TestUnmarshalSingleObject(t *testing.T) {
+	input := `{"a":1,"b":{"c":2}}`
+	cfg := &common.Config{Extension: map[string]string{}, Reader: strings.NewReader(input)}
+	table := &common.Table{}
+	require.NoError(t, Unmarshal(cfg, table))
+
+	assert.Equal(t, []string{"a", "b.c"}, table.Headers)
+	assert.Equal(t, [][]string{{"1", "2"}}, table.Rows)
+}
+
+func TestUnmarshalJSONPath(t *testing.T) {
+	input := `{"data":{"items":[{"a":1},{"a":2}]}}`
+	cfg := &common.Config{
+		Extension: map[string]string{"json-path": "data.items"},
+		Reader:    strings.NewReader(input),
+	}
+	table := &common.Table{}
+	require.NoError(t, Unmarshal(cfg, table))
+
+	assert.Equal(t, []string{"a"}, table.Headers)
+	assert.Equal(t, [][]string{{"1"}, {"2"}}, table.Rows)
+}
+
+func TestUnmarshalNestedObjectAsCompactJSON(t *testing.T) {
+	input := `[{"meta":{"a":1,"b":[2,3]}}]`
+	cfg := &common.Config{
+		Extension: map[string]string{"flatten-arrays": "json"},
+		Reader:    strings.NewReader(input),
+	}
+	table := &common.Table{}
+	require.NoError(t, Unmarshal(cfg, table))
+
+	assert.Equal(t, []string{"meta.a", "meta.b"}, table.Headers)
+	assert.Equal(t, [][]string{{"1", `[2,3]`}}, table.Rows)
 }

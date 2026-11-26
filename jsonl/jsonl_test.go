@@ -74,8 +74,8 @@ func TestUnmarshalPreservesNumberPrecision(t *testing.T) {
 	table := &common.Table{}
 	err := Unmarshal(&common.Config{Reader: bytes.NewReader([]byte(input))}, table)
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"big", "id"}, table.Headers)
-	assert.Equal(t, [][]string{{"9007199254740993", "1234567"}}, table.Rows)
+	assert.Equal(t, []string{"id", "big"}, table.Headers)
+	assert.Equal(t, [][]string{{"1234567", "9007199254740993"}}, table.Rows)
 }
 
 func TestEmptyJSONLIsEmptyTable(t *testing.T) {
@@ -96,9 +96,8 @@ func TestUnmarshalLongLine(t *testing.T) {
 	assert.Equal(t, long, table.Rows[0][0])
 }
 
-// TestUnmarshalDeterministicHeaders tests that headers are in sorted order
-func TestUnmarshalDeterministicHeaders(t *testing.T) {
-	// Prepare test input with fields in different orders
+// TestUnmarshalFirstSeenHeaders tests that headers follow first-seen key order.
+func TestUnmarshalFirstSeenHeaders(t *testing.T) {
 	input := `{"z": 1, "a": 2}
 {"m": 3, "z": 4}`
 	reader := bytes.NewReader([]byte(input))
@@ -110,10 +109,49 @@ func TestUnmarshalDeterministicHeaders(t *testing.T) {
 	err := Unmarshal(cfg, table)
 
 	assert.NoError(t, err)
-	// Headers should be sorted alphabetically
-	assert.Equal(t, []string{"a", "m", "z"}, table.Headers, "Headers should be sorted for deterministic order")
+	assert.Equal(t, []string{"z", "a", "m"}, table.Headers)
 	assert.Equal(t, 2, len(table.Rows), "Row count doesn't match expected value")
-	// Check row values
-	assert.Equal(t, "2", table.Rows[0][0]) // a=2
-	assert.Equal(t, "4", table.Rows[1][2]) // z=4
+	assert.Equal(t, "1", table.Rows[0][0]) // z=1
+	assert.Equal(t, "2", table.Rows[0][1]) // a=2
+	assert.Equal(t, "", table.Rows[0][2])  // m missing
+	assert.Equal(t, "4", table.Rows[1][0]) // z=4
+	assert.Equal(t, "", table.Rows[1][1])  // a missing
+	assert.Equal(t, "3", table.Rows[1][2]) // m=3
+}
+
+func TestUnmarshalSortHeaders(t *testing.T) {
+	input := `{"z": 1, "a": 2}
+{"m": 3, "z": 4}`
+	cfg := &common.Config{
+		Extension: map[string]string{"sort-headers": "true"},
+		Reader:    bytes.NewReader([]byte(input)),
+	}
+	table := &common.Table{}
+
+	err := Unmarshal(cfg, table)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"a", "m", "z"}, table.Headers)
+}
+
+func TestUnmarshalNestedObjectFlattens(t *testing.T) {
+	input := `{"id":1,"user":{"name":"Alice"}}
+{"id":2,"user":{"name":"Bob"}}
+`
+	table := &common.Table{}
+	require.NoError(t, Unmarshal(&common.Config{Reader: strings.NewReader(input)}, table))
+
+	assert.Equal(t, []string{"id", "user.name"}, table.Headers)
+	assert.Equal(t, [][]string{{"1", "Alice"}, {"2", "Bob"}}, table.Rows)
+}
+
+func TestUnmarshalArrayLine(t *testing.T) {
+	input := `[{"a":1},{"a":2}]
+{"a":3}
+`
+	table := &common.Table{}
+	require.NoError(t, Unmarshal(&common.Config{Reader: strings.NewReader(input)}, table))
+
+	assert.Equal(t, []string{"a"}, table.Headers)
+	assert.Equal(t, [][]string{{"1"}, {"2"}, {"3"}}, table.Rows)
 }

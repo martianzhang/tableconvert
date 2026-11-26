@@ -123,13 +123,22 @@ tableconvert data.csv output.html --thead
 |-----------|---------|----------------|-------------|
 | `format` | `object` | `object`, `2d`, `column`, `keyed` | JSON output format |
 | `minify` | `false` | `true`, `false` | Minify JSON output |
-| `parsing-json` | `false` | `true`, `false` | Parse input as JSON |
+| `parsing-json` | `false` | `true`, `false` | Parse values as JSON types on output |
+| `json-path` | `` | Dot/bracket path | Select the row array from a wrapper object (e.g. `data.items`) |
+| `flatten-arrays` | `json` | `json`, `index` | Serialize arrays into one cell, or expand to `tags[0]`, `tags[1]` |
+| `sort-headers` | `false` | `true`, `false` | Sort headers alphabetically instead of first-seen order |
 
 **JSON Format Options:**
 - `object`: Array of objects (recommended)
 - `2d`: 2D array (rows and columns)
 - `column`: Column-oriented format
 - `keyed`: Keyed by first column
+
+**Nested JSON:**
+- Nested objects become dot paths: `{"user":{"name":"Alice"}}` → `user.name`.
+- Arrays are serialized as compact JSON by default: `["a","b"]`.
+- Use `--flatten-arrays=index` to expand arrays into `tags[0]`, `tags[1]`.
+- A top-level object is treated as one row; use `--json-path` for wrapper objects.
 
 **Examples:**
 ```bash
@@ -151,7 +160,9 @@ tableconvert data.csv output.json --minify
 
 | Parameter | Default | Allowed Values | Description |
 |-----------|---------|----------------|-------------|
-| `parsing-json` | `false` | `true`, `false` | Parse input as JSON |
+| `parsing-json` | `false` | `true`, `false` | Parse values as JSON types on output |
+| `flatten-arrays` | `json` | `json`, `index` | Serialize arrays into one cell, or expand to indexed columns |
+| `sort-headers` | `false` | `true`, `false` | Sort headers alphabetically instead of first-seen order |
 
 **Example:**
 ```bash
