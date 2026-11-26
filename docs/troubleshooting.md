@@ -203,6 +203,12 @@ ls template.tmpl
 # Verify file format
 file data.xlsx  # Should show "Microsoft Excel"
 
+# Legacy .xls is not supported; save as .xlsx or export CSV
+tableconvert legacy.xls output.csv  # error: legacy .xls input is not supported
+
+# List worksheet names before choosing a sheet
+tableconvert --list-sheets data.xlsx
+
 # Try opening in Excel first to verify file integrity
 
 # For reading: ensure first row is headers if needed
