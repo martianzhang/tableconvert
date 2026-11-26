@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	_ "embed"
 	"fmt"
 	"io"
@@ -26,7 +27,7 @@ func ShowFormatsHelp() {
 	fmt.Fprintln(os.Stderr, "")
 
 	// Get all formats in a consistent order (including aliases)
-	formats := []string{"ascii", "csv", "excel", "xlsx", "html", "json", "jsonl", "jsonlines", "latex", "markdown", "md", "mediawiki", "mysql", "sql", "tmpl", "template", "twiki", "tracwiki", "xml"}
+	formats := []string{"ascii", "csv", "tsv", "excel", "xlsx", "html", "json", "jsonl", "jsonlines", "latex", "markdown", "md", "mediawiki", "mysql", "sql", "tmpl", "template", "twiki", "tracwiki", "xml"}
 
 	for _, format := range formats {
 		params := GetFormatParams(format)
@@ -432,6 +433,29 @@ func ParseConfig(args []string) (Config, error) {
 		return cfg, nil
 	}
 
+	// If the extension is unknown (or input is stdin), inspect the content.
+	if cfg.From == "" {
+		if cfg.File == "" && stdinIsTerminal() {
+			return cfg, newParseError(cfg.From, cfg.To, cfg.File, cfg.Result)
+		}
+		data, err := readInputForDetection(&cfg)
+		if err != nil {
+			return cfg, err
+		}
+		detected, err := DetectTableFormatByData(bytes.NewReader(data))
+		if err != nil {
+			if cfg.File == "" && cfg.To == "" {
+				return cfg, newParseError(cfg.From, cfg.To, cfg.File, cfg.Result)
+			}
+			return cfg, fmt.Errorf("cannot auto-detect input format%s: %w\nUse --from=<format> to specify it explicitly", inputDescription(cfg.File), err)
+		}
+		cfg.From = detected
+		cfg.BufferedInput = data
+		if cfg.Verbose {
+			fmt.Fprintf(os.Stderr, "# Auto-detected input format from content: %s\n", detected)
+		}
+	}
+
 	// Check if required parameters are provided
 	if cfg.From == "" || cfg.To == "" {
 		return cfg, newParseError(cfg.From, cfg.To, cfg.File, cfg.Result)
@@ -446,7 +470,9 @@ func ParseConfig(args []string) (Config, error) {
 	}
 
 	// Determine input target (Reader)
-	if cfg.File != "" {
+	if cfg.BufferedInput != nil {
+		cfg.Reader = bytes.NewReader(cfg.BufferedInput)
+	} else if cfg.File != "" {
 		// Check if file exists
 		if _, err := os.Stat(cfg.File); os.IsNotExist(err) {
 			return cfg, fmt.Errorf("file does not exist: %s", cfg.File)
@@ -497,6 +523,36 @@ func ParseConfig(args []string) (Config, error) {
 	return cfg, nil
 }
 
+func stdinIsTerminal() bool {
+	info, err := os.Stdin.Stat()
+	return err == nil && info.Mode()&os.ModeCharDevice != 0
+}
+
+func readInputForDetection(cfg *Config) ([]byte, error) {
+	if cfg.File != "" {
+		if _, err := os.Stat(cfg.File); os.IsNotExist(err) {
+			return nil, fmt.Errorf("file does not exist: %s", cfg.File)
+		}
+		data, err := os.ReadFile(cfg.File)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read input file: %w", err)
+		}
+		return data, nil
+	}
+	data, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read stdin: %w", err)
+	}
+	return data, nil
+}
+
+func inputDescription(path string) string {
+	if path == "" {
+		return " from stdin"
+	}
+	return " for " + path
+}
+
 // detectFormatFromExtension detects format from file extension
 // Returns empty string if extension is not recognized
 func detectFormatFromExtension(filename string) string {
@@ -509,7 +565,7 @@ func detectFormatFromExtension(filename string) string {
 
 // getSupportedFormats returns a sorted list of supported formats
 func getSupportedFormats() []string {
-	formats := []string{"ascii", "csv", "excel", "html", "json", "jsonl", "latex", "markdown", "mediawiki", "mysql", "sql", "tmpl", "twiki", "xml", "xlsx", "jsonlines", "md", "template", "tracwiki"}
+	formats := []string{"ascii", "csv", "tsv", "excel", "html", "json", "jsonl", "latex", "markdown", "mediawiki", "mysql", "sql", "tmpl", "twiki", "xml", "xlsx", "jsonlines", "md", "template", "tracwiki"}
 	return formats
 }
 
@@ -573,24 +629,25 @@ func parseBoolStrict(value string, defaultValue bool) (bool, error) {
 
 // Config holds configuration, reader/writer, and extension parameters
 type Config struct {
-	From         string
-	To           string
-	File         string
-	Result       string
-	Verbose      bool
-	MCPMode      bool
-	Batch        string // Batch mode pattern (e.g., "*.csv")
-	Recursive    bool   // Recursive directory traversal
-	OutputDir    string // Output directory for batch mode
-	DryRun       bool   // Dry run mode - preview without writing
-	ListSheets   bool   // List Excel worksheet names and exit
-	AllowUnknown bool   // Do not reject unknown extension options
-	Reader       io.Reader
-	Writer       io.Writer
-	InputFile    *os.File
-	Extension    map[string]string
-	TempResult   string // Temporary output path used until CommitOutput
-	SQLNull      bool   // Source represents SQL NULL as the string "NULL"
+	From          string
+	To            string
+	File          string
+	Result        string
+	Verbose       bool
+	MCPMode       bool
+	Batch         string // Batch mode pattern (e.g., "*.csv")
+	Recursive     bool   // Recursive directory traversal
+	OutputDir     string // Output directory for batch mode
+	DryRun        bool   // Dry run mode - preview without writing
+	ListSheets    bool   // List Excel worksheet names and exit
+	AllowUnknown  bool   // Do not reject unknown extension options
+	Reader        io.Reader
+	Writer        io.Writer
+	InputFile     *os.File
+	BufferedInput []byte
+	Extension     map[string]string
+	TempResult    string // Temporary output path used until CommitOutput
+	SQLNull       bool   // Source represents SQL NULL as the string "NULL"
 
 	OutputTransform io.WriteCloser
 	OutputFile      *os.File
@@ -1021,6 +1078,8 @@ func (c *Config) changeExtension(path, format string) string {
 	switch format {
 	case "csv":
 		ext = ".csv"
+	case "tsv":
+		ext = ".tsv"
 	case "json":
 		ext = ".json"
 	case "jsonl", "jsonlines":

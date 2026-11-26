@@ -107,6 +107,7 @@ AUTO-DETECTION:
   the format from file extensions:
 
     .csv      -> csv
+    .tsv, .tab -> tsv
     .json     -> json
     .jsonl    -> jsonl
     .md, .markdown -> markdown
@@ -119,7 +120,8 @@ AUTO-DETECTION:
     .tmpl, .template -> tmpl
     .txt      -> (not auto-detected, must specify)
 
-  Note: .txt files require explicit format specification with --from
+  .txt files are detected from content (CSV/TSV/JSONL/MySQL box), otherwise
+  pass --from explicitly.
 
 COMPLETE DOCUMENTATION:
   For detailed format-specific parameters and examples, see:

@@ -203,6 +203,7 @@ func registerFormats() {
 
 	// CSV
 	formatRegistry.RegisterFormat("csv", csv.Unmarshal, csv.Marshal)
+	formatRegistry.RegisterFormatAlias("tsv", "csv")
 
 	// Excel
 	formatRegistry.RegisterFormat("excel", excel.Unmarshal, excel.Marshal)

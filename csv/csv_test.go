@@ -8,6 +8,7 @@ import (
 	"github.com/martianzhang/tableconvert/common"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUnmarshal(t *testing.T) {
@@ -458,4 +459,31 @@ func TestMarshalWithSpecialCharacters(t *testing.T) {
 	// Note: semicolons don't require quoting in standard CSV, only commas do
 	// So "Hates; semicolons" may not be quoted
 	assert.Contains(t, output, "Hates; semicolons")
+}
+
+func TestTSVDefaultDelimiter(t *testing.T) {
+	cfg := &common.Config{
+		From:   "tsv",
+		Reader: strings.NewReader("name\tage\nAlice\t30\n"),
+	}
+	table := &common.Table{}
+	require.NoError(t, Unmarshal(cfg, table))
+	assert.Equal(t, []string{"name", "age"}, table.Headers)
+	assert.Equal(t, [][]string{{"Alice", "30"}}, table.Rows)
+
+	var buf bytes.Buffer
+	outCfg := &common.Config{To: "tsv", Writer: &buf}
+	require.NoError(t, Marshal(outCfg, table))
+	assert.Equal(t, "name\tage\nAlice\t30\n", buf.String())
+}
+
+func TestTSVFromExtension(t *testing.T) {
+	cfg := &common.Config{
+		File:   "data.tsv",
+		Reader: strings.NewReader("a\tb\n1\t2\n"),
+	}
+	table := &common.Table{}
+	require.NoError(t, Unmarshal(cfg, table))
+	assert.Equal(t, []string{"a", "b"}, table.Headers)
+	assert.Equal(t, [][]string{{"1", "2"}}, table.Rows)
 }

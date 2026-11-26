@@ -19,6 +19,7 @@ import (
 var textFormats = map[string]bool{
 	"ascii":     true,
 	"csv":       true,
+	"tsv":       true,
 	"html":      true,
 	"json":      true,
 	"jsonl":     true,

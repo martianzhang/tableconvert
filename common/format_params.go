@@ -18,6 +18,11 @@ var FormatParamsRegistry = map[string][]FormatParam{
 		{Name: "bom", DefaultValue: "false", AllowedValues: "", Description: "Add Byte Order Mark"},
 		{Name: "delimiter", DefaultValue: ",", AllowedValues: "COMMA, TAB, SEMICOLON, PIPE, SLASH, HASH", Description: "Value Delimiter"},
 	},
+	"tsv": {
+		{Name: "first-column-header", DefaultValue: "false", AllowedValues: "true, false", Description: "Use first column as headers"},
+		{Name: "bom", DefaultValue: "false", AllowedValues: "", Description: "Add Byte Order Mark"},
+		{Name: "delimiter", DefaultValue: "TAB", AllowedValues: "TAB, COMMA, SEMICOLON, PIPE, SLASH, HASH", Description: "Value Delimiter"},
+	},
 	"excel": {
 		{Name: "first-column-header", DefaultValue: "false", AllowedValues: "true, false", Description: "Use first column as headers"},
 		{Name: "sheet-name", DefaultValue: "", AllowedValues: "", Description: "Excel sheet name (input/output)"},

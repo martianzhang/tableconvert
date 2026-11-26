@@ -44,9 +44,11 @@ tableconvert data.csv output.txt --style=dot
 
 ---
 
-### CSV (Comma-Separated Values)
+### CSV / TSV (Delimited Values)
 
 **Usage:** `tableconvert data.json output.csv --delimiter=TAB --bom`
+
+TSV is available as `--from=tsv` / `--to=tsv`, or automatically from `.tsv` / `.tab` extensions. CSV/TSV default to comma/tab respectively; `--delimiter` overrides both.
 
 | Parameter | Default | Allowed Values | Description |
 |-----------|---------|----------------|-------------|

@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -47,6 +48,9 @@ const (
 	TableFormatSQL       = "sql"
 	TableFormatTracWiki  = "tracwiki"
 	TableFormatTWiki     = "twiki"
+	TableFormatTSV       = "tsv"
+	TableFormatJSONL     = "jsonl"
+	TableFormatMySQL     = "mysql"
 )
 
 var (
@@ -59,10 +63,12 @@ var extensions = map[string]string{
 	".xlsx":      TableFormatExcel,
 	".xls":       TableFormatExcel,
 	".csv":       TableFormatCSV,
+	".tsv":       TableFormatTSV,
+	".tab":       TableFormatTSV,
 	".sql":       TableFormatSQL,
 	".json":      TableFormatJSON,
-	".jsonl":     "jsonl",
-	".jsonlines": "jsonl",
+	".jsonl":     TableFormatJSONL,
+	".jsonlines": TableFormatJSONL,
 	".tex":       TableFormatLatex,
 	".latex":     TableFormatLatex,
 	".xml":       TableFormatXML,
@@ -114,10 +120,16 @@ func DetectTableFormatByData(reader io.Reader) (string, error) {
 		return TableFormatLatex, nil
 	case isMediaWiki(strContent):
 		return TableFormatMediaWiki, nil
+	case isJSONLines(strContent):
+		return TableFormatJSONL, nil
 	case isJSON(strContent):
 		return TableFormatJSON, nil
+	case isMySQL(strContent):
+		return TableFormatMySQL, nil
 	case isSQL(strContent):
 		return TableFormatSQL, nil
+	case isTSV(strContent):
+		return TableFormatTSV, nil
 	case isCSV(strContent):
 		return TableFormatCSV, nil
 	case isXML(strContent):
@@ -167,13 +179,85 @@ func isMediaWiki(content string) bool {
 }
 
 func isCSV(content string) bool {
-	lines := strings.Split(content, "\n")
-	for _, line := range lines {
-		if strings.Contains(line, ",") {
-			return true
+	lines := nonEmptyLines(content)
+	if len(lines) < 2 {
+		return false
+	}
+	commaCount := strings.Count(lines[0], ",")
+	if commaCount == 0 {
+		return false
+	}
+	for _, line := range lines[1:] {
+		if strings.Count(line, ",") != commaCount {
+			// Quoted fields can contain commas; fall back to a loose check.
+			if !strings.Contains(line, ",") {
+				return false
+			}
 		}
 	}
-	return false
+	return true
+}
+
+func isTSV(content string) bool {
+	lines := nonEmptyLines(content)
+	if len(lines) < 2 {
+		return false
+	}
+	tabCount := strings.Count(lines[0], "\t")
+	if tabCount == 0 {
+		return false
+	}
+	for _, line := range lines[1:] {
+		if strings.Count(line, "\t") != tabCount {
+			return false
+		}
+	}
+	return true
+}
+
+func isJSONLines(content string) bool {
+	lines := nonEmptyLines(content)
+	if len(lines) < 2 {
+		return false
+	}
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		if !strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[") {
+			return false
+		}
+		if !json.Valid([]byte(trimmed)) {
+			return false
+		}
+	}
+	return true
+}
+
+func isMySQL(content string) bool {
+	hasBorder := false
+	hasPipe := false
+	for _, line := range nonEmptyLines(content) {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "+-") || strings.HasPrefix(trimmed, "+=") {
+			hasBorder = true
+		}
+		if strings.HasPrefix(trimmed, "|") && strings.HasSuffix(trimmed, "|") {
+			hasPipe = true
+		}
+	}
+	return hasBorder && hasPipe
+}
+
+func nonEmptyLines(content string) []string {
+	var lines []string
+	for _, line := range strings.Split(content, "\n") {
+		if strings.TrimSpace(line) != "" {
+			lines = append(lines, strings.TrimRight(line, "\r"))
+		}
+	}
+	return lines
 }
 
 func isSQL(content string) bool {

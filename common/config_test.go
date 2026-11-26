@@ -997,3 +997,28 @@ func TestParseConfigListSheets(t *testing.T) {
 	assert.Empty(t, cfg.To)
 	assert.Empty(t, cfg.Result)
 }
+
+func TestParseConfigDetectsInputContent(t *testing.T) {
+	dir := t.TempDir()
+	tests := []struct {
+		name     string
+		content  string
+		expected string
+	}{
+		{"csv txt", "name,age\nAlice,30\n", "csv"},
+		{"tsv txt", "name\tage\nAlice\t30\n", "tsv"},
+		{"jsonl txt", "{\"a\":1}\n{\"a\":2}\n", "jsonl"},
+		{"mysql txt", "+---+---+\n| a | b |\n+---+---+\n| 1 | 2 |\n+---+---+\n", "mysql"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(dir, tt.name+".txt")
+			require.NoError(t, os.WriteFile(path, []byte(tt.content), 0644))
+			cfg, err := ParseConfig([]string{"--to", "json", path})
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, cfg.From)
+			assert.NotNil(t, cfg.BufferedInput)
+			assert.NotNil(t, cfg.Reader)
+		})
+	}
+}

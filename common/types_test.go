@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDetectTableFormatByExtension(t *testing.T) {
@@ -465,6 +466,8 @@ func TestDetectTableFormatByExtensionComprehensive(t *testing.T) {
 		expected string
 	}{
 		{"data.csv", TableFormatCSV},
+		{"data.tsv", TableFormatTSV},
+		{"data.tab", TableFormatTSV},
 		{"data.json", TableFormatJSON},
 		{"data.md", TableFormatMarkdown},
 		{"data.markdown", TableFormatMarkdown},
@@ -607,4 +610,23 @@ type failingReader struct{}
 
 func (r *failingReader) Read(p []byte) (n int, err error) {
 	return 0, io.ErrUnexpectedEOF
+}
+
+func TestDetectTableFormatByDataTSVJSONLAndMySQL(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"tsv", "name\tage\nAlice\t30\nBob\t25\n", TableFormatTSV},
+		{"jsonl", "{\"a\":1}\n{\"a\":2}\n", TableFormatJSONL},
+		{"mysql box", "+---+---+\n| a | b |\n+---+---+\n| 1 | 2 |\n+---+---+\n", TableFormatMySQL},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			format, err := DetectTableFormatByData(strings.NewReader(tt.input))
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, format)
+		})
+	}
 }

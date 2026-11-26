@@ -3,6 +3,7 @@ package csv
 import (
 	"encoding/csv"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/martianzhang/tableconvert/common"
@@ -13,8 +14,8 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	// Allow variable number of fields per record
 	csvReader.FieldsPerRecord = -1
 
-	// Set custom delimiter (default: comma)
-	delimiter := strings.ToUpper(cfg.GetExtensionString("delimiter", ","))
+	// Set custom delimiter (default: comma, or TAB for .tsv/.tab/--from=tsv)
+	delimiter := delimiterFor(cfg)
 	switch delimiter {
 	case "TAB", "\t":
 		csvReader.Comma = '\t'
@@ -101,6 +102,25 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	return nil
 }
 
+func delimiterFor(cfg *common.Config) string {
+	if delimiter := cfg.GetExtensionString("delimiter", ""); delimiter != "" {
+		return strings.ToUpper(delimiter)
+	}
+	if cfg.From == "tsv" || cfg.To == "tsv" || hasTSVExtension(cfg.File) || hasTSVExtension(cfg.Result) {
+		return "TAB"
+	}
+	return "COMMA"
+}
+
+func hasTSVExtension(path string) bool {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".tsv", ".tab":
+		return true
+	default:
+		return false
+	}
+}
+
 func Marshal(cfg *common.Config, table *common.Table) error {
 	// Write UTF-8 BOM
 	bom := cfg.GetExtensionBool("bom", false)
@@ -113,8 +133,8 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	// Config CSV writer
 	csvWriter := csv.NewWriter(cfg.Writer)
 
-	// Set custom delimiter (default: comma)
-	delimiter := strings.ToUpper(cfg.GetExtensionString("delimiter", ","))
+	// Set custom delimiter (default: comma, or TAB for .tsv/.tab/--from=tsv)
+	delimiter := delimiterFor(cfg)
 	switch delimiter {
 	case "TAB", "\t":
 		csvWriter.Comma = '\t'

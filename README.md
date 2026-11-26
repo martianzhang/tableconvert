@@ -154,7 +154,7 @@ tableconvert data.csv output.php --template=php_array.tmpl
 
 **Auto-Detection:**
 When `--from` or `--to` are omitted, formats are detected from file extensions:
-- `.csv` → csv, `.json` → json, `.jsonl` → jsonl
+- `.csv` → csv, `.tsv`, `.tab` → tsv, `.json` → json, `.jsonl` → jsonl
 - `.md`, `.markdown` → markdown, `.xlsx` → excel (legacy `.xls` is not supported)
 - `.html`, `.htm` → html, `.xml` → xml, `.sql` → sql
 - `.tex`, `.latex` → latex, `.wiki` → mediawiki
@@ -195,6 +195,7 @@ Once configured, you can ask your AI assistant:
 |--------|------------|------|-------|-------------|
 | **MySQL** | `mysql` | ✅ | ✅ | MySQL query output (box format) |
 | **CSV** | `.csv` | ✅ | ✅ | Comma-separated values |
+| **TSV** | `.tsv`, `.tab` | ✅ | ✅ | Tab-separated values |
 | **JSON** | `.json` | ✅ | ✅ | JavaScript Object Notation |
 | **JSONL** | `.jsonl`, `.jsonlines` | ✅ | ✅ | JSON Lines format |
 | **Markdown** | `.md`, `.markdown` | ✅ | ✅ | GitHub/Markdown tables |
