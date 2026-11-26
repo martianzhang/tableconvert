@@ -250,8 +250,11 @@ tableconvert sales.csv report.md --transpose --bold-header --align=l,c,r
 
 ### Reporting
 ```bash
+# Preserve every worksheet from Excel
+tableconvert --all-sheets report.xlsx report-all.xlsx
+
 # Batch process daily reports
-tableconvert --batch="reports/*.csv" --to=excel --output-dir=excel_reports --bold-header
+tableconvert --batch="reports/*.csv" --to=excel --output-dir=excel_reports
 
 # Generate LaTeX for papers
 tableconvert results.csv table.tex --caption="Experiment Results" --table-align=centering

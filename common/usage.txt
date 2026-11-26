@@ -55,6 +55,7 @@ FORMAT-SPECIFIC OPTIONS:
     --bold-header           For markdown/latex: make headers bold
     --auto-width            For excel: auto-adjust column widths
     --sheet-index=2         For excel: read the second worksheet
+    --all-sheets            For excel: read/write every worksheet
     --expand-merged         For excel: expand merged cells (default true)
     --parse-types           For json/sql: emit numbers/booleans/null
     --json-path=data.items  For json: select the row array in a wrapper object

@@ -92,6 +92,11 @@ func runMCPMode() {
 
 // runBatchMode processes multiple files in batch
 func runBatchMode(cfg *common.Config) {
+	if cfg.GetExtensionBool("all-sheets", false) {
+		fmt.Fprintln(os.Stderr, "Error: --all-sheets is not supported in batch mode")
+		os.Exit(1)
+	}
+
 	// Get list of files to process
 	files, err := cfg.GetBatchFiles()
 	if err != nil {
@@ -282,6 +287,10 @@ func performConversion(cfg *common.Config) (err error) {
 			cfg.AbortOutput()
 		}
 	}()
+
+	if cfg.GetExtensionBool("all-sheets", false) {
+		return performAllSheets(cfg)
+	}
 
 	if err = common.PerformConversionWithRegistry(formatRegistry, cfg); err != nil {
 		return err

@@ -5,7 +5,7 @@ This page lists current boundaries so you can choose the right workaround.
 ## Excel
 
 - Input/output supports `.xlsx` only. Legacy `.xls` files must be saved as `.xlsx` or exported to CSV.
-- One worksheet is read per conversion. Use `--sheet-index=N` or `--sheet-name=...`; `--list-sheets` prints the names. `--all-sheets` is not implemented yet.
+- One worksheet is read by default. Use `--sheet-index=N` or `--sheet-name=...`; `--list-sheets` prints the names. `--all-sheets` reads every sheet (text output adds a leading `Sheet` column; Excel output writes one worksheet per sheet).
 - Merged cells are expanded by default. Use `--expand-merged=false` to keep raw layout; a warning is printed because only the top-left value is retained.
 - Output keeps `text-format=true` by default, so numbers are stored as text in Excel. This is intentional; see the format reference.
 

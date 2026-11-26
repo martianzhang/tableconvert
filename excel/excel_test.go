@@ -643,3 +643,47 @@ func TestUnmarshalMergedCellsWarningWhenDisabled(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(output), "not expanded")
 }
+
+func TestUnmarshalAllAndMarshalAll(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "all.xlsx")
+
+	f := excelize.NewFile()
+	first := f.GetSheetName(0)
+	_, err := f.NewSheet("Second")
+	require.NoError(t, err)
+	require.NoError(t, f.SetCellValue(first, "A1", "name"))
+	require.NoError(t, f.SetCellValue(first, "B1", "age"))
+	require.NoError(t, f.SetCellValue(first, "A2", "Alice"))
+	require.NoError(t, f.SetCellValue(first, "B2", "30"))
+	require.NoError(t, f.SetCellValue("Second", "A1", "name"))
+	require.NoError(t, f.SetCellValue("Second", "B1", "city"))
+	require.NoError(t, f.SetCellValue("Second", "A2", "Bob"))
+	require.NoError(t, f.SetCellValue("Second", "B2", "LA"))
+	require.NoError(t, f.SaveAs(input))
+	require.NoError(t, f.Close())
+
+	sheets, err := UnmarshalAll(&common.Config{From: "xlsx", File: input})
+	require.NoError(t, err)
+	require.Len(t, sheets, 2)
+	assert.Equal(t, first, sheets[0].Name)
+	assert.Equal(t, []string{"name", "age"}, sheets[0].Table.Headers)
+	assert.Equal(t, []string{"name", "city"}, sheets[1].Table.Headers)
+
+	output := filepath.Join(dir, "out.xlsx")
+	require.NoError(t, MarshalAll(&common.Config{Result: output}, sheets))
+	readBack, err := UnmarshalAll(&common.Config{From: "xlsx", File: output})
+	require.NoError(t, err)
+	require.Len(t, readBack, 2)
+	assert.Equal(t, sheets[0].Table.Headers, readBack[0].Table.Headers)
+	assert.Equal(t, sheets[1].Table.Rows, readBack[1].Table.Rows)
+}
+
+func TestMergeSheets(t *testing.T) {
+	merged := MergeSheets([]SheetTable{
+		{Name: "S1", Table: common.Table{Headers: []string{"name", "age"}, Rows: [][]string{{"Alice", "30"}}}},
+		{Name: "S2", Table: common.Table{Headers: []string{"name", "city"}, Rows: [][]string{{"Bob", "LA"}}}},
+	})
+	assert.Equal(t, []string{"Sheet", "name", "age", "city"}, merged.Headers)
+	assert.Equal(t, [][]string{{"S1", "Alice", "30", ""}, {"S2", "Bob", "", "LA"}}, merged.Rows)
+}

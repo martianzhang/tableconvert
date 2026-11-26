@@ -92,10 +92,13 @@ tableconvert data.json output.csv --delimiter=SEMICOLON
 | `sheet-name` | `Sheet1` | Any string | Excel sheet name (input/output) |
 | `sheet-index` | `` | 1-based number | Read the Nth sheet when `sheet-name` is empty |
 | `expand-merged` | `true` | `true`, `false` | Expand merged cells on input |
+| `all-sheets` | `false` | `true`, `false` | Read/write every worksheet |
 | `auto-width` | `false` | `true`, `false` | Auto-adjust column widths |
 | `text-format` | `true` | `true`, `false` | Force text format for all cells (intentionally kept) |
 
 **Input format:** Excel input/output supports `.xlsx` only. Legacy `.xls` files must be saved as `.xlsx` or exported to CSV first; `tableconvert` returns a clear error instead of attempting to parse them.
+
+**All sheets:** `--all-sheets` reads every worksheet. Excel output writes one worksheet per source sheet; text output merges sheets into one table with a leading `Sheet` column. It cannot be combined with `--sheet-name` or `--sheet-index`.
 
 **List sheets:**
 
@@ -118,6 +121,12 @@ tableconvert data.csv output.xlsx --first-column-header=true
 
 # Read the second worksheet by index
 tableconvert --sheet-index=2 report.xlsx output.csv
+
+# Merge all worksheets into one CSV with a Sheet column
+tableconvert --all-sheets report.xlsx output.csv
+
+# Preserve all worksheets when writing Excel
+tableconvert --all-sheets report.xlsx output.xlsx
 ```
 
 ---

@@ -13,6 +13,12 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+// SheetTable pairs a worksheet name with its parsed table.
+type SheetTable struct {
+	Name  string
+	Table common.Table
+}
+
 func Unmarshal(cfg *common.Config, table *common.Table) error {
 	if cfg == nil {
 		return fmt.Errorf("Unmarshal: config cannot be nil")
@@ -20,9 +26,8 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	if table == nil {
 		return fmt.Errorf("Unmarshal: output table cannot be nil")
 	}
-
-	if cfg.File != "" && strings.EqualFold(filepath.Ext(cfg.File), ".xls") {
-		return fmt.Errorf("legacy .xls input is not supported; save as .xlsx or export CSV")
+	if err := validateLegacyXLS(cfg); err != nil {
+		return err
 	}
 
 	f, err := openWorkbook(cfg)
@@ -35,36 +40,69 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 	if err != nil {
 		return err
 	}
-
-	// Get all rows
-	rows, err := f.GetRows(sheetName)
+	result, err := readSheet(f, sheetName, cfg)
 	if err != nil {
 		return err
 	}
+	*table = *result
+	return nil
+}
 
-	// Excelize does not expand merged cells in GetRows. Replicate the top-left
-	// value across each merged range, otherwise every other cell is silently
-	// empty.
+// UnmarshalAll reads every worksheet. It is used by --all-sheets.
+func UnmarshalAll(cfg *common.Config) ([]SheetTable, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("UnmarshalAll: config cannot be nil")
+	}
+	if err := validateLegacyXLS(cfg); err != nil {
+		return nil, err
+	}
+	f, err := openWorkbook(cfg)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	names := f.GetSheetList()
+	if len(names) == 0 {
+		return nil, fmt.Errorf("empty Excel file: no sheets found")
+	}
+	sheets := make([]SheetTable, 0, len(names))
+	for _, name := range names {
+		table, err := readSheet(f, name, cfg)
+		if err != nil {
+			return nil, fmt.Errorf("sheet %q: %w", name, err)
+		}
+		sheets = append(sheets, SheetTable{Name: name, Table: *table})
+	}
+	return sheets, nil
+}
+
+func readSheet(f *excelize.File, sheetName string, cfg *common.Config) (*common.Table, error) {
+	rows, err := f.GetRows(sheetName)
+	if err != nil {
+		return nil, err
+	}
+
 	expanded, err := expandMergedCells(f, sheetName, rows, cfg.GetExtensionBool("expand-merged", true))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	rows = expanded
 
+	table := &common.Table{}
 	skipRows := cfg.GetExtensionInt("skip-rows", 0)
 	headerRow := cfg.GetExtensionInt("header-row", 0)
 
 	useFirstColAsHeader := cfg.GetExtensionBool("first-column-header", false)
 	if useFirstColAsHeader {
 		if headerRow > 0 {
-			return fmt.Errorf("--header-row cannot be combined with --first-column-header")
+			return nil, fmt.Errorf("--header-row cannot be combined with --first-column-header")
 		}
 		if skipRows < 0 || skipRows > len(rows) {
-			return fmt.Errorf("--skip-rows=%d exceeds input rows (%d)", skipRows, len(rows))
+			return nil, fmt.Errorf("--skip-rows=%d exceeds input rows (%d)", skipRows, len(rows))
 		}
 		rows = rows[skipRows:]
 		if len(rows) > 0 {
-			// 1. Process headers and calculate max number of data columns
 			maxDataCols := 0
 			for _, row := range rows {
 				if len(row) > 0 {
@@ -77,7 +115,6 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 				}
 			}
 
-			// 2. Initialize result rows and populate data
 			table.Rows = make([][]string, maxDataCols)
 			for colIdx := range table.Rows {
 				table.Rows[colIdx] = make([]string, len(table.Headers))
@@ -88,22 +125,21 @@ func Unmarshal(cfg *common.Config, table *common.Table) error {
 				}
 			}
 		}
-	} else {
-		headers, data, err := common.SelectHeaderRows(rows, skipRows, headerRow)
-		if err != nil {
-			return err
-		}
-		table.Headers = headers
-		for _, row := range data {
-			// Ensure each row has the same number of columns as headers
-			if len(row) < len(table.Headers) {
-				row = append(row, make([]string, len(table.Headers)-len(row))...)
-			}
-			table.Rows = append(table.Rows, row)
-		}
+		return table, nil
 	}
 
-	return nil
+	headers, data, err := common.SelectHeaderRows(rows, skipRows, headerRow)
+	if err != nil {
+		return nil, err
+	}
+	table.Headers = headers
+	for _, row := range data {
+		if len(row) < len(table.Headers) {
+			row = append(row, make([]string, len(table.Headers)-len(row))...)
+		}
+		table.Rows = append(table.Rows, row)
+	}
+	return table, nil
 }
 
 // ListSheets returns the worksheet names in workbook order.
@@ -111,8 +147,8 @@ func ListSheets(cfg *common.Config) ([]string, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("ListSheets: config cannot be nil")
 	}
-	if cfg.File != "" && strings.EqualFold(filepath.Ext(cfg.File), ".xls") {
-		return nil, fmt.Errorf("legacy .xls input is not supported; save as .xlsx or export CSV")
+	if err := validateLegacyXLS(cfg); err != nil {
+		return nil, err
 	}
 	f, err := openWorkbook(cfg)
 	if err != nil {
@@ -120,6 +156,13 @@ func ListSheets(cfg *common.Config) ([]string, error) {
 	}
 	defer f.Close()
 	return f.GetSheetList(), nil
+}
+
+func validateLegacyXLS(cfg *common.Config) error {
+	if cfg.File != "" && strings.EqualFold(filepath.Ext(cfg.File), ".xls") {
+		return fmt.Errorf("legacy .xls input is not supported; save as .xlsx or export CSV")
+	}
+	return nil
 }
 
 func openWorkbook(cfg *common.Config) (*excelize.File, error) {
@@ -244,14 +287,11 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 	if table == nil {
 		return fmt.Errorf("Marshal: input table pointer cannot be nil")
 	}
-	if cfg.Result != "" && strings.EqualFold(filepath.Ext(cfg.Result), ".xls") {
-		return fmt.Errorf("legacy .xls output is not supported; use .xlsx")
+	if err := validateLegacyXLSOutput(cfg); err != nil {
+		return err
 	}
 
 	f := excelize.NewFile()
-
-	// Sheet Name: reuse/rename the default sheet so we do not leave an empty
-	// "Sheet1" behind when a custom name is requested.
 	sheetName := cfg.GetExtensionString("sheet-name", "Sheet1")
 	defaultSheet := f.GetSheetName(0)
 	if defaultSheet == "" {
@@ -263,14 +303,64 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		}
 	}
 	f.SetActiveSheet(0)
+	if err := writeSheet(f, sheetName, table, cfg); err != nil {
+		return err
+	}
+	return writeWorkbook(f, cfg)
+}
 
-	// Auto-width configuration
-	autoWidth := cfg.GetExtensionBool("auto-width", false)
+// MarshalAll writes one worksheet per SheetTable. It is used by --all-sheets.
+func MarshalAll(cfg *common.Config, sheets []SheetTable) error {
+	if cfg == nil {
+		return fmt.Errorf("MarshalAll: config cannot be nil")
+	}
+	if len(sheets) == 0 {
+		return fmt.Errorf("MarshalAll: no sheets to write")
+	}
+	if err := validateLegacyXLSOutput(cfg); err != nil {
+		return err
+	}
 
-	// Text format configuration
+	f := excelize.NewFile()
+	defaultSheet := f.GetSheetName(0)
+	if defaultSheet == "" {
+		return fmt.Errorf("failed to create default Excel sheet")
+	}
+	for i, sheet := range sheets {
+		name := sheet.Name
+		if name == "" {
+			name = fmt.Sprintf("Sheet%d", i+1)
+		}
+		if i == 0 {
+			if name != defaultSheet {
+				if err := f.SetSheetName(defaultSheet, name); err != nil {
+					return err
+				}
+			}
+		} else {
+			if _, err := f.NewSheet(name); err != nil {
+				return fmt.Errorf("sheet %q: %w", name, err)
+			}
+		}
+		if err := writeSheet(f, name, &sheet.Table, cfg); err != nil {
+			return err
+		}
+	}
+	f.SetActiveSheet(0)
+	return writeWorkbook(f, cfg)
+}
+
+func writeSheet(f *excelize.File, sheetName string, table *common.Table, cfg *common.Config) error {
 	textFormat := cfg.GetExtensionBool("text-format", true)
+	textStyleID := 0
+	if textFormat {
+		var err error
+		textStyleID, err = f.NewStyle(&excelize.Style{NumFmt: 49})
+		if err != nil {
+			return err
+		}
+	}
 
-	// Write headers
 	for colIndex, header := range table.Headers {
 		cell, err := excelize.CoordinatesToCellName(colIndex+1, 1)
 		if err != nil {
@@ -280,57 +370,37 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			return err
 		}
 	}
-
-	// Write data
-	// Create text format style once if needed
-	var textStyleID int
-	if textFormat {
-		// Set cell format to text - style 49 is built-in text format
-		var err error
-		textStyleID, err = f.NewStyle(&excelize.Style{
-			NumFmt: 49, // 49 is the built-in text format
-		})
-		if err != nil {
-			return err
-		}
-	}
-
 	for rowIndex, row := range table.Rows {
 		for colIndex, value := range row {
 			cell, err := excelize.CoordinatesToCellName(colIndex+1, rowIndex+2)
 			if err != nil {
 				return err
 			}
-
 			if textFormat {
 				if err := f.SetCellStyle(sheetName, cell, cell, textStyleID); err != nil {
 					return err
 				}
 			}
-
 			if err := f.SetCellValue(sheetName, cell, value); err != nil {
 				return err
 			}
 		}
 	}
 
-	// Auto adjust column widths if enabled
-	if autoWidth {
+	if cfg.GetExtensionBool("auto-width", false) {
 		for colIndex, header := range table.Headers {
 			colName, err := excelize.ColumnNumberToName(colIndex + 1)
 			if err != nil {
 				return err
 			}
-
 			maxWidth := runewidth.StringWidth(header)
 			for _, row := range table.Rows {
 				if colIndex < len(row) {
-					if w := runewidth.StringWidth(row[colIndex]); w > maxWidth {
-						maxWidth = w
+					if width := runewidth.StringWidth(row[colIndex]); width > maxWidth {
+						maxWidth = width
 					}
 				}
 			}
-			// Keep columns readable but bounded, like a spreadsheet's auto-fit.
 			width := float64(maxWidth + 2)
 			if width < 8 {
 				width = 8
@@ -343,10 +413,10 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 			}
 		}
 	}
+	return nil
+}
 
-	// Write to the configured Writer when present. This covers stdout, batch
-	// mode, MCP buffers, and dry-run (io.Discard). Only fall back to Result for
-	// direct API callers that did not provide a Writer.
+func writeWorkbook(f *excelize.File, cfg *common.Config) error {
 	if cfg.Writer != nil {
 		if err := f.Write(cfg.Writer); err != nil {
 			return fmt.Errorf("failed to write workbook: %w", err)
@@ -357,4 +427,50 @@ func Marshal(cfg *common.Config, table *common.Table) error {
 		return fmt.Errorf("Marshal: Excel output requires Writer or Result")
 	}
 	return f.SaveAs(cfg.Result)
+}
+
+func validateLegacyXLSOutput(cfg *common.Config) error {
+	if cfg.Result != "" && strings.EqualFold(filepath.Ext(cfg.Result), ".xls") {
+		return fmt.Errorf("legacy .xls output is not supported; use .xlsx")
+	}
+	return nil
+}
+
+// MergeSheets combines worksheets into one table with a leading sheet column.
+func MergeSheets(sheets []SheetTable) *common.Table {
+	sheetColumn := "Sheet"
+	for _, sheet := range sheets {
+		for _, header := range sheet.Table.Headers {
+			if header == sheetColumn {
+				sheetColumn = "_sheet"
+				break
+			}
+		}
+	}
+
+	headers := []string{sheetColumn}
+	index := map[string]int{sheetColumn: 0}
+	for _, sheet := range sheets {
+		for _, header := range sheet.Table.Headers {
+			if _, exists := index[header]; !exists {
+				index[header] = len(headers)
+				headers = append(headers, header)
+			}
+		}
+	}
+
+	rows := make([][]string, 0)
+	for _, sheet := range sheets {
+		for _, row := range sheet.Table.Rows {
+			merged := make([]string, len(headers))
+			merged[0] = sheet.Name
+			for i, header := range sheet.Table.Headers {
+				if i < len(row) {
+					merged[index[header]] = row[i]
+				}
+			}
+			rows = append(rows, merged)
+		}
+	}
+	return &common.Table{Headers: headers, Rows: rows}
 }
