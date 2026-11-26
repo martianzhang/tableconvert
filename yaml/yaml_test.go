@@ -53,3 +53,13 @@ func TestMarshalFlowAndQuote(t *testing.T) {
 	assert.Contains(t, buf.String(), "{")
 	assert.Contains(t, buf.String(), "\"1\"")
 }
+
+func TestRoundTripPreservesTypes(t *testing.T) {
+	table := &common.Table{}
+	require.NoError(t, Unmarshal(&common.Config{Reader: strings.NewReader("- a: 1\n  b: true\n")}, table))
+	var buf strings.Builder
+	cfg := &common.Config{From: "yaml", Writer: &buf}
+	require.NoError(t, Marshal(cfg, table))
+	assert.Contains(t, buf.String(), "a: 1")
+	assert.Contains(t, buf.String(), "b: true")
+}

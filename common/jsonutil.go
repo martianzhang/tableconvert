@@ -362,7 +362,7 @@ func ToPlainJSON(value interface{}) interface{} {
 // IsJSONSource reports whether format is one of the JSON-family input formats.
 func IsJSONSource(format string) bool {
 	switch strings.ToLower(format) {
-	case "json", "jsonl", "jsonlines":
+	case "json", "jsonl", "jsonlines", "yaml", "toml":
 		return true
 	default:
 		return false
