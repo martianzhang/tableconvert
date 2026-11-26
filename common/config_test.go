@@ -671,6 +671,7 @@ func TestAliasConflictUsesLastArgument(t *testing.T) {
 	cfg, err = ParseConfig([]string{"--file", first, "-i", second, "--to=json"})
 	require.NoError(t, err)
 	assert.Equal(t, second, cfg.File)
+	require.NoError(t, cfg.CloseInput())
 }
 
 func TestAutoDetectWikiExtensions(t *testing.T) {
@@ -687,6 +688,7 @@ func TestAutoDetectWikiExtensions(t *testing.T) {
 			cfg, err := ParseConfig([]string{"--to=csv", "--file", file})
 			require.NoError(t, err)
 			assert.Equal(t, want, cfg.From)
+			require.NoError(t, cfg.CloseInput())
 		})
 	}
 }
@@ -700,16 +702,19 @@ func TestBooleanFlagsDoNotConsumeFile(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, cfg.Verbose)
 	assert.Equal(t, file, cfg.File)
+	require.NoError(t, cfg.CloseInput())
 
 	cfg, err = ParseConfig([]string{"--from=csv", "--to=markdown", "--bold-header", file})
 	require.NoError(t, err)
 	assert.Equal(t, file, cfg.File)
 	assert.Contains(t, cfg.Extension, "bold-header")
+	require.NoError(t, cfg.CloseInput())
 
 	cfg, err = ParseConfig([]string{"--from=csv", "--to=json", "--verbose=false", file})
 	require.NoError(t, err)
 	assert.False(t, cfg.Verbose)
 	assert.Equal(t, file, cfg.File)
+	require.NoError(t, cfg.CloseInput())
 }
 
 func TestParseConfigBatchMode(t *testing.T) {
@@ -1020,5 +1025,25 @@ func TestParseConfigDetectsInputContent(t *testing.T) {
 			assert.NotNil(t, cfg.BufferedInput)
 			assert.NotNil(t, cfg.Reader)
 		})
+	}
+}
+
+func TestSplitBatchPatternSeparators(t *testing.T) {
+	tests := []struct {
+		pattern  string
+		baseDir  string
+		filePart string
+	}{
+		{"*.csv", ".", "*.csv"},
+		{"dir/*.csv", filepath.FromSlash("dir"), "*.csv"},
+		{"dir/**/*.csv", filepath.FromSlash("dir"), "**/*.csv"},
+		{"**/*.csv", ".", "**/*.csv"},
+		{`C:\tmp\**\*.csv`, filepath.FromSlash("C:/tmp"), "**/*.csv"},
+		{`C:\tmp\**\data\*.csv`, filepath.FromSlash("C:/tmp"), "**/data/*.csv"},
+	}
+	for _, tt := range tests {
+		base, filePart := splitBatchPattern(tt.pattern)
+		assert.Equal(t, tt.baseDir, base, tt.pattern)
+		assert.Equal(t, tt.filePart, filePart, tt.pattern)
 	}
 }

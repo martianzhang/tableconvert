@@ -957,37 +957,7 @@ func (c *Config) GetBatchFiles() ([]BatchFile, error) {
 
 	// Determine base directory and pattern
 	pattern := c.Batch
-	var baseDir string
-	var filePattern string
-
-	// Handle glob patterns properly - don't use filepath.Dir/Base for patterns with **
-	// because they treat ** as a literal directory name
-	if strings.Contains(pattern, "**") {
-		// For recursive patterns like "test_batch/**/*.csv"
-		// Find the position of ** and split there
-		idx := strings.Index(pattern, "**")
-		// Everything before ** is the base directory (up to the last /)
-		beforeStar := pattern[:idx]
-		if strings.Contains(beforeStar, "/") {
-			lastSlash := strings.LastIndex(beforeStar, "/")
-			baseDir = beforeStar[:lastSlash]
-			filePattern = pattern[lastSlash+1:]
-		} else {
-			baseDir = "."
-			filePattern = pattern
-		}
-		// Normalize baseDir
-		if baseDir == "" {
-			baseDir = "."
-		}
-	} else if strings.Contains(pattern, "/") || strings.Contains(pattern, "\\") {
-		// Simple path without ** - use standard filepath functions
-		baseDir = filepath.Dir(pattern)
-		filePattern = filepath.Base(pattern)
-	} else {
-		baseDir = "."
-		filePattern = pattern
-	}
+	baseDir, filePattern := splitBatchPattern(pattern)
 
 	// Handle recursive mode. A ** pattern is inherently recursive even when
 	// --recursive is omitted.
@@ -1083,6 +1053,30 @@ func canonicalPath(path string) string {
 		path = strings.ToLower(path)
 	}
 	return path
+}
+
+// splitBatchPattern normalizes Windows and POSIX separators before splitting
+// a glob at **. filepath.Walk and filepath.Match expect native paths, while
+// our recursive matcher works on forward-slash patterns.
+func splitBatchPattern(pattern string) (string, string) {
+	normalized := strings.ReplaceAll(pattern, "\\", "/")
+	if strings.Contains(normalized, "**") {
+		idx := strings.Index(normalized, "**")
+		beforeStar := normalized[:idx]
+		if strings.Contains(beforeStar, "/") {
+			lastSlash := strings.LastIndex(beforeStar, "/")
+			baseDir := filepath.FromSlash(beforeStar[:lastSlash])
+			if baseDir == "" {
+				baseDir = "."
+			}
+			return baseDir, normalized[lastSlash+1:]
+		}
+		return ".", normalized
+	}
+	if strings.Contains(normalized, "/") {
+		return filepath.Dir(pattern), filepath.Base(pattern)
+	}
+	return ".", pattern
 }
 
 // walkPattern recursively finds files matching the pattern
