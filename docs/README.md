@@ -32,6 +32,7 @@ tableconvert --help-format=markdown
 | Format | Documentation | Common Uses |
 |--------|---------------|-------------|
 | **CSV** | [arguments.md#csv](arguments.md#csv) | Data import/export |
+| **TSV** | [arguments.md#csv--tsv-delimited-values](arguments.md#csv--tsv-delimited-values) | Tab-separated data |
 | **JSON** | [arguments.md#json](arguments.md#json) | APIs, web apps |
 | **Markdown** | [arguments.md#markdown](arguments.md#markdown) | Documentation |
 | **Excel** | [arguments.md#excel](arguments.md#excel) | Spreadsheets |
@@ -52,6 +53,7 @@ tableconvert --help-format=markdown
 | **Batch mode issues** | [Troubleshooting - Batch Mode](troubleshooting.md#3-batch-mode-issues) |
 | **Encoding problems** | [Troubleshooting - Encoding](troubleshooting.md#5-encoding-issues) |
 | **Performance issues** | [Troubleshooting - Memory Issues](troubleshooting.md#6-memory-issues-with-large-files) |
+| **Known limitations** | [limitations.md](limitations.md) | Current boundaries and workarounds |
 
 ## 🎯 Common Tasks
 

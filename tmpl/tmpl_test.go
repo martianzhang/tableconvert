@@ -327,3 +327,23 @@ func TestMarshalUTF8Handling(t *testing.T) {
 	expectedOutput := "测试: 你好世界\n🎉: emoji支持\n"
 	assert.Equal(t, expectedOutput, buf.String())
 }
+
+func TestPhpArrayTemplate(t *testing.T) {
+	root, err := common.GetProjectRootPath()
+	require.NoError(t, err)
+	var buf bytes.Buffer
+	table := common.Table{
+		Headers: []string{"name", "age"},
+		Rows:    [][]string{{"Alice", "30"}},
+	}
+	cfg := common.Config{
+		Writer: &buf,
+		Extension: map[string]string{
+			"template": root + "templates/php_array.tmpl",
+		},
+	}
+	require.NoError(t, Marshal(&cfg, &table))
+	output := buf.String()
+	assert.Contains(t, output, `$headers = ["name", "age"];`)
+	assert.Contains(t, output, `["Alice", "30"],`)
+}

@@ -379,7 +379,7 @@ tableconvert full_data.csv appendix.tex --caption="Complete Dataset" --mwe
 tableconvert data.csv migration.sql --table=users --one-insert --dialect=postgresql
 
 # Verify with MySQL format
-tableconvert data.csv verification.txt --style=box
+tableconvert data.csv verification.ascii --style=box
 ```
 
 ### Wiki Content

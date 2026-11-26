@@ -21,8 +21,8 @@ tableconvert --help-format=markdown  # Check format details
 ```
 
 **Common mistakes:**
-- ❌ `tableconvert data.txt output.json` (txt not auto-detected)
-- ✅ `tableconvert --from=csv --to=json data.txt output.json`
+- ✅ `tableconvert data.txt output.json` (content detection for CSV/TSV/JSONL/MySQL box)
+- ✅ 如果内容有歧义，再显式指定：`tableconvert --from=csv --to=json data.txt output.json`
 
 ### 2. Invalid Table Format
 

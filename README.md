@@ -6,7 +6,7 @@
 
 ## ✨ Key Features
 
-- **🔄 Multi-format Support**: 13+ formats including MySQL, Markdown, CSV, JSON, Excel, HTML, XML, SQL, LaTeX, MediaWiki, TWiki, and custom templates
+- **🔄 Multi-format Support**: 15 formats including MySQL, Markdown, CSV, TSV, JSON, Excel, HTML, XML, SQL, LaTeX, MediaWiki, TWiki, and custom templates
 - **🔒 Offline & Secure**: All processing happens locally - your data never leaves your machine
 - **⚡ Batch Processing**: Convert multiple files at once with glob patterns
 - **🔧 Data Transformations**: Built-in support for transpose, deduplication, case conversion, and more
@@ -115,7 +115,7 @@ tableconvert data.csv output.html --div --minify --thead
 tableconvert data.csv output.sql --one-insert --table=products
 
 # Custom template output
-tableconvert data.csv output.php --template=php_array.tmpl
+tableconvert data.csv output.php --template=templates/php_array.tmpl
 ```
 
 ## 📖 Command Reference
@@ -331,6 +331,7 @@ See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation.
 - **[Complete Parameter Reference](docs/arguments.md)** - All format-specific options
 - **[Practical Examples](docs/examples.md)** - Real-world usage scenarios
 - **[Troubleshooting Guide](docs/troubleshooting.md)** - Solve common issues
+- **[Known Limitations](docs/limitations.md)** - Current boundaries and workarounds
 
 ### Format Guides
 - **[LaTeX Guide](docs/latex.md)** - LaTeX table syntax explained

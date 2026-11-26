@@ -24,7 +24,7 @@ By default, short rows are padded, long rows extend the table with `Column N` he
 
 ### ASCII Tables
 
-**Usage:** `tableconvert data.csv output.txt --style=box`
+**Usage:** `tableconvert data.csv output.ascii --style=box`
 
 | Parameter | Default | Allowed Values | Description |
 |-----------|---------|----------------|-------------|
@@ -33,13 +33,13 @@ By default, short rows are padded, long rows extend the table with `Column N` he
 **Examples:**
 ```bash
 # Box style (default)
-tableconvert data.csv output.txt --style=box
+tableconvert data.csv output.ascii --style=box
 
 # Plus style
-tableconvert data.csv output.txt --style=plus
+tableconvert data.csv output.ascii --style=plus
 
 # Dot style
-tableconvert data.csv output.txt --style=dot
+tableconvert data.csv output.ascii --style=dot
 ```
 
 ---
@@ -275,7 +275,7 @@ tableconvert data.csv output.wiki --sort --first-row-header
 
 ### MySQL
 
-**Usage:** `tableconvert data.csv output.txt --style=box`
+**Usage:** `tableconvert data.csv output.ascii --style=box`
 
 | Parameter | Default | Allowed Values | Description |
 |-----------|---------|----------------|-------------|
@@ -283,7 +283,7 @@ tableconvert data.csv output.wiki --sort --first-row-header
 
 **Example:**
 ```bash
-tableconvert data.csv output.txt --style=box
+tableconvert data.csv output.ascii --style=box
 ```
 
 **Important Notes about MySQL Format:**
@@ -326,7 +326,7 @@ mysql -e "SELECT * FROM users" | tableconvert --from=mysql --to=markdown  # FAIL
 
 ### Template
 
-**Usage:** `tableconvert data.csv output.php --template=php_array.tmpl`
+**Usage:** `tableconvert data.csv output.php --template=templates/php_array.tmpl`
 
 | Parameter | Default | Allowed Values | Description |
 |-----------|---------|----------------|-------------|
@@ -341,7 +341,7 @@ mysql -e "SELECT * FROM users" | tableconvert --from=mysql --to=markdown  # FAIL
 
 **Example:**
 ```bash
-tableconvert data.csv output.php --template=php_array.tmpl
+tableconvert data.csv output.php --template=templates/php_array.tmpl
 ```
 
 ---
@@ -465,7 +465,7 @@ tableconvert --batch="data/*.csv" --to=json --output-dir=processed
 tableconvert data.csv data.sql --table=users --one-insert
 
 # MySQL format
-tableconvert data.csv data.txt --style=box
+tableconvert data.csv data.ascii --style=box
 
 # Schema documentation
 mysql -t -e "DESCRIBE users" | tableconvert --from=mysql --to=markdown

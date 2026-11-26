@@ -1,0 +1,7 @@
+<?php
+$headers = [{{range $i, $header := .Headers}}{{if $i}}, {{end}}{{Quote $header}}{{end}}];
+$rows = [
+{{- range .Rows}}
+    [{{range $i, $cell := .}}{{if $i}}, {{end}}{{Quote $cell}}{{end}}],
+{{- end}}
+];
